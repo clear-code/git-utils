@@ -20,6 +20,10 @@ require 'English'
 original_argv = ARGV.dup
 argv = []
 
+LOGBEGIN="- Log -----------------------------------------------------------------"
+LOGEND  ="-----------------------------------------------------------------------"
+
+
 found_include_option = false
 while (arg = original_argv.shift)
   if found_include_option
@@ -63,25 +67,91 @@ require "ostruct"
 require "time"
 require "net/smtp"
 require "socket"
+require "nkf"
 
 class GitCommitMailer
-  class Info
+  class PushInfo
+    attr_reader :old_rev, :new_rev, :reference, :reftype, :log, :author_email
+    def initialize(old_rev, new_rev, reference, reftype, log)
+      @old_rev = old_rev
+      @new_rev = new_rev
+      @reference = reference
+      @reftype = reftype
+
+      @log = <<EOF
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project "#{`sed -ne '1p' "$GIT_DIR/description"`.strip}".
+
+The #{reftype}, #{reference.sub(/\A.+\/.+\//,'')} has been ${change_type}d
+EOF
+      @log += log
+      @author_email = "onodera@clear-code.com"
+    end
+    def headers
+      [ "X-Git-Oldrev: #{old_rev}",
+        "X-Git-Newrev: #{new_rev}",
+        "X-Git-Refname: #{reference}",
+        "X-Git-Reftype: #{reftype}" ]
+    end
+    def subject
+        "[push] #{reftype}, #{reference.sub(/\A.+\/.+\//,'')}, ${change_type}d. $describe"
+    end
+  end
+
+  class CommitInfo
+    attr_reader :revision, :author, :date, :subject, :log, :commit_id, :author_email
     def initialize(repository, reference, revision)
       @repository = repository
       @reference = reference
       @revision = revision
+      parse
     end
-
+    def get_record(record)
+      IO.popen("git log -n 1 --pretty=format:#{record} #{@revision}").readlines[0].strip
+    end
     def parse
+      @author = get_record("%an")
+      @author_email = get_record("%ae")
+      @date = Time.at(get_record("%at").to_i)
+      @subject ="[commit] " + get_record("%s")
+      @log = IO.popen("git log -n 1 -p --pretty=full --find-copies-harder #{revision}").readlines.join #+
+      #IO.popen("git log -p -n 1 --find-copies-harder #{revision}").readlines.join
+      @commit_id = get_record("%H")
+    end
+    def headers
+      [ "X-Git-Author: #{author}",
+        "X-Git-Revision: #{revision}",
+        # "X-Git-Repository: #{path}",
+        "X-Git-Repository: XXX",
+        "X-Git-Commit-Id: #{commit_id}" ]
+    end
+    def make_subject
+      subject = ""
+      subject << "#{@name} " if @name
+      revision_info = "#{@info.revision[0,7]}"
+      if show_path?
+        _affected_paths = affected_paths(project)
+        unless _affected_paths.empty?
+          revision_info = "(#{_affected_paths.join(',')}) #{revision_info}"
+        end
+      end
+      if project
+        subject << "[#{project} #{revision_info}] "
+      else
+        subject << "#{revision_info}: "
+      end
+      subject << @info.subject
+      NKF.nkf("-WM", subject)
     end
   end
 
   class << self
     def run(argv=nil)
       argv ||= ARGV
-      old_revision, new_revision, to, options = parse(argv)
+      old_revision, new_revision, reference, to, options = parse(argv)
       to = [to, *options.to].compact
-      mailer = new(old_revision, new_revision, to)
+      mailer = new(old_revision, new_revision, reference, to)
       apply_options(mailer, options)
       mailer.run
     end
@@ -92,11 +162,13 @@ class GitCommitMailer
       parser = make_parser(options)
       argv = argv.dup
       parser.parse!(argv)
-      old_revision, new_revision, to, *rest = argv
+      old_revision, new_revision, reference, to, *rest = argv
 
-      [old_revision, new_revision, to, options]
+      [old_revision, new_revision, reference, to, options]
     end
 
+    DEFAULT_MAX_SIZE = '100000B'
+    KILO_SIZE = 1024
     def format_size(size)
       return "no limit" if size.nil?
       return "#{size}B" if size < KILO_SIZE
@@ -111,7 +183,7 @@ class GitCommitMailer
     private
     def apply_options(mailer, options)
       mailer.repository = options.repository
-      mailer.reference = options.reference
+      #mailer.reference = options.reference
       mailer.from = options.from
       mailer.from_domain = options.from_domain
       mailer.add_diff = options.add_diff
@@ -144,8 +216,8 @@ class GitCommitMailer
     def make_options
       options = OpenStruct.new
       options.repository = "."
-      options.reference = "refs/heads/master"
-      options.to = []
+      #options.reference = "refs/heads/master"
+      options.to = ["onodera@clear-code.com"]
       options.error_to = []
       options.from = nil
       options.from_domain = nil
@@ -309,18 +381,20 @@ class GitCommitMailer
 
   attr_reader :to
   attr_writer :from, :add_diff, :show_path, :use_utf7
-  attr_writer :repository, :reference
+  attr_writer :repository
   attr_accessor :from_domain, :max_size, :repository_uri
   attr_accessor :rss_path, :rss_uri, :name, :server, :port
 
-  def initialize(old_revision, new_revision, to)
+  def initialize(old_revision, new_revision, reference, to)
     @old_revision = old_revision
     @new_revision = new_revision
+    @reference = reference
     @to = to
   end
 
   def from
-    @from || "#{@info.author}@#{@from_domain}".sub(/@\z/, '')
+    #@from || "#{@info.author}@#{@from_domain}".sub(/@\z/, '')
+    @info.author_email
   end
 
   def repository
@@ -331,11 +405,316 @@ class GitCommitMailer
     @reference || "refs/heads/master"
   end
 
+  def each_revision(old_revision, new_revision, &block)
+    if not old_revision =~ /0{40}/ and not new_revision =~ /0{40}/
+      change_type = "update"
+    elsif old_revision =~ /0{40}/
+      change_type = "create"
+    elsif new_revision =~ /0{40}/
+      change_type = "delete"
+    else
+      #error
+    end
+
+    
+    case change_type
+    when "create", "update"
+      rev = new_revision
+      rev_type=IO.popen("git cat-file -t #{new_revision}").readline.split[0]
+    when "delete"
+      rev = old_revision
+      rev_type=IO.popen("git cat-file -t #{old_revision}").readline.split[0]
+    end
+    
+
+    if reference =~ /refs\/tags\/.*/ and rev_type == "commit"
+      # un-annotated tag
+      refname_type="tag"
+      short_refname=reference.sub(/\Arefs\/tags\//,'')
+    elsif reference =~ /refs\/tags\/.*/ and rev_type == "tag"
+      # annotated tag
+      refname_type="annotated tag"
+      short_refname=reference.sub(/\Arefs\/tags\//,'')
+      # change recipients
+      #if [ -n "$announcerecipients" ]; then
+      #  recipients="$announcerecipients"
+      #fi
+    elsif reference =~ /refs\/heads\/.*/ and rev_type == "commit"
+      # branch
+      refname_type="branch"
+      short_refname=reference.sub(/\Arefs\/heads\//,'')
+    elsif reference =~ /refs\/remotes\/.*/ and rev_type == "commit"
+      # tracking branch
+      refname_type="tracking branch"
+      short_refname=reference.sub(/\Arefs\/remotes\//,'')
+      #echo >&2 "*** Push-update of tracking branch, $refname"
+      #cho >&2 "***  - no email generated."
+      #exit 0
+    else
+      # Anything else (is there anything else?)
+      #echo >&2 "*** Unknown type of update to $refname ($rev_type)"
+      #echo >&2 "***  - no email generated"
+      #exit 1
+    end
+    puts change_type + "  " + refname_type
+    
+    #puts IO.popen("git describe #{rev}").readlines;
+    #puts "HERE I VOMITS: #{refname_type} #{short_refname}"
+    #puts "generate_#{change_type}_branch_email"
+
+    #puts ""
+    #puts "Summary of changes:"
+    #puts IO.popen("git diff-tree --stat --summary --find-copies-harder #{old_revision}..#{new_revision}").readlines.join
+    #puts IO.popen("git diff --find-copies-harder #{old_revision}..#{new_revision}").readlines.join
+
+    #puts "The #{refname_type}, #{short_refname} has been #{change_type}d"
+    if refname_type == "branch" and change_type == "update"
+      yield_update_branch(old_revision, new_revision, block)
+    elsif refname_type == "branch" and change_type == "create"
+      yield_create_branch(old_revision, new_revision, block)
+    elsif refname_type == "branch" and change_type == "delete"
+      yield_delete_branch(old_revision, new_revision, block)
+    elsif refname_type == "tag" and change_type == "update"
+      yield_update_atag(old_revision, new_revision)
+    elsif refname_type == "atag" and change_type == "create"
+      yield_create_atag(old_revision, new_revision)
+    elsif refname_type == "annotated tag" and change_type == "delete"
+      yield_delete_atag(old_revision, new_revision)
+    end
+  end
+
+
+
+  def yield_create_branch(old_revision, new_revision, block)
+    # This shows all log entries that are not already covered by
+    # another ref - i.e. commits that are now accessible from this
+    # ref that were previously not accessible
+    # (see generate_update_branch_email for the explanation of this
+    # command)
+    msg = ""
+    msg << "        at  #{new_revision} (branch)\n"
+    msg << "\n"
+
+    @info = PushInfo.new(old_revision, new_revision, reference, 'commit', msg)
+    send_mail make_mail
+
+    `git rev-parse --not --branches | grep -v $(git rev-parse #{reference}) |
+    git rev-list --stdin #{new_revision}`.lines.each { |rev|
+      block.call(rev.strip)
+    }
+  end
+
+  def yield_update_branch(old_revision, new_revision, block)
+    # Consider this:
+    #   1 --- 2 --- O --- X --- 3 --- 4 --- N
+    #
+    # O is $oldrev for $refname
+    # N is $newrev for $refname
+    # X is a revision pointed to by some other ref, for which we may
+    #   assume that an email has already been generated.
+    # In this case we want to issue an email containing only revisions
+    # 3, 4, and N.  Given (almost) by
+    #
+    #  git rev-list N ^O --not --all
+    #
+    # The reason for the "almost", is that the "--not --all" will take
+    # precedence over the "N", and effectively will translate to
+    #
+    #  git rev-list N ^O ^X ^N
+    #
+    # So, we need to build up the list more carefully.  git rev-parse
+    # will generate a list of revs that may be fed into git rev-list.
+    # We can get it to make the "--not --all" part and then filter out
+    # the "^N" with:
+    #
+    #  git rev-parse --not --all | grep -v N
+    #
+    # Then, using the --stdin switch to git rev-list we have effectively
+    # manufactured
+    #
+    #  git rev-list N ^O ^X
+    #
+    # This leaves a problem when someone else updates the repository
+    # while this script is running.  Their new value of the ref we're
+    # working on would be included in the "--not --all" output; and as
+    # our $newrev would be an ancestor of that commit, it would exclude
+    # all of our commits.  What we really want is to exclude the current
+    # value of $refname from the --not list, rather than N itself.  So:
+    #
+    #  git rev-parse --not --all | grep -v $(git rev-parse $refname)
+    #
+    # Get's us to something pretty safe (apart from the small time
+    # between refname being read, and git rev-parse running - for that,
+    # I give up)
+    #
+    #
+    # Next problem, consider this:
+    #   * --- B --- * --- O ($oldrev)
+    #          \
+    #           * --- X --- * --- N ($newrev)
+    #
+    # That is to say, there is no guarantee that oldrev is a strict
+    # subset of newrev (it would have required a --force, but that's
+    # allowed).  So, we can't simply say rev-list $oldrev..$newrev.
+    # Instead we find the common base of the two revs and list from
+    # there.
+    #
+    # As above, we need to take into account the presence of X; if
+    # another branch is already in the repository and points at some of
+    # the revisions that we are about to output - we don't want them.
+    # The solution is as before: git rev-parse output filtered.
+    #
+    # Finally, tags: 1 --- 2 --- O --- T --- 3 --- 4 --- N
+    #
+    # Tags pushed into the repository generate nice shortlog emails that
+    # summarise the commits between them and the previous tag.  However,
+    # those emails don't include the full commit messages that we output
+    # for a branch update.  Therefore we still want to output revisions
+    # that have been output on a tag email.
+    #
+    # Luckily, git rev-parse includes just the tool.  Instead of using
+    # "--all" we use "--branches"; this has the added benefit that
+    # "remotes/" will be ignored as well.
+
+    # List all of the revisions that were removed by this update, in a
+    # fast forward update, this list will be empty, because rev-list O
+    # ^N is empty.  For a non fast forward, O ^N is the list of removed
+    # revisions
+    fast_forward = false
+    rev = nil
+    msg = ""
+    newrev = new_revision
+    oldrev = old_revision
+    `git rev-list #{newrev}..#{oldrev}`.lines.each { |rev|
+      rev.strip!
+      revtype=`git cat-file -t #{rev}`.strip
+      msg << "  discards  #{rev} (#{revtype})\n"
+    }
+    if not rev
+      fast_forward = true
+    end
+
+    # List all the revisions from baserev to newrev in a kind of
+    # "table-of-contents"; note this list can include revisions that
+    # have already had notification emails and is present to show the
+    # full detail of the change from rolling back the old revision to
+    # the base revision and then forward to the new revision
+    `(git rev-list #{oldrev}..#{newrev})`.lines.each { |rev|
+      rev.strip!
+      revtype=`git cat-file -t #{rev}`.strip
+      msg << "       via  #{rev} (#{revtype})\n"
+    }
+    if fast_forward
+      msg << "      from  #{oldrev} (commit)\n"
+    else
+		  #  1. Existing revisions were removed.  In this case newrev
+		  #     is a subset of oldrev - this is the reverse of a
+		  #     fast-forward, a rewind
+		  #  2. New revisions were added on top of an old revision,
+		  #     this is a rewind and addition.
+
+		  # (1) certainly happened, (2) possibly.  When (2) hasn't
+		  # happened, we set a flag to indicate that no log printout
+		  # is required.
+
+		  # Find the common ancestor of the old and new revisions and
+		  # compare it with newrev
+		  baserev = `git merge-base #{oldrev} #{newrev}`.strip
+		  rewind_only = false
+		  if baserev == newrev
+			  msg << "This update discarded existing revisions and left the branch pointing at\n"
+			  msg << "a previous point in the repository history.\n"
+			  msg << "\n"
+			  msg << " * -- * -- N (#{newrev})\n"
+			  msg << "            \\\n"
+			  msg << "             O -- O -- O (#{oldrev})\n"
+			  msg << "\n"
+			  msg << "The removed revisions are not necessarilly gone - if another reference\n"
+			  msg << "still refers to them they will stay in the repository.\n"
+			  rewind_only = true
+		  else
+			  msg << "This update added new revisions after undoing existing revisions.  That is\n"
+			  msg << "to say, the old revision is not a strict subset of the new revision.  This\n"
+			  msg << "situation occurs when you --force push a change and generate a repository\n"
+			  msg << "containing something like this:\n"
+			  msg << "\n"
+			  msg << " * -- * -- B -- O -- O -- O (#{oldrev})\n"
+			  msg << "            \\\n"
+			  msg << "             N -- N -- N (#{newrev})\n"
+			  msg << "\n"
+			  msg << "When this happens we assume that you've already had alert emails for all\n"
+			  msg << "of the O revisions, and so we here report only the revisions in the N\n"
+			  msg << "branch from the common base, B.\n"
+		  end
+	  end
+
+    msg << "\n\n"
+
+    if not rewind_only
+	    msg << "Those revisions listed above that are new to this repository have\n"
+	    msg << "not appeared on any other notification email; so we list those\n"
+	    msg << "revisions in full, below.\n\n"
+
+	    #echo $LOGBEGIN
+	    msg << `git rev-parse --not --branches | grep -v $(git rev-parse #{reference}) | git rev-list --pretty=oneline --stdin #{oldrev}..#{newrev}`
+
+	    # XXX: Need a way of detecting whether git rev-list actually
+	    # outputted anything, so that we can issue a "no new
+	    # revisions added by this update" message
+
+	    #echo $LOGEND
+    else
+	    msg << "No new revisions were added by this update.\n"
+    end
+
+    @info = PushInfo.new(old_revision, new_revision, reference, 'branch', msg)
+    send_mail make_mail
+
+    # The diffstat is shown from the old revision to the new revision.
+    # This is to show the truth of what happened in this change.
+    # There's no point showing the stat from the base to the new
+    # revision because the base is effectively a random revision at this
+    # point - the user will be interested in what this revision changed
+    # - including the undoing of previous revisions in the case of
+    # non-fast forward updates.
+
+    IO.popen("git rev-list #{old_revision}..#{new_revision}").readlines.reverse.each { |rev|
+      block.call(rev.strip)
+    }
+  end
+
+  def yield_delete_branch(old_revision, new_revision, block)
+    msg = ""
+    msg << "       was  #{old_revision}\n"
+    msg << "\n"
+    #msg << $LOGEND
+    msg << `git show -s --pretty=oneline #{old_revision}`
+    #msg << $LOGEND
+
+    @info = PushInfo.new(old_revision, new_revision, reference, 'branch', msg)
+    send_mail make_mail
+  end
+
+
+  def yield_delete_atag(old_revision, new_revision)
+    msg = ""
+    msg << "       was  #{old_revision}\n"
+    msg << "\n"
+    #echo $LOGEND
+    msg << `git show -s --pretty=oneline #{old_revision}`
+    #echo $LOGEND
+
+    @info = PushInfo.new(old_revision, new_revision, reference, 'annotated tag', msg)
+    send_mail make_mail
+  end
+
+
+
+
   def run
     each_revision(@old_revision, @new_revision) do |revision|
-      @info = Info.new(repository, reference, revision)
-      @info.parse
-      send_mail(make_mail)
+      @info = CommitInfo.new(repository, reference, revision)
+      send_mail make_mail
     end
     output_rss
   end
@@ -362,13 +741,17 @@ class GitCommitMailer
   end
 
   def send_mail(mail)
-    _from = extract_email_address(from)
-    to = @to.collect {|address| extract_email_address(address)}
-    Net::SMTP.start(@server || "localhost", @port) do |smtp|
-      smtp.open_message_stream(_from, to) do |f|
-        f.print(mail)
-      end
-    end
+    #_from = extract_email_address(from)
+    #to = @to.collect {|address| extract_email_address(address)}
+    #Net::SMTP.start(@server || "localhost", @port) do |smtp|
+    #  smtp.open_message_stream(_from, to) do |f|
+    #    f.print(mail)
+    #  end
+    #end
+    #f = File.open('/tmp/mail','w')
+    #f << mail
+    #IO.popen('cat /tmp/mail | ssh onodera@www.clear-code.com -- /usr/sbin/sendmail -t onodera@clear-code.com')
+    puts mail
   end
 
   def output_rss
@@ -424,26 +807,23 @@ class GitCommitMailer
   end
 
   def make_body
-    body = ""
-    body << "#{@info.author}\t#{format_time(@info.date)}\n"
+    body = "\n\n"
+    #body << "#{@info.author}\t#{format_time(@info.date)}\n"
+    #body << "\n"
+    #body << "New Revision: #{@info.revision}\n"
+    #body << "\n"
+    body << @info.log
     body << "\n"
-    body << "  New Revision: #{@info.revision}\n"
+    #body << added_dirs
+    #body << added_files
+    #body << copied_dirs
+    #body << copied_files
+    #body << deleted_dirs
+    #body << deleted_files
+    #body << modified_dirs
+    #body << modified_files
     body << "\n"
-    body << "  Log:\n"
-    @info.log.rstrip.each_line do |line|
-      body << "    #{line}"
-    end
-    body << "\n"
-    body << added_dirs
-    body << added_files
-    body << copied_dirs
-    body << copied_files
-    body << deleted_dirs
-    body << deleted_files
-    body << modified_dirs
-    body << modified_files
-    body << "\n"
-    body << change_info
+    #body << change_info
     body
   end
 
@@ -606,16 +986,13 @@ CONTENT
 
   def make_header(body_encoding, body_encoding_bit)
     headers = []
-    headers << x_author
-    headers << x_revision
-    headers << x_repository
-    headers << x_id
+    headers += @info.headers
     headers << "MIME-Version: 1.0"
     headers << "Content-Type: text/plain; charset=#{body_encoding}"
     headers << "Content-Transfer-Encoding: #{body_encoding_bit}"
     headers << "From: #{from}"
     headers << "To: #{to.join(', ')}"
-    headers << "Subject: #{make_subject}"
+    headers << "Subject: [#{detect_project}]#{@info.subject}"
     headers << "Date: #{Time.now.rfc2822}"
     headers.find_all do |header|
       /\A\s*\z/ !~ header
@@ -623,14 +1000,11 @@ CONTENT
   end
 
   def detect_project
-    return nil unless multi_project?
-    project = nil
-    @info.paths.each do |path, from_path,|
-      [path, from_path].compact.each do |target_path|
-        first_component = target_path.split("/", 2)[0]
-        project ||= first_component
-        return nil if project != first_component
-      end
+    project=IO.popen("sed -ne \'1p\' \"#{ENV['GIT_DIR']}/description\"").readlines[0].strip
+    # Check if the description is unchanged from it's default, and shorten it to
+    # a more manageable length if it is
+    if project =~ /Unnamed repository.*$/
+	project="UNNAMED PROJECT"
     end
     project
   end
@@ -652,42 +1026,6 @@ CONTENT
     paths.uniq
   end
 
-  def make_subject
-    subject = ""
-    project = detect_project
-    subject << "#{@name} " if @name
-    revision_info = "r#{@info.revision}"
-    if show_path?
-      _affected_paths = affected_paths(project)
-      unless _affected_paths.empty?
-        revision_info = "(#{_affected_paths.join(',')}) #{revision_info}"
-      end
-    end
-    if project
-      subject << "[#{project} #{revision_info}] "
-    else
-      subject << "#{revision_info}: "
-    end
-    subject << @info.log.lstrip.to_a.first.to_s.chomp
-    NKF.nkf("-WM", subject)
-  end
-
-  def x_author
-    "X-Git-Author: #{@info.author}"
-  end
-
-  def x_revision
-    "X-Git-Revision: #{@info.revision}"
-  end
-
-  def x_repository
-    # "X-Git-Repository: #{@info.path}"
-    "X-Git-Repository: XXX"
-  end
-
-  def x_id
-    "X-Git-Commit-Id: #{@info.entire_sha256}"
-  end
 
   def utf8_to_utf7(utf8)
     require 'iconv'
@@ -764,7 +1102,10 @@ end
 
 
 begin
-  GitCommitMailer.run(argv)
+  while line = gets
+    puts line
+    GitCommitMailer.run(line.split + argv)
+  end
 rescue Exception => error
   require 'net/smtp'
   require 'socket'
@@ -775,7 +1116,7 @@ rescue Exception => error
   server = nil
   port = nil
   begin
-    _, _, _to, options = GitCommitMailer.parse(argv)
+    _, _, _, _to, options = GitCommitMailer.parse(argv)
     to = [_to]
     to = options.error_to unless options.error_to.empty?
     from = options.from || from
