@@ -164,11 +164,15 @@ class GitCommitMailer
   class << self
     def run(argv=nil)
       argv ||= ARGV
-      old_revision, new_revision, reference, to, options = parse(argv)
+      to, options = parse(argv)
       to = [to, *options.to].compact
-      mailer = new(old_revision, new_revision, reference, to)
+      mailer = new(to)
       apply_options(mailer, options)
-      mailer.run
+      while line = STDIN.gets
+        line = line.split
+        old_revision, new_revision, reference = line[0], line[1], line[2]
+        mailer.run(old_revision, new_revision, reference)
+      end
     end
 
     def parse(argv)
@@ -177,9 +181,9 @@ class GitCommitMailer
       parser = make_parser(options)
       argv = argv.dup
       parser.parse!(argv)
-      old_revision, new_revision, reference, to, *rest = argv
+      to, *rest = argv
 
-      [old_revision, new_revision, reference, to, options]
+      [to, options]
     end
 
     DEFAULT_MAX_SIZE = '100000B'
@@ -400,10 +404,7 @@ class GitCommitMailer
   attr_accessor :from_domain, :max_size, :repository_uri
   attr_accessor :rss_path, :rss_uri, :name, :server, :port
 
-  def initialize(old_revision, new_revision, reference, to)
-    @old_revision = old_revision
-    @new_revision = new_revision
-    @reference = reference
+  def initialize(to)
     @to = to
   end
 
@@ -720,7 +721,11 @@ EOF
     "      from  $oldrev (which is now obsolete)"
   end
 
-  def run
+  def run(old_revision, new_revision, reference)
+    @old_revision = old_revision
+    @new_revision = new_revision
+    @reference = reference
+
     each_revision(@old_revision, @new_revision) do |revision|
       @info = CommitInfo.new(repository, reference, revision)
       send_mail make_mail
@@ -1112,9 +1117,7 @@ end
 
 
 begin
-  while line = STDIN.gets
-    GitCommitMailer.run(line.split + argv)
-  end
+  GitCommitMailer.run(argv)
 rescue Exception => error
   require 'net/smtp'
   require 'socket'
@@ -1125,7 +1128,7 @@ rescue Exception => error
   server = nil
   port = nil
   begin
-    _, _, _, _to, options = GitCommitMailer.parse(argv)
+    _to, options = GitCommitMailer.parse(argv)
     to = [_to]
     to = options.error_to unless options.error_to.empty?
     from = options.from || from
