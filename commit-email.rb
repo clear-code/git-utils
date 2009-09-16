@@ -118,8 +118,7 @@ class GitCommitMailer
       @date = Time.at(get_record("%at").to_i)
       #@subject ="[commit] " + get_record("%s")
       @subject = make_subject
-      @log = IO.popen("git log -n 1 -p --pretty=full --find-copies-harder #{revision}").readlines.join #+
-      #IO.popen("git log -p -n 1 --find-copies-harder #{revision}").readlines.join
+      @log = `git log -n 1 --pretty=format:%s%n%n%b #{@revision}`
       @commit_id = get_record("%H")
     end
 
@@ -821,12 +820,15 @@ EOF
   end
 
   def make_body
-    body = "\n\n"
-    #body << "#{@info.author}\t#{format_time(@info.date)}\n"
-    #body << "\n"
-    #body << "New Revision: #{@info.revision}\n"
-    #body << "\n"
-    body << @info.log
+    body = ""
+    body << "#{@info.author}\t#{format_time(@info.date)}\n"
+    body << "\n"
+    body << "New Revision: #{@info.revision}\n"
+    body << "\n"
+    body << "  Log:\n"
+    @info.log.rstrip.each_line do |line|
+      body << "    #{line}"
+    end
     body << "\n"
     #body << added_dirs
     #body << added_files
