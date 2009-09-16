@@ -101,11 +101,20 @@ class GitCommitMailer
 
   class CommitInfo
     attr_reader :revision, :author, :date, :subject, :log, :commit_id, :author_email
+    attr_reader :added_files, :copied_files, :deleted_files, :updated_files, :renamed_files
     def initialize(repository, reference, revision)
       @repository = repository
       @reference = reference
       @revision = revision
+
+      @added_files = []
+      @copied_files = []
+      @deleted_files = []
+      @updated_files = []
+      @renamed_files = []
+
       parse
+      init_file_status
     end
 
     def get_record(record)
@@ -120,6 +129,40 @@ class GitCommitMailer
       @subject = make_subject
       @log = `git log -n 1 --pretty=format:%s%n%n%b #{@revision}`
       @commit_id = get_record("%H")
+    end
+
+    def init_file_status
+      puts @revision
+      `git log -n 1 --pretty=format:'' --name-status #{@revision}`.lines.each do |l|
+        l.rstrip!
+        puts l
+        if l =~ /\A([^\t]*?)\t([^\t]*?)\Z/
+          status = $1
+          file = $2
+          
+          #puts "#{status}, #{file}"
+          case status
+          when /^A/ # Added
+            @added_files << file
+          when /^M/ # Modified
+            @updated_files << file
+          when /^D/ # Deleted
+            @deleted_files << file
+          end
+        #elsif l =~ /\A([^\t]*?)\t([^\t]*?)\t([^\t]*?)\Z/
+        #  status = $1
+        #  from_file = $2
+        #  to_file = $3
+
+          #puts "#{status}, #{from_file}, #{to_file}"
+        #  case status
+        #  when /^R/ # Renamed
+        #    @renamed_files << [from_file, to_file]
+        #  when /^C/ # Copied
+        #    @copied_files << [from_file, to_file]
+        #  end
+        end
+      end
     end
 
     def headers
@@ -829,15 +872,18 @@ EOF
     @info.log.rstrip.each_line do |line|
       body << "    #{line}"
     end
-    body << "\n"
+    body << "\n\n"
     #body << added_dirs
-    #body << added_files
+    body << added_files
     #body << copied_dirs
-    #body << copied_files
+    body << copied_files
     #body << deleted_dirs
-    #body << deleted_files
+    body << deleted_files
     #body << modified_dirs
-    #body << modified_files
+    body << modified_files
+
+    #body << renamed_files
+
     body << "\n"
     #body << change_info
     body
