@@ -23,7 +23,11 @@ argv = []
 LOGBEGIN="- Log -----------------------------------------------------------------"
 LOGEND  ="-----------------------------------------------------------------------"
 
-ENV.each_pair { |k, v| puts "pair[#{k}] => #{v}" }
+if not ENV['GIT_DIR']
+  ENV['GIT_DIR'] = ".git/"
+end
+
+#ENV.each_pair { |k, v| puts "pair[#{k}] => #{v}" }
 
 
 found_include_option = false
@@ -112,7 +116,8 @@ class GitCommitMailer
       @author = get_record("%an")
       @author_email = get_record("%ae")
       @date = Time.at(get_record("%at").to_i)
-      @subject ="[commit] " + get_record("%s")
+      #@subject ="[commit] " + get_record("%s")
+      @subject = make_subject
       @log = IO.popen("git log -n 1 -p --pretty=full --find-copies-harder #{revision}").readlines.join #+
       #IO.popen("git log -p -n 1 --find-copies-harder #{revision}").readlines.join
       @commit_id = get_record("%H")
@@ -126,22 +131,32 @@ class GitCommitMailer
         "X-Git-Commit-Id: #{commit_id}" ]
     end
 
+    def detect_project
+      project=IO.popen("sed -ne \'1p\' \"#{ENV['GIT_DIR']}/description\"").readlines[0].strip
+      # Check if the description is unchanged from it's default, and shorten it to
+      # a more manageable length if it is
+      if project =~ /Unnamed repository.*$/
+        project="UNNAMED PROJECT"
+      end
+      project
+    end
+
     def make_subject
       subject = ""
-      subject << "#{@name} " if @name
-      revision_info = "#{@info.revision[0,7]}"
-      if show_path?
-        _affected_paths = affected_paths(project)
-        unless _affected_paths.empty?
-          revision_info = "(#{_affected_paths.join(',')}) #{revision_info}"
-        end
-      end
+      project = detect_project
+      revision_info = "#{revision[0,7]}"
+      #if show_path?
+      #  _affected_paths = affected_paths(project)
+      #  unless _affected_paths.empty?
+      #    revision_info = "(#{_affected_paths.join(',')}) #{revision_info}"
+      #  end
+      #end
       if project
         subject << "[#{project} #{revision_info}] "
       else
         subject << "#{revision_info}: "
       end
-      subject << @info.subject
+      subject << get_record("%s")
       NKF.nkf("-WM", subject)
     end
   end
@@ -477,8 +492,8 @@ EOF
       msg += process_delete_atag(old_revision, new_revision)
     end
 
-    @info = PushInfo.new(old_revision, new_revision, reference, refname_type, msg)
-    send_mail make_mail
+    #@info = PushInfo.new(old_revision, new_revision, reference, refname_type, msg)
+    #send_mail make_mail
   end
 
   def process_create_branch(old_revision, new_revision, block)
@@ -986,12 +1001,13 @@ CONTENT
     headers << "Content-Transfer-Encoding: #{body_encoding_bit}"
     headers << "From: #{from}"
     headers << "To: #{to.join(', ')}"
-    headers << "Subject: [#{detect_project}]#{@info.subject}"
+    headers << "Subject: #{(@name+' ') if @name}#{@info.subject}"
     headers << "Date: #{Time.now.rfc2822}"
     headers.find_all do |header|
       /\A\s*\z/ !~ header
     end.join("\n")
   end
+
 
   def detect_project
     project=IO.popen("sed -ne \'1p\' \"#{ENV['GIT_DIR']}/description\"").readlines[0].strip
@@ -1096,8 +1112,7 @@ end
 
 
 begin
-  while line = gets
-    puts line
+  while line = STDIN.gets
     GitCommitMailer.run(line.split + argv)
   end
 rescue Exception => error
