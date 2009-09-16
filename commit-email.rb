@@ -183,6 +183,10 @@ class GitCommitMailer
       project
     end
 
+    def short_reference
+       @reference.sub(/\Arefs\/heads\//,'');
+    end
+
     def make_subject
       subject = ""
       project = detect_project
@@ -194,7 +198,7 @@ class GitCommitMailer
       #  end
       #end
       if project
-        subject << "[#{project} #{revision_info}] "
+        subject << "[#{project} #{short_reference} #{revision_info}] "
       else
         subject << "#{revision_info}: "
       end
@@ -211,6 +215,7 @@ class GitCommitMailer
       mailer = new(to)
       apply_options(mailer, options)
       while line = STDIN.gets
+        puts "here is the line: " + line
         line = line.split
         old_revision, new_revision, reference = line[0], line[1], line[2]
         mailer.run(old_revision, new_revision, reference)
