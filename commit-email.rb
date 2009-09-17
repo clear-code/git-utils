@@ -109,9 +109,14 @@ class GitCommitMailer
       def link
         "this is link."
       end
+
+      def format_time(time)
+        time.strftime('%Y-%m-%d %X %z')
+      end
+
       def header
-         "--- #{@a} (#{@old_rev[0,7]})\n" +
-         "+++ #{@b} (#{@new_rev[0,7]})\n"
+         "--- #{@a}    #{format_time(@old_date)} (#{@old_rev[0,7]})\n" +
+         "+++ #{@b}    #{format_time(@new_date)} (#{@new_rev[0,7]})\n"
       end
       def value
          header + body
@@ -133,6 +138,8 @@ class GitCommitMailer
         @new_rev = revision
         #puts "git log -n 1 --pretty=format:%H #{revision}~ -- #{file}"
         @old_rev = `git log -n 1 --pretty=format:%H #{revision}~ -- #{file}`.strip
+        @new_date = Time.at(CommitInfo.get_record(@new_rev, "%at").to_i)
+        @old_date = Time.at(CommitInfo.get_record(@old_rev, "%at").to_i)
 
         #parse the additional information
         @type = ''
