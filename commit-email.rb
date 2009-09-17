@@ -136,13 +136,14 @@ class GitCommitMailer
         @metadata = []
         @body = ''
         @new_rev = revision
-        #puts "git log -n 1 --pretty=format:%H #{revision}~ -- #{file}"
-        @old_rev = `git log -n 1 --pretty=format:%H #{revision}~ -- #{file}`.strip
+        puts "git log -n 1 --pretty=format:%H #{revision}~"
+        @old_rev = `git log -n 1 --pretty=format:%H #{revision}~`.strip
+        #@old_rev = '0'*40 if not @old_rev =~ /[0-9a-fA-F]{40}/
         @new_date = Time.at(CommitInfo.get_record(@new_rev, "%at").to_i)
         @old_date = Time.at(CommitInfo.get_record(@old_rev, "%at").to_i)
 
         #parse the additional information
-        @type = ''
+        @type = nil
         line = lines.shift
         while line != nil and not line =~ /\A@@/
           #puts line
@@ -161,7 +162,7 @@ class GitCommitMailer
 
           line = lines.shift
         end
-        @type = :modified if @type.empty?
+        @type = :modified if not @type
 
         #parse the body
         @added_line = @deleted_line = 0
