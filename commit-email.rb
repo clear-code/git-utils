@@ -100,7 +100,109 @@ class GitCommitMailer
   end
 
   class CommitInfo
-    attr_reader :revision, :author, :date, :subject, :log, :commit_id, :author_email
+    def CommitInfo.get_record(revision, record)
+      IO.popen("git log -n 1 --pretty=format:#{record} #{revision}").readlines[0].strip
+    end
+
+    class DiffPerFile
+      attr_reader :old_rev, :new_rev, :added_line, :deleted_line, :value, :type
+      def link
+        "this is link."
+      end
+      def initialize (lines, revision)
+        #parse the header
+        line = lines.shift
+        if line =~ /\Adiff --git a\/(.*) b\/(.*)/
+          @a = $1
+          @b = $2
+        else
+          puts "error!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        end
+        if @a != @b
+          puts "...error??????????????????????????????????"
+        end
+        @metadata = []
+        @value = ''
+        @new_rev = revision
+        #puts "git log -n 1 --pretty=format:%H #{revision}~ -- #{file}"
+        @old_rev = `git log -n 1 --pretty=format:%H #{revision}~ -- #{file}`.strip
+
+        #parse the additional information
+        @type = ''
+        line = lines.shift
+        while line != nil and not line =~ /\A@@/
+          #puts line
+          case line
+          when /\A--- (a\/.*|\/dev\/null)\Z/
+            @minus_file = $1
+            @type = :added if $1 == '/dev/null'
+          when /\A\+\+\+ (b\/.*|\/dev\/null)\Z/
+            @plus_file = $1
+            @type = :deleted if $1 == '/dev/null'
+          when /\Adeleted file mode/
+            @type = :deleted
+          else
+            @metadata << line #need to parse
+          end
+
+          line = lines.shift
+        end
+        @type = :modified if @type.empty?
+
+        #parse the body
+        @added_line = @deleted_line = 0
+        while line != nil and not line =~ /\Adiff --git/
+          if line =~ /\A\+/
+            @added_line += 1
+          elsif line =~ /\A\-/
+            @deleted_line += 1
+          end
+
+          @value << line + "\n"
+          line = lines.shift
+        end
+      end
+      def file
+        @a # also can be @b
+      end
+      def to_s
+        puts @type + "   " + @a + "  " + @b + "(+#{@added_line} -#{@deleted_line})"
+        #puts "############################################################"
+        #puts @value
+      end
+    end
+
+    def parse_diff
+      f = IO.popen("git log -n 1 --pretty=format:'' -p #{@revision}")
+      f.gets #removes the first empty line
+
+      #f = IO.popen("git diff #{revision}~ #{revision}")
+
+      @diffs = []
+      lines = []
+
+      line = f.gets
+      lines << line.rstrip if line #take out the very first 'diff --git' header
+      while line = f.gets
+        line.rstrip!
+        if line =~ /\Adiff --git/
+          @diffs << DiffPerFile.new(lines, @revision)
+          lines = [line]
+        else
+          lines << line
+        end
+      end
+      
+      if lines.length > 0
+        #create the last diff terminated by the EOF
+        @diffs << DiffPerFile.new(lines, @revision)
+      end
+    end
+
+
+
+
+    attr_reader :revision, :author, :date, :subject, :log, :commit_id, :author_email, :diffs
     attr_reader :added_files, :copied_files, :deleted_files, :updated_files, :renamed_files
     def initialize(repository, reference, revision)
       @repository = repository
@@ -114,11 +216,12 @@ class GitCommitMailer
       @renamed_files = []
 
       parse
+      parse_diff
       init_file_status
     end
 
     def get_record(record)
-      IO.popen("git log -n 1 --pretty=format:#{record} #{@revision}").readlines[0].strip
+      CommitInfo.get_record(@revision, record)
     end
 
     def parse
@@ -890,7 +993,7 @@ EOF
     #body << renamed_files
 
     body << "\n"
-    #body << change_info
+    body << change_info
     body
   end
 
@@ -975,13 +1078,12 @@ INFO
   CHANGED_MARK[:property_changed] = "_"
 
   def change_info
-    result = changed_dirs_info
-    result = "\n#{result}" unless result.empty?
-    result << "\n"
-    diff_info.each do |key, infos|
-      infos.each do |desc, link|
-        result << "#{desc}\n"
-      end
+    #result = changed_dirs_info
+    #result = "\n#{result}" unless result.empty?
+    #result << "\n"
+    result = ""
+    diff_info.each do |desc, link|
+      result << "#{desc}\n"
     end
     result
   end
@@ -1006,48 +1108,43 @@ INFO
   end
 
   def diff_info
-    @info.diffs.collect do |key, values|
-      [
-       key,
-       values.collect do |type, value|
-         args = []
-         rev = @info.revision
-         case type
-         when :added
-           command = "cat"
-         when :modified, :property_changed
-           command = "diff"
-           args.concat(["-r", "#{@info.revision - 1}:#{@info.revision}"])
-         when :deleted
-           command = "cat"
-           rev -= 1
-         when :copied
-           command = "cat"
-         else
-           raise "unknown diff type: #{value.type}"
-         end
+    @info.diffs.collect do |diff|
+      args = []
+      rev = diff.new_rev
+      #case type
+      #when :added
+      #  command = "cat"
+      #when :modified, :property_changed
+      #  command = "diff"
+      #  args.concat(["-r", "#{@info.revision - 1}:#{@info.revision}"])
+      #when :deleted
+      #  command = "cat"
+      #  rev -= 1
+      #when :copied
+      #  command = "cat"
+      #else
+      #  raise "unknown diff type: #{value.type}"
+      #end
 
-         command += " #{args.join(' ')}" unless args.empty?
+      #command += " #{args.join(' ')}" unless args.empty?
 
-         link = [@repository_uri, key].compact.join("/")
+      #link = [@repository_uri, key].compact.join("/")
 
-         line_info = "+#{value.added_line} -#{value.deleted_line}"
-         desc = <<-HEADER
-  #{CHANGED_TYPE[value.type]}: #{key} (#{line_info})
-#{CHANGED_MARK[value.type] * 67}
+      line_info = "+#{diff.added_line} -#{diff.deleted_line}"
+      desc = <<-HEADER
+  #{CHANGED_TYPE[diff.type]}: #{diff.file} (#{line_info})
+#{CHANGED_MARK[diff.type] * 67}
 HEADER
 
-         if add_diff?
-           desc << value.body
-         else
-           desc << <<-CONTENT
+      if add_diff?
+        desc << diff.value
+      else
+        desc << <<-CONTENT
     % git #{command} #{link}@#{rev}
 CONTENT
-         end
+      end
 
-         [desc, link]
-       end
-      ]
+      [desc, "link link link"]
     end
   end
 
