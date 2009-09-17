@@ -115,8 +115,13 @@ class GitCommitMailer
       end
 
       def header
-         "--- #{@a}    #{format_time(@old_date)} (#{@old_rev[0,7]})\n" +
-         "+++ #{@b}    #{format_time(@new_date)} (#{@new_rev[0,7]})\n"
+         if not @is_binary
+           result = "--- #{@a}    #{format_time(@old_date)} (#{@old_rev[0,7]})\n" +
+                    "+++ #{@b}    #{format_time(@new_date)} (#{@new_rev[0,7]})\n"
+         else
+           result = "(Binary files differ)\n"
+         end
+         result
       end
       def value
          header + body
@@ -144,6 +149,7 @@ class GitCommitMailer
 
         #parse the additional information
         @type = nil
+        @is_binary = false
         line = lines.shift
         while line != nil and not line =~ /\A@@/
           #puts line
@@ -156,6 +162,15 @@ class GitCommitMailer
             @type = :deleted if $1 == '/dev/null'
           when /\Adeleted file mode/
             @type = :deleted
+          when /\ABinary files (.*) and (.*) differ\Z/
+            @is_binary = true
+            if $1 == '/dev/null'
+              @type = :added
+            elsif $2 == '/dev/null'
+              @type = :deleted
+            else
+              @type = :modified
+            end
           else
             @metadata << line #need to parse
           end
@@ -166,7 +181,7 @@ class GitCommitMailer
 
         #parse the body
         @added_line = @deleted_line = 0
-        while line != nil and not line =~ /\Adiff --git/
+        while line != nil
           if line =~ /\A\+/
             @added_line += 1
           elsif line =~ /\A\-/
