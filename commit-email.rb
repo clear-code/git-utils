@@ -105,9 +105,16 @@ class GitCommitMailer
     end
 
     class DiffPerFile
-      attr_reader :old_rev, :new_rev, :added_line, :deleted_line, :value, :type
+      attr_reader :old_rev, :new_rev, :added_line, :deleted_line, :body, :type
       def link
         "this is link."
+      end
+      def header
+         "--- #{@a} (#{@old_rev[0,7]})\n" +
+         "+++ #{@b} (#{@new_rev[0,7]})\n"
+      end
+      def value
+         header + body
       end
       def initialize (lines, revision)
         #parse the header
@@ -122,7 +129,7 @@ class GitCommitMailer
           puts "...error??????????????????????????????????"
         end
         @metadata = []
-        @value = ''
+        @body = ''
         @new_rev = revision
         #puts "git log -n 1 --pretty=format:%H #{revision}~ -- #{file}"
         @old_rev = `git log -n 1 --pretty=format:%H #{revision}~ -- #{file}`.strip
@@ -158,17 +165,19 @@ class GitCommitMailer
             @deleted_line += 1
           end
 
-          @value << line + "\n"
+          @body << line + "\n"
           line = lines.shift
         end
+        to_s
       end
       def file
         @a # also can be @b
       end
       def to_s
-        puts @type + "   " + @a + "  " + @b + "(+#{@added_line} -#{@deleted_line})"
+        #puts @type + "   " + @a + "  " + @b + "(+#{@added_line} -#{@deleted_line})"
+        puts @a + "  " + @new_rev + "   " + @old_rev
         #puts "############################################################"
-        #puts @value
+        #puts @body
       end
     end
 
