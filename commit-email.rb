@@ -123,9 +123,11 @@ class GitCommitMailer
          end
          result
       end
+
       def value
          header + body
       end
+
       def initialize (lines, revision)
         #parse the header
         line = lines.shift
@@ -141,7 +143,7 @@ class GitCommitMailer
         @metadata = []
         @body = ''
         @new_rev = revision
-        puts "git log -n 1 --pretty=format:%H #{revision}~"
+
         @old_rev = `git log -n 1 --pretty=format:%H #{revision}~`.strip
         #@old_rev = '0'*40 if not @old_rev =~ /[0-9a-fA-F]{40}/
         @new_date = Time.at(CommitInfo.get_record(@new_rev, "%at").to_i)
@@ -152,7 +154,6 @@ class GitCommitMailer
         @is_binary = false
         line = lines.shift
         while line != nil and not line =~ /\A@@/
-          #puts line
           case line
           when /\A--- (a\/.*|\/dev\/null)\Z/
             @minus_file = $1
@@ -193,12 +194,14 @@ class GitCommitMailer
         end
         to_s
       end
+
       def file
         @a # also can be @b
       end
+
       def to_s
         #puts @type + "   " + @a + "  " + @b + "(+#{@added_line} -#{@deleted_line})"
-        puts @a + "  " + @new_rev + "   " + @old_rev
+        #puts @a + "  " + @new_rev + "   " + @old_rev
         #puts "############################################################"
         #puts @body
       end
@@ -231,9 +234,6 @@ class GitCommitMailer
       end
     end
 
-
-
-
     attr_reader :revision, :author, :date, :subject, :log, :commit_id, :author_email, :diffs
     attr_reader :added_files, :copied_files, :deleted_files, :updated_files, :renamed_files
     def initialize(repository, reference, revision)
@@ -260,22 +260,18 @@ class GitCommitMailer
       @author = get_record("%an")
       @author_email = get_record("%ae")
       @date = Time.at(get_record("%at").to_i)
-      #@subject ="[commit] " + get_record("%s")
       @subject = make_subject
       @log = `git log -n 1 --pretty=format:%s%n%n%b #{@revision}`
       @commit_id = get_record("%H")
     end
 
     def init_file_status
-      puts @revision
       `git log -n 1 --pretty=format:'' --name-status #{@revision}`.lines.each do |l|
         l.rstrip!
-        puts l
         if l =~ /\A([^\t]*?)\t([^\t]*?)\Z/
           status = $1
           file = $2
           
-          #puts "#{status}, #{file}"
           case status
           when /^A/ # Added
             @added_files << file
@@ -350,7 +346,6 @@ class GitCommitMailer
       mailer = new(to)
       apply_options(mailer, options)
       while line = STDIN.gets
-        puts "here is the line: " + line
         line = line.split
         old_revision, new_revision, reference = line[0], line[1], line[2]
         mailer.run(old_revision, new_revision, reference)
@@ -944,10 +939,6 @@ EOF
         f.print(mail)
       end
     end
-    #f = File.open('/tmp/mail','w')
-    #f << mail
-    #`cat /tmp/mail | sendmail`
-    #puts mail
   end
 
   def output_rss
@@ -1195,7 +1186,6 @@ CONTENT
     end.join("\n")
   end
 
-
   def detect_project
     project=IO.popen("sed -ne \'1p\' \"#{ENV['GIT_DIR']}/description\"").readlines[0].strip
     # Check if the description is unchanged from it's default, and shorten it to
@@ -1222,7 +1212,6 @@ CONTENT
     end
     paths.uniq
   end
-
 
   def utf8_to_utf7(utf8)
     require 'iconv'
