@@ -436,7 +436,7 @@ class GitCommitMailer
 
     def make_parser(options)
       OptionParser.new do |opts|
-        opts.banner += " OLD_REVISION NEW_REVISION TO"
+        opts.banner += "TO"
 
         add_repository_options(opts, options)
         add_email_options(opts, options)
@@ -602,12 +602,15 @@ class GitCommitMailer
     @reference || "refs/heads/master"
   end
 
-  def each_revision(old_revision, new_revision, &block)
-    if not old_revision =~ /0{40}/ and not new_revision =~ /0{40}/
+  def each_revision(&block)
+    oldrev = @old_revision
+    newrev = @new_revision
+
+    if not oldrev =~ /0{40}/ and not newrev =~ /0{40}/
       change_type = "update"
-    elsif old_revision =~ /0{40}/
+    elsif oldrev =~ /0{40}/
       change_type = "create"
-    elsif new_revision =~ /0{40}/
+    elsif newrev =~ /0{40}/
       change_type = "delete"
     else
       return #error - should throw something?
@@ -615,86 +618,78 @@ class GitCommitMailer
 
     case change_type
     when "create", "update"
-      rev = new_revision
-      rev_type=`git cat-file -t #{new_revision}`.strip
+      rev = newrev
+      rev_type=`git cat-file -t #{newrev}`.strip
     when "delete"
-      rev = old_revision
-      rev_type=`git cat-file -t #{old_revision}`.strip
+      rev = oldrev
+      rev_type=`git cat-file -t #{oldrev}`.strip
     end
 
     if reference =~ /refs\/tags\/.*/ and rev_type == "commit"
       # un-annotated tag
-      refname_type="tag"
-      short_refname=reference.sub(/\Arefs\/tags\//,'')
+      ref_type = "tag"
+      short_ref = reference.sub(/\Arefs\/tags\//,'')
     elsif reference =~ /refs\/tags\/.*/ and rev_type == "tag"
       # annotated tag
-      refname_type="annotated tag"
-      short_refname=reference.sub(/\Arefs\/tags\//,'')
+      ref_type = "annotated tag"
+      short_ref = reference.sub(/\Arefs\/tags\//,'')
       # change recipients
       #if [ -n "$announcerecipients" ]; then
       #  recipients="$announcerecipients"
       #fi
     elsif reference =~ /refs\/heads\/.*/ and rev_type == "commit"
       # branch
-      refname_type="branch"
-      short_refname=reference.sub(/\Arefs\/heads\//,'')
+      ref_type = "branch"
+      short_ref = reference.sub(/\Arefs\/heads\//,'')
     elsif reference =~ /refs\/remotes\/.*/ and rev_type == "commit"
       # tracking branch
-      refname_type="tracking branch"
-      short_refname=reference.sub(/\Arefs\/remotes\//,'')
-      $stderr << "*** Push-update of tracking branch, $refname"
+      ref_type = "tracking branch"
+      short_ref = reference.sub(/\Arefs\/remotes\//,'')
+      $stderr << "*** Push-update of tracking branch, $ref"
       $stderr << "***  - no email generated."
       return
     else
       # Anything else (is there anything else?)
-      $stderr << "*** Unknown type of update to $refname ($rev_type)"
+      $stderr << "*** Unknown type of update to $ref ($rev_type)"
       $stderr << "***  - no email generated"
       return #error - should throw
     end
 
-      msg = <<EOF
-This is an automated email from the git hooks/post-receive script. It was
-generated because a ref change was pushed to the repository containing
-the project "#{`sed -ne '1p' "$GIT_DIR/description"`.strip}".
-
-The #{refname_type}, #{reference.sub(/\A.+\/.+\//,'')} has been #{change_type}d
-EOF
-
-    if refname_type == "branch" and change_type == "update"
-      msg += process_update_branch(old_revision, new_revision, block)
-    elsif refname_type == "branch" and change_type == "create"
-      msg += process_create_branch(old_revision, new_revision, block)
-    elsif refname_type == "branch" and change_type == "delete"
-      msg += process_delete_branch(old_revision, new_revision, block)
-    elsif refname_type == "annotated tag" and change_type == "update"
-      msg += process_update_atag(old_revision, new_revision)
-    elsif refname_type == "annotated tag" and change_type == "create"
-      msg += process_create_atag(old_revision, new_revision)
-    elsif refname_type == "annotated tag" and change_type == "delete"
-      msg += process_delete_atag(old_revision, new_revision)
+    if ref_type == "branch" and change_type == "update"
+      msg = process_update_branch(oldrev, newrev, block)
+    elsif ref_type == "branch" and change_type == "create"
+      msg = process_create_branch(oldrev, newrev, block)
+    elsif ref_type == "branch" and change_type == "delete"
+      msg = process_delete_branch(oldrev, newrev, block)
+    elsif ref_type == "annotated tag" and change_type == "update"
+      msg = process_update_atag(oldrev, newrev)
+    elsif ref_type == "annotated tag" and change_type == "create"
+      msg = process_create_atag(oldrev, newrev)
+    elsif ref_type == "annotated tag" and change_type == "delete"
+      msg = process_delete_atag(oldrev, newrev)
     end
 
-    PushInfo.new(old_revision, new_revision, reference, refname_type, msg)
+    PushInfo.new(oldrev, newrev, reference, ref_type, msg)
   end
 
-  def process_create_branch(old_revision, new_revision, block)
+  def process_create_branch(oldrev, newrev, block)
     # This shows all log entries that are not already covered by
     # another ref - i.e. commits that are now accessible from this
     # ref that were previously not accessible
     # (see generate_update_branch_email for the explanation of this
     # command)
     msg = ""
-    msg << "        at  #{new_revision} (branch)\n"
+    msg << "        at  #{newrev} (branch)\n"
     msg << "\n"
 
     `git rev-parse --not --branches | grep -v $(git rev-parse #{reference}) |
-    git rev-list --stdin #{new_revision}`.lines.each { |rev|
+    git rev-list --stdin #{newrev}`.lines.each { |rev|
       block.call(rev.strip)
     }
     msg
   end
 
-  def process_update_branch(old_revision, new_revision, block)
+  def process_update_branch(oldrev, newrev, block)
     # Consider this:
     #   1 --- 2 --- O --- X --- 3 --- 4 --- N
     #
@@ -773,8 +768,6 @@ EOF
     fast_forward = false
     rev = nil
     msg = ""
-    newrev = new_revision
-    oldrev = old_revision
     `git rev-list #{newrev}..#{oldrev}`.lines.each { |rev|
       rev.strip!
       revtype=`git cat-file -t #{rev}`.strip
@@ -865,41 +858,41 @@ EOF
     # - including the undoing of previous revisions in the case of
     # non-fast forward updates.
 
-    IO.popen("git rev-list #{old_revision}..#{new_revision}").readlines.reverse.each { |rev|
+    IO.popen("git rev-list #{oldrev}..#{newrev}").readlines.reverse.each { |rev|
       block.call(rev.strip)
     }
-    #IO.popen("git rev-list --first-parent #{old_revision}..#{new_revision}").readlines.reverse.each { |rev|
+    #IO.popen("git rev-list --first-parent #{oldrev}..#{newrev}").readlines.reverse.each { |rev|
     #  block.call(rev.strip)
     #}
     msg
   end
 
-  def process_delete_branch(old_revision, new_revision, block)
+  def process_delete_branch(oldrev, newrev, block)
     msg = ""
-    msg << "       was  #{old_revision}\n"
+    msg << "       was  #{oldrev}\n"
     msg << "\n"
     #msg << $LOGEND
-    msg << `git show -s --pretty=oneline #{old_revision}`
+    msg << `git show -s --pretty=oneline #{oldrev}`
     #msg << $LOGEND
 
     msg
   end
 
-  def process_delete_atag(old_revision, new_revision)
+  def process_delete_atag(oldrev, newrev)
     msg = ""
-    msg << "       was  #{old_revision}\n"
+    msg << "       was  #{oldrev}\n"
     msg << "\n"
     #echo $LOGEND
-    msg << `git show -s --pretty=oneline #{old_revision}`
+    msg << `git show -s --pretty=oneline #{oldrev}`
     #echo $LOGEND
     msg
   end
 
-  def process_create_atag(old_revision, new_revision)
+  def process_create_atag(oldrev, newrev)
     "        at  $newrev ($newrev_type)"
   end
 
-  def process_update_atag(old_revision, new_revision)
+  def process_update_atag(oldrev, newrev)
     "        to  $newrev ($newrev_type)"
     "      from  $oldrev (which is now obsolete)"
   end
@@ -909,6 +902,7 @@ EOF
   end
 
   def determine_prominent_author
+    #if @commit_infos.length
     "foo@bar.com"
   end
 
@@ -918,7 +912,7 @@ EOF
     @reference = reference
 
     @commit_infos = []
-    @push_info = each_revision(@old_revision, @new_revision) do |revision|
+    @push_info = each_revision do |revision|
       @commit_infos << CommitInfo.new(repository, reference, revision)
     end
 
