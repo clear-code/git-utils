@@ -148,9 +148,18 @@ class GitCommitMailer
   class CommitInfo < Info
     class DiffPerFile
       attr_reader :old_revision, :new_revision, :added_line, :deleted_line, :body, :type
+      def initialize(lines, revision)
+        @metadata = []
+        @body = ''
 
-      def initialize (lines, revision)
-        #parse the header
+        parse_header(lines, revision)
+        parse_extended_headers(lines)
+        parse_body(lines)
+
+        to_s
+      end
+
+      def parse_header(lines, revision)
         line = lines.shift
         if line =~ /\Adiff --git a\/(.*) b\/(.*)/
           @a = $1
@@ -161,18 +170,16 @@ class GitCommitMailer
         if @a != @b
           puts "...error??????????????????????????????????"
         end
-        @metadata = []
-        @body = ''
-
         @new_revision = revision
         @old_revision = `git log -n 1 --pretty=format:%H #{revision}~`.strip
         #@old_revision = '0'*40 if not @old_revision =~ /[0-9a-fA-F]{40}/
 
         @new_date = Time.at(CommitInfo.get_record(@new_revision, "%at").to_i)
         @old_date = Time.at(CommitInfo.get_record(@old_revision, "%at").to_i)
+      end
 
-        #parse the additional information
-        @type = nil
+      def parse_extended_headers(lines)
+        @type = :modified
         @is_binary = false
         line = lines.shift
         while line != nil and not line =~ /\A@@/
@@ -200,10 +207,12 @@ class GitCommitMailer
 
           line = lines.shift
         end
-        @type = :modified if not @type
+        lines.unshift(line) if line
+      end
 
-        #parse the body
+      def parse_body(lines)
         @added_line = @deleted_line = 0
+        line = lines.shift
         while line != nil
           if line =~ /\A\+/
             @added_line += 1
@@ -214,7 +223,6 @@ class GitCommitMailer
           @body << line + "\n"
           line = lines.shift
         end
-        to_s
       end
 
       def link
