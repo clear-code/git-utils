@@ -86,11 +86,11 @@ class GitCommitMailer
   end
 
   class PushInfo < Info
-    attr_reader :old_rev, :new_rev, :reference, :reftype, :log, :author_email
+    attr_reader :old_revision, :new_revision, :reference, :reftype, :log, :author_email
     attr_writer :author
-    def initialize(old_rev, new_rev, reference, reftype, log)
-      @old_rev = old_rev
-      @new_rev = new_rev
+    def initialize(old_revision, new_revision, reference, reftype, log)
+      @old_revision = old_revision
+      @new_revision = new_revision
       @reference = reference
       @reftype = reftype
       @log = log
@@ -99,8 +99,8 @@ class GitCommitMailer
     end
 
     def headers
-      [ "X-Git-old_revision: #{old_rev}",
-        "X-Git-new_revision: #{new_rev}",
+      [ "X-Git-OldRev: #{old_revision}",
+        "X-Git-NewRev: #{new_revision}",
         "X-Git-Refname: #{reference}",
         "X-Git-Reftype: #{reftype}" ]
     end
@@ -112,28 +112,7 @@ class GitCommitMailer
 
   class CommitInfo < Info
     class DiffPerFile
-      attr_reader :old_rev, :new_rev, :added_line, :deleted_line, :body, :type
-      def link
-        "this is link."
-      end
-
-      def format_time(time)
-        time.strftime('%Y-%m-%d %X %z')
-      end
-
-      def header
-         if not @is_binary
-           result = "--- #{@a}    #{format_time(@old_date)} (#{@old_rev[0,7]})\n" +
-                    "+++ #{@b}    #{format_time(@new_date)} (#{@new_rev[0,7]})\n"
-         else
-           result = "(Binary files differ)\n"
-         end
-         result
-      end
-
-      def value
-         header + body
-      end
+      attr_reader :old_revision, :new_revision, :added_line, :deleted_line, :body, :type
 
       def initialize (lines, revision)
         #parse the header
@@ -149,12 +128,13 @@ class GitCommitMailer
         end
         @metadata = []
         @body = ''
-        @new_rev = revision
 
-        @old_rev = `git log -n 1 --pretty=format:%H #{revision}~`.strip
-        #@old_rev = '0'*40 if not @old_rev =~ /[0-9a-fA-F]{40}/
-        @new_date = Time.at(CommitInfo.get_record(@new_rev, "%at").to_i)
-        @old_date = Time.at(CommitInfo.get_record(@old_rev, "%at").to_i)
+        @new_revision = revision
+        @old_revision = `git log -n 1 --pretty=format:%H #{revision}~`.strip
+        #@old_revision = '0'*40 if not @old_revision =~ /[0-9a-fA-F]{40}/
+
+        @new_date = Time.at(CommitInfo.get_record(@new_revision, "%at").to_i)
+        @old_date = Time.at(CommitInfo.get_record(@old_revision, "%at").to_i)
 
         #parse the additional information
         @type = nil
@@ -202,13 +182,35 @@ class GitCommitMailer
         to_s
       end
 
+      def link
+        "this is link."
+      end
+
+      def format_time(time)
+        time.strftime('%Y-%m-%d %X %z')
+      end
+
+      def header
+         if not @is_binary
+           result = "--- #{@a}    #{format_time(@old_date)} (#{@old_revision[0,7]})\n" +
+                    "+++ #{@b}    #{format_time(@new_date)} (#{@new_revision[0,7]})\n"
+         else
+           result = "(Binary files differ)\n"
+         end
+         result
+      end
+
+      def value
+         header + body
+      end
+
       def file
         @a # also can be @b
       end
 
       def to_s
         #puts @type + "   " + @a + "  " + @b + "(+#{@added_line} -#{@deleted_line})"
-        #puts @a + "  " + @new_rev + "   " + @old_rev
+        #puts @a + "  " + @new_revision + "   " + @old_revision
         #puts "############################################################"
         #puts @body
       end
@@ -579,7 +581,7 @@ class GitCommitMailer
     end
   end
 
-  attr_reader :to
+  attr_reader :old_revision, :new_revision, :to
   attr_writer :from, :add_diff, :show_path, :use_utf7
   attr_writer :repository
   attr_accessor :from_domain, :max_size, :repository_uri
@@ -1148,7 +1150,7 @@ INFO
   def diff_info
     @info.diffs.collect do |diff|
       args = []
-      rev = diff.new_rev
+      rev = diff.new_revision
       #case type
       #when :added
       #  command = "cat"
