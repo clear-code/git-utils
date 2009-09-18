@@ -99,8 +99,8 @@ class GitCommitMailer
     end
 
     def headers
-      [ "X-Git-Oldrev: #{old_rev}",
-        "X-Git-Newrev: #{new_rev}",
+      [ "X-Git-old_revision: #{old_rev}",
+        "X-Git-new_revision: #{new_rev}",
         "X-Git-Refname: #{reference}",
         "X-Git-Reftype: #{reftype}" ]
     end
@@ -603,14 +603,11 @@ class GitCommitMailer
   end
 
   def each_revision(&block)
-    oldrev = @old_revision
-    newrev = @new_revision
-
-    if not oldrev =~ /0{40}/ and not newrev =~ /0{40}/
+    if not old_revision =~ /0{40}/ and not new_revision =~ /0{40}/
       change_type = "update"
-    elsif oldrev =~ /0{40}/
+    elsif old_revision =~ /0{40}/
       change_type = "create"
-    elsif newrev =~ /0{40}/
+    elsif new_revision =~ /0{40}/
       change_type = "delete"
     else
       return #error - should throw something?
@@ -618,11 +615,11 @@ class GitCommitMailer
 
     case change_type
     when "create", "update"
-      rev = newrev
-      rev_type=`git cat-file -t #{newrev}`.strip
+      rev = new_revision
+      rev_type=`git cat-file -t #{new_revision}`.strip
     when "delete"
-      rev = oldrev
-      rev_type=`git cat-file -t #{oldrev}`.strip
+      rev = old_revision
+      rev_type=`git cat-file -t #{old_revision}`.strip
     end
 
     if reference =~ /refs\/tags\/.*/ and rev_type == "commit"
@@ -656,45 +653,45 @@ class GitCommitMailer
     end
 
     if ref_type == "branch" and change_type == "update"
-      msg = process_update_branch(oldrev, newrev, block)
+      msg = process_update_branch(old_revision, new_revision, block)
     elsif ref_type == "branch" and change_type == "create"
-      msg = process_create_branch(oldrev, newrev, block)
+      msg = process_create_branch(old_revision, new_revision, block)
     elsif ref_type == "branch" and change_type == "delete"
-      msg = process_delete_branch(oldrev, newrev, block)
+      msg = process_delete_branch(old_revision, new_revision, block)
     elsif ref_type == "annotated tag" and change_type == "update"
-      msg = process_update_atag(oldrev, newrev)
+      msg = process_update_atag(old_revision, new_revision)
     elsif ref_type == "annotated tag" and change_type == "create"
-      msg = process_create_atag(oldrev, newrev)
+      msg = process_create_atag(old_revision, new_revision)
     elsif ref_type == "annotated tag" and change_type == "delete"
-      msg = process_delete_atag(oldrev, newrev)
+      msg = process_delete_atag(old_revision, new_revision)
     end
 
-    PushInfo.new(oldrev, newrev, reference, ref_type, msg)
+    PushInfo.new(old_revision, new_revision, reference, ref_type, msg)
   end
 
-  def process_create_branch(oldrev, newrev, block)
+  def process_create_branch(old_revision, new_revision, block)
     # This shows all log entries that are not already covered by
     # another ref - i.e. commits that are now accessible from this
     # ref that were previously not accessible
     # (see generate_update_branch_email for the explanation of this
     # command)
     msg = ""
-    msg << "        at  #{newrev} (branch)\n"
+    msg << "        at  #{new_revision} (branch)\n"
     msg << "\n"
 
     `git rev-parse --not --branches | grep -v $(git rev-parse #{reference}) |
-    git rev-list --stdin #{newrev}`.lines.each { |rev|
+    git rev-list --stdin #{new_revision}`.lines.each { |rev|
       block.call(rev.strip)
     }
     msg
   end
 
-  def process_update_branch(oldrev, newrev, block)
+  def process_update_branch(old_revision, new_revision, block)
     # Consider this:
     #   1 --- 2 --- O --- X --- 3 --- 4 --- N
     #
-    # O is $oldrev for $refname
-    # N is $newrev for $refname
+    # O is $old_revision for $refname
+    # N is $new_revision for $refname
     # X is a revision pointed to by some other ref, for which we may
     #   assume that an email has already been generated.
     # In this case we want to issue an email containing only revisions
@@ -722,7 +719,7 @@ class GitCommitMailer
     # This leaves a problem when someone else updates the repository
     # while this script is running.  Their new value of the ref we're
     # working on would be included in the "--not --all" output; and as
-    # our $newrev would be an ancestor of that commit, it would exclude
+    # our $new_revision would be an ancestor of that commit, it would exclude
     # all of our commits.  What we really want is to exclude the current
     # value of $refname from the --not list, rather than N itself.  So:
     #
@@ -734,13 +731,13 @@ class GitCommitMailer
     #
     #
     # Next problem, consider this:
-    #   * --- B --- * --- O ($oldrev)
+    #   * --- B --- * --- O ($old_revision)
     #          \
-    #           * --- X --- * --- N ($newrev)
+    #           * --- X --- * --- N ($new_revision)
     #
-    # That is to say, there is no guarantee that oldrev is a strict
-    # subset of newrev (it would have required a --force, but that's
-    # allowed).  So, we can't simply say rev-list $oldrev..$newrev.
+    # That is to say, there is no guarantee that old_revision is a strict
+    # subset of new_revision (it would have required a --force, but that's
+    # allowed).  So, we can't simply say rev-list $old_revision..$new_revision.
     # Instead we find the common base of the two revs and list from
     # there.
     #
@@ -768,7 +765,7 @@ class GitCommitMailer
     fast_forward = false
     rev = nil
     msg = ""
-    `git rev-list #{newrev}..#{oldrev}`.lines.each { |rev|
+    `git rev-list #{new_revision}..#{old_revision}`.lines.each { |rev|
       rev.strip!
       revtype=`git cat-file -t #{rev}`.strip
       msg << "  discards  #{rev} (#{revtype})\n"
@@ -777,21 +774,21 @@ class GitCommitMailer
       fast_forward = true
     end
 
-    # List all the revisions from baserev to newrev in a kind of
+    # List all the revisions from baserev to new_revision in a kind of
     # "table-of-contents"; note this list can include revisions that
     # have already had notification emails and is present to show the
     # full detail of the change from rolling back the old revision to
     # the base revision and then forward to the new revision
-    `(git rev-list #{oldrev}..#{newrev})`.lines.each { |rev|
+    `(git rev-list #{old_revision}..#{new_revision})`.lines.each { |rev|
       rev.strip!
       revtype=`git cat-file -t #{rev}`.strip
       msg << "       via  #{rev} (#{revtype})\n"
     }
     if fast_forward
-      msg << "      from  #{oldrev} (commit)\n"
+      msg << "      from  #{old_revision} (commit)\n"
     else
-      #  1. Existing revisions were removed.  In this case newrev
-      #     is a subset of oldrev - this is the reverse of a
+      #  1. Existing revisions were removed.  In this case new_revision
+      #     is a subset of old_revision - this is the reverse of a
       #     fast-forward, a rewind
       #  2. New revisions were added on top of an old revision,
       #     this is a rewind and addition.
@@ -801,16 +798,16 @@ class GitCommitMailer
       # is required.
 
       # Find the common ancestor of the old and new revisions and
-      # compare it with newrev
-      baserev = `git merge-base #{oldrev} #{newrev}`.strip
+      # compare it with new_revision
+      baserev = `git merge-base #{old_revision} #{new_revision}`.strip
       rewind_only = false
-      if baserev == newrev
+      if baserev == new_revision
         msg << "This update discarded existing revisions and left the branch pointing at\n"
         msg << "a previous point in the repository history.\n"
         msg << "\n"
-        msg << " * -- * -- N (#{newrev})\n"
+        msg << " * -- * -- N (#{new_revision})\n"
         msg << "            \\\n"
-        msg << "             O -- O -- O (#{oldrev})\n"
+        msg << "             O -- O -- O (#{old_revision})\n"
         msg << "\n"
         msg << "The removed revisions are not necessarilly gone - if another reference\n"
         msg << "still refers to them they will stay in the repository.\n"
@@ -821,9 +818,9 @@ class GitCommitMailer
         msg << "situation occurs when you --force push a change and generate a repository\n"
         msg << "containing something like this:\n"
         msg << "\n"
-        msg << " * -- * -- B -- O -- O -- O (#{oldrev})\n"
+        msg << " * -- * -- B -- O -- O -- O (#{old_revision})\n"
         msg << "            \\\n"
-        msg << "             N -- N -- N (#{newrev})\n"
+        msg << "             N -- N -- N (#{new_revision})\n"
         msg << "\n"
         msg << "When this happens we assume that you've already had alert emails for all\n"
         msg << "of the O revisions, and so we here report only the revisions in the N\n"
@@ -839,7 +836,7 @@ class GitCommitMailer
       msg << "revisions in full, below.\n\n"
 
       #echo $LOGBEGIN
-      msg << `git rev-parse --not --branches | grep -v $(git rev-parse #{reference}) | git rev-list --pretty=oneline --stdin #{oldrev}..#{newrev}`
+      msg << `git rev-parse --not --branches | grep -v $(git rev-parse #{reference}) | git rev-list --pretty=oneline --stdin #{old_revision}..#{new_revision}`
 
       # XXX: Need a way of detecting whether git rev-list actually
       # outputted anything, so that we can issue a "no new
@@ -858,43 +855,43 @@ class GitCommitMailer
     # - including the undoing of previous revisions in the case of
     # non-fast forward updates.
 
-    IO.popen("git rev-list #{oldrev}..#{newrev}").readlines.reverse.each { |rev|
+    IO.popen("git rev-list #{old_revision}..#{new_revision}").readlines.reverse.each { |rev|
       block.call(rev.strip)
     }
-    #IO.popen("git rev-list --first-parent #{oldrev}..#{newrev}").readlines.reverse.each { |rev|
+    #IO.popen("git rev-list --first-parent #{old_revision}..#{new_revision}").readlines.reverse.each { |rev|
     #  block.call(rev.strip)
     #}
     msg
   end
 
-  def process_delete_branch(oldrev, newrev, block)
+  def process_delete_branch(old_revision, new_revision, block)
     msg = ""
-    msg << "       was  #{oldrev}\n"
+    msg << "       was  #{old_revision}\n"
     msg << "\n"
     #msg << $LOGEND
-    msg << `git show -s --pretty=oneline #{oldrev}`
+    msg << `git show -s --pretty=oneline #{old_revision}`
     #msg << $LOGEND
 
     msg
   end
 
-  def process_delete_atag(oldrev, newrev)
+  def process_delete_atag(old_revision, new_revision)
     msg = ""
-    msg << "       was  #{oldrev}\n"
+    msg << "       was  #{old_revision}\n"
     msg << "\n"
     #echo $LOGEND
-    msg << `git show -s --pretty=oneline #{oldrev}`
+    msg << `git show -s --pretty=oneline #{old_revision}`
     #echo $LOGEND
     msg
   end
 
-  def process_create_atag(oldrev, newrev)
-    "        at  $newrev ($newrev_type)"
+  def process_create_atag(old_revision, new_revision)
+    "        at  $new_revision ($new_revision_type)"
   end
 
-  def process_update_atag(oldrev, newrev)
-    "        to  $newrev ($newrev_type)"
-    "      from  $oldrev (which is now obsolete)"
+  def process_update_atag(old_revision, new_revision)
+    "        to  $new_revision ($new_revision_type)"
+    "      from  $old_revision (which is now obsolete)"
   end
 
   def post_process_infos
