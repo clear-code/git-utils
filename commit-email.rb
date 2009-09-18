@@ -110,8 +110,8 @@ class GitCommitMailer
       @author = get_record("%an")
       @author_email = get_record("%ae")
       @date = Time.at(get_record("%at").to_i)
-      @subject = make_subject
       @change_type = change_type
+      @subject = make_subject
     end
 
     def revision
@@ -135,11 +135,11 @@ class GitCommitMailer
       #  end
       #end
       if project
-        subject << "[#{project} #{short_reference} push] "
+        subject << "[#{project} PUSH] "
       else
         subject << "#{revision_info}: "
       end
-      subject << "#{reftype}, #{reference.sub(/\A.+\/.+\//,'')}, #{@change_type}d."
+      subject << "#{reftype} (#{reference.sub(/\A.+\/.+\//,'')}) is #{@change_type}d."
 
       NKF.nkf("-WM", subject)
     end
@@ -676,17 +676,23 @@ class GitCommitMailer
     end
 
     if ref_type == "branch" and change_type == "update"
-      msg = process_update_branch(old_revision, new_revision, block)
+      msg = "Branch (#{reference}) is updated.\n"
+      msg << process_update_branch(old_revision, new_revision, block)
     elsif ref_type == "branch" and change_type == "create"
-      msg = process_create_branch(old_revision, new_revision, block)
+      msg = "Branch (#{reference}) is created.\n"
+      msg << process_create_branch(old_revision, new_revision, block)
     elsif ref_type == "branch" and change_type == "delete"
-      msg = process_delete_branch(old_revision, new_revision, block)
+      msg = "Branch (#{reference}) is deleted.\n"
+      msg << process_delete_branch(old_revision, new_revision, block)
     elsif ref_type == "annotated tag" and change_type == "update"
-      msg = process_update_atag(old_revision, new_revision)
+      msg = "Annotated tag (#{reference}) is updated.\n"
+      msg << process_update_atag(old_revision, new_revision)
     elsif ref_type == "annotated tag" and change_type == "create"
-      msg = process_create_atag(old_revision, new_revision)
+      msg = "Annotated (#{reference}) is created.\n"
+      msg << process_create_atag(old_revision, new_revision)
     elsif ref_type == "annotated tag" and change_type == "delete"
-      msg = process_delete_atag(old_revision, new_revision)
+      msg = "Annotated (#{reference}) is deleted.\n"
+      msg << process_delete_atag(old_revision, new_revision)
     end
 
     PushInfo.new(old_revision, new_revision, reference, ref_type, change_type, msg)
@@ -699,13 +705,16 @@ class GitCommitMailer
     # (see generate_update_branch_email for the explanation of this
     # command)
     msg = ""
-    msg << "        at  #{new_revision} (branch)\n"
-    msg << "\n"
 
-    `git rev-parse --not --branches | grep -v $(git rev-parse #{reference}) |
-    git rev-list --stdin #{new_revision}`.lines.each { |rev|
-      block.call(rev.strip)
+    commit_list = []
+    IO.popen("git rev-parse --not --branches | grep -v $(git rev-parse #{reference}) |
+    git rev-list --stdin #{new_revision}").readlines.reverse.each { |revision|
+      block.call(revision.strip)
+      commit_list << "     via  #{revision[0,7]} #{get_commit_subject(revision)}\n"
     }
+    commit_list[-1] = "      at  #{new_revision[0,7]} #{get_commit_subject(new_revision)}\n"
+    msg << commit_list.join
+
     msg
   end
 
