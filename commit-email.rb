@@ -865,9 +865,12 @@ EOF
     # - including the undoing of previous revisions in the case of
     # non-fast forward updates.
 
-    IO.popen("git rev-list --first-parent #{old_revision}..#{new_revision}").readlines.reverse.each { |rev|
+    IO.popen("git rev-list #{old_revision}..#{new_revision}").readlines.reverse.each { |rev|
       block.call(rev.strip)
     }
+    #IO.popen("git rev-list --first-parent #{old_revision}..#{new_revision}").readlines.reverse.each { |rev|
+    #  block.call(rev.strip)
+    #}
     msg
   end
 
