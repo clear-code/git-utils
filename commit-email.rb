@@ -20,8 +20,6 @@ require 'English'
 original_argv = ARGV.dup
 argv = []
 
-LOGBEGIN="- Log -----------------------------------------------------------------"
-LOGEND  ="-----------------------------------------------------------------------"
 
 if not ENV['GIT_DIR']
   ENV['GIT_DIR'] = ".git/"
@@ -80,14 +78,29 @@ class GitCommitMailer
     def Info.get_record(revision, record)
       IO.popen("git log -n 1 --pretty=format:#{record} #{revision}").readlines[0].strip
     end
+
     def get_record(record)
       Info.get_record(@revision, record)
+    end
+
+    def short_reference
+       @reference.sub(/\Arefs\/heads\//,'');
+    end
+
+    def detect_project
+      project=IO.popen("sed -ne \'1p\' \"#{ENV['GIT_DIR']}/description\"").readlines[0].strip
+      # Check if the description is unchanged from it's default, and shorten it to
+      # a more manageable length if it is
+      if project =~ /Unnamed repository.*$/
+        project = nil
+      end
+
+      project
     end
   end
 
   class PushInfo < Info
-    attr_reader :old_revision, :new_revision, :reference, :reftype, :log, :author_email
-    attr_writer :author
+    attr_reader :old_revision, :new_revision, :reference, :reftype, :log, :author, :author_email, :date, :subject
     def initialize(old_revision, new_revision, reference, reftype, log)
       @old_revision = old_revision
       @new_revision = new_revision
@@ -96,6 +109,12 @@ class GitCommitMailer
       @log = log
       @author = get_record("%an")
       @author_email = get_record("%ae")
+      @date = Time.at(get_record("%at").to_i)
+      @subject = make_subject
+    end
+
+    def revision
+      @new_revision
     end
 
     def headers
@@ -105,8 +124,23 @@ class GitCommitMailer
         "X-Git-Reftype: #{reftype}" ]
     end
 
-    def subject
-        "[push] #{reftype}, #{reference.sub(/\A.+\/.+\//,'')}, ${change_type}d. $describe"
+    def make_subject
+      subject = ""
+      project = detect_project
+      #if show_path?
+      #  _affected_paths = affected_paths(project)
+      #  unless _affected_paths.empty?
+      #    revision_info = "(#{_affected_paths.join(',')}) #{revision_info}"
+      #  end
+      #end
+      if project
+        subject << "[#{project} #{short_reference} push] "
+      else
+        subject << "#{revision_info}: "
+      end
+      subject << "#{reftype}, #{reference.sub(/\A.+\/.+\//,'')}, ${change_type}d. $describe"
+
+      NKF.nkf("-WM", subject)
     end
   end
 
@@ -307,20 +341,6 @@ class GitCommitMailer
         # "X-Git-Repository: #{path}",
         "X-Git-Repository: XXX",
         "X-Git-Commit-Id: #{commit_id}" ]
-    end
-
-    def detect_project
-      project=IO.popen("sed -ne \'1p\' \"#{ENV['GIT_DIR']}/description\"").readlines[0].strip
-      # Check if the description is unchanged from it's default, and shorten it to
-      # a more manageable length if it is
-      if project =~ /Unnamed repository.*$/
-        project="UNNAMED PROJECT"
-      end
-      project
-    end
-
-    def short_reference
-       @reference.sub(/\Arefs\/heads\//,'');
     end
 
     def make_subject
@@ -688,6 +708,10 @@ class GitCommitMailer
     msg
   end
 
+  def get_commit_subject(revision)
+      IO.popen("git log -n 1 --pretty=format:%s #{revision}").readlines[0].strip
+  end
+
   def process_update_branch(old_revision, new_revision, block)
     # Consider this:
     #   1 --- 2 --- O --- X --- 3 --- 4 --- N
@@ -765,14 +789,14 @@ class GitCommitMailer
     # ^N is empty.  For a non fast forward, O ^N is the list of removed
     # revisions
     fast_forward = false
-    rev = nil
+    revision = nil
     msg = ""
-    `git rev-list #{new_revision}..#{old_revision}`.lines.each { |rev|
-      rev.strip!
-      revtype=`git cat-file -t #{rev}`.strip
-      msg << "  discards  #{rev} (#{revtype})\n"
+    revision_list = []
+    `git rev-list #{new_revision}..#{old_revision}`.lines.each { |revision|
+      revision.strip!
+      revision_list << "discards  #{revision[0,7]} #{get_commit_subject(revision)}\n"
     }
-    if not rev
+    if not revision
       fast_forward = true
     end
 
@@ -781,14 +805,17 @@ class GitCommitMailer
     # have already had notification emails and is present to show the
     # full detail of the change from rolling back the old revision to
     # the base revision and then forward to the new revision
-    `(git rev-list #{old_revision}..#{new_revision})`.lines.each { |rev|
-      rev.strip!
-      revtype=`git cat-file -t #{rev}`.strip
-      msg << "       via  #{rev} (#{revtype})\n"
+    `(git rev-list #{old_revision}..#{new_revision})`.lines.each { |revision|
+      revision.strip!
+      revision_list << "     via  #{revision[0,7]} #{get_commit_subject(revision)}\n"
     }
     if fast_forward
-      msg << "      from  #{old_revision} (commit)\n"
-    else
+      revision_list << "    from  #{old_revision[0,7]} #{get_commit_subject(old_revision)}\n"
+    end
+
+    msg << revision_list.reverse.join
+
+    if not fast_forward
       #  1. Existing revisions were removed.  In this case new_revision
       #     is a subset of old_revision - this is the reverse of a
       #     fast-forward, a rewind
@@ -833,18 +860,9 @@ class GitCommitMailer
     msg << "\n\n"
 
     if not rewind_only
-      msg << "Those revisions listed above that are new to this repository have\n"
-      msg << "not appeared on any other notification email; so we list those\n"
-      msg << "revisions in full, below.\n\n"
-
-      #echo $LOGBEGIN
-      msg << `git rev-parse --not --branches | grep -v $(git rev-parse #{reference}) | git rev-list --pretty=oneline --stdin #{old_revision}..#{new_revision}`
-
       # XXX: Need a way of detecting whether git rev-list actually
       # outputted anything, so that we can issue a "no new
       # revisions added by this update" message
-
-      #echo $LOGEND
     else
       msg << "No new revisions were added by this update.\n"
     end
@@ -857,11 +875,11 @@ class GitCommitMailer
     # - including the undoing of previous revisions in the case of
     # non-fast forward updates.
 
-    IO.popen("git rev-list #{old_revision}..#{new_revision}").readlines.reverse.each { |rev|
-      block.call(rev.strip)
+    IO.popen("git rev-list #{old_revision}..#{new_revision}").readlines.reverse.each { |revision|
+      block.call(revision.strip)
     }
-    #IO.popen("git rev-list --first-parent #{old_revision}..#{new_revision}").readlines.reverse.each { |rev|
-    #  block.call(rev.strip)
+    #IO.popen("git rev-list --first-parent #{old_revision}..#{new_revision}").readlines.reverse.each { |revision|
+    #  block.call(revison.strip)
     #}
     msg
   end
@@ -870,9 +888,9 @@ class GitCommitMailer
     msg = ""
     msg << "       was  #{old_revision}\n"
     msg << "\n"
-    #msg << $LOGEND
+
     msg << `git show -s --pretty=oneline #{old_revision}`
-    #msg << $LOGEND
+
 
     msg
   end
@@ -881,9 +899,9 @@ class GitCommitMailer
     msg = ""
     msg << "       was  #{old_revision}\n"
     msg << "\n"
-    #echo $LOGEND
+
     msg << `git show -s --pretty=oneline #{old_revision}`
-    #echo $LOGEND
+
     msg
   end
 
@@ -897,12 +915,14 @@ class GitCommitMailer
   end
 
   def post_process_infos
-    @push_info.author = determine_prominent_author
+    #@push_info.author = determine_prominent_author
   end
 
   def determine_prominent_author
-    #if @commit_infos.length
-    "foo@bar.com"
+    #if @commit_infos.length > 0
+    #  
+    #else
+    #   @push_info
   end
 
   def process_single_ref_change(old_revision, new_revision, reference)
@@ -918,10 +938,13 @@ class GitCommitMailer
     post_process_infos
 
     @info = @push_info
-    #send_mail make_mail
+    send_mail make_mail
+    sleep 1
+
     @commit_infos.each { |info|
       @info = info
       send_mail make_mail
+      sleep 0.1
     }
 
     output_rss
@@ -1011,29 +1034,42 @@ class GitCommitMailer
   end
 
   def make_body
-    body = ""
-    body << "#{@info.author}\t#{format_time(@info.date)}\n"
-    body << "\n"
-    body << "New Revision: #{@info.revision}\n"
-    body << "\n"
-    body << "  Log:\n"
-    @info.log.rstrip.each_line do |line|
-      body << "    #{line}"
+    if @info.class == CommitInfo
+      body = ""
+      body << "#{@info.author}\t#{format_time(@info.date)}\n"
+      body << "\n"
+      body << "New Revision: #{@info.revision}\n"
+      body << "\n"
+      body << "  Log:\n"
+      @info.log.rstrip.each_line do |line|
+        body << "    #{line}"
+      end
+      body << "\n\n"
+      #body << added_dirs
+      body << added_files
+      #body << copied_dirs
+      body << copied_files
+      #body << deleted_dirs
+      body << deleted_files
+      #body << modified_dirs
+      body << modified_files
+
+      #body << renamed_files
+
+      body << "\n"
+      body << change_info
+    elsif @info.class == PushInfo
+      body = ""
+      body << "#{@info.author}\t#{format_time(@info.date)}\n"
+      body << "\n"
+      body << "New Push:\n"
+      body << "\n"
+      body << "  Log:\n"
+      @info.log.rstrip.each_line do |line|
+        body << "    #{line}"
+      end
+      body << "\n\n"
     end
-    body << "\n\n"
-    #body << added_dirs
-    body << added_files
-    #body << copied_dirs
-    body << copied_files
-    #body << deleted_dirs
-    body << deleted_files
-    #body << modified_dirs
-    body << modified_files
-
-    #body << renamed_files
-
-    body << "\n"
-    body << change_info
     body
   end
 
@@ -1201,16 +1237,6 @@ CONTENT
     headers.find_all do |header|
       /\A\s*\z/ !~ header
     end.join("\n")
-  end
-
-  def detect_project
-    project=IO.popen("sed -ne \'1p\' \"#{ENV['GIT_DIR']}/description\"").readlines[0].strip
-    # Check if the description is unchanged from it's default, and shorten it to
-    # a more manageable length if it is
-    if project =~ /Unnamed repository.*$/
-  project="UNNAMED PROJECT"
-    end
-    project
   end
 
   def affected_paths(project)
