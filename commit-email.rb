@@ -101,7 +101,7 @@ class GitCommitMailer
 
   class PushInfo < Info
     attr_reader :old_revision, :new_revision, :reference, :reftype, :log, :author, :author_email, :date, :subject
-    def initialize(old_revision, new_revision, reference, reftype, log)
+    def initialize(old_revision, new_revision, reference, reftype, change_type, log)
       @old_revision = old_revision
       @new_revision = new_revision
       @reference = reference
@@ -111,6 +111,7 @@ class GitCommitMailer
       @author_email = get_record("%ae")
       @date = Time.at(get_record("%at").to_i)
       @subject = make_subject
+      @change_type = change_type
     end
 
     def revision
@@ -138,7 +139,7 @@ class GitCommitMailer
       else
         subject << "#{revision_info}: "
       end
-      subject << "#{reftype}, #{reference.sub(/\A.+\/.+\//,'')}, ${change_type}d. $describe"
+      subject << "#{reftype}, #{reference.sub(/\A.+\/.+\//,'')}, #{@change_type}d."
 
       NKF.nkf("-WM", subject)
     end
@@ -688,7 +689,7 @@ class GitCommitMailer
       msg = process_delete_atag(old_revision, new_revision)
     end
 
-    PushInfo.new(old_revision, new_revision, reference, ref_type, msg)
+    PushInfo.new(old_revision, new_revision, reference, ref_type, change_type, msg)
   end
 
   def process_create_branch(old_revision, new_revision, block)
@@ -813,8 +814,6 @@ class GitCommitMailer
       revision_list << "    from  #{old_revision[0,7]} #{get_commit_subject(old_revision)}\n"
     end
 
-    msg << revision_list.reverse.join
-
     if not fast_forward
       #  1. Existing revisions were removed.  In this case new_revision
       #     is a subset of old_revision - this is the reverse of a
@@ -834,9 +833,9 @@ class GitCommitMailer
         msg << "This update discarded existing revisions and left the branch pointing at\n"
         msg << "a previous point in the repository history.\n"
         msg << "\n"
-        msg << " * -- * -- N (#{new_revision})\n"
+        msg << " * -- * -- N (#{new_revision[0,7]})\n"
         msg << "            \\\n"
-        msg << "             O -- O -- O (#{old_revision})\n"
+        msg << "             O -- O -- O (#{old_revision[0,7]})\n"
         msg << "\n"
         msg << "The removed revisions are not necessarilly gone - if another reference\n"
         msg << "still refers to them they will stay in the repository.\n"
@@ -847,9 +846,9 @@ class GitCommitMailer
         msg << "situation occurs when you --force push a change and generate a repository\n"
         msg << "containing something like this:\n"
         msg << "\n"
-        msg << " * -- * -- B -- O -- O -- O (#{old_revision})\n"
+        msg << " * -- * -- B -- O -- O -- O (#{old_revision[0,7]})\n"
         msg << "            \\\n"
-        msg << "             N -- N -- N (#{new_revision})\n"
+        msg << "             N -- N -- N (#{new_revision[0,7]})\n"
         msg << "\n"
         msg << "When this happens we assume that you've already had alert emails for all\n"
         msg << "of the O revisions, and so we here report only the revisions in the N\n"
@@ -857,6 +856,8 @@ class GitCommitMailer
       end
     end
 
+    msg << "\n\n"
+    msg << revision_list.reverse.join
     msg << "\n\n"
 
     if not rewind_only
