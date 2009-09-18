@@ -76,15 +76,26 @@ require "socket"
 require "nkf"
 
 class GitCommitMailer
-  class PushInfo
+  class Info
+    def Info.get_record(revision, record)
+      IO.popen("git log -n 1 --pretty=format:#{record} #{revision}").readlines[0].strip
+    end
+    def get_record(record)
+      Info.get_record(@revision, record)
+    end
+  end
+
+  class PushInfo < Info
     attr_reader :old_rev, :new_rev, :reference, :reftype, :log, :author_email
+    attr_writer :author
     def initialize(old_rev, new_rev, reference, reftype, log)
       @old_rev = old_rev
       @new_rev = new_rev
       @reference = reference
       @reftype = reftype
       @log = log
-      @author_email = "onodera@clear-code.com"
+      @author = get_record("%an")
+      @author_email = get_record("%ae")
     end
 
     def headers
@@ -99,11 +110,7 @@ class GitCommitMailer
     end
   end
 
-  class CommitInfo
-    def CommitInfo.get_record(revision, record)
-      IO.popen("git log -n 1 --pretty=format:#{record} #{revision}").readlines[0].strip
-    end
-
+  class CommitInfo < Info
     class DiffPerFile
       attr_reader :old_rev, :new_rev, :added_line, :deleted_line, :body, :type
       def link
@@ -252,10 +259,6 @@ class GitCommitMailer
       init_file_status
     end
 
-    def get_record(record)
-      CommitInfo.get_record(@revision, record)
-    end
-
     def parse
       @author = get_record("%an")
       @author_email = get_record("%ae")
@@ -345,10 +348,11 @@ class GitCommitMailer
       to = [to, *options.to].compact
       mailer = new(to)
       apply_options(mailer, options)
+
       while line = STDIN.gets
         line = line.split
         old_revision, new_revision, reference = line[0], line[1], line[2]
-        mailer.run(old_revision, new_revision, reference)
+        mailer.process_single_ref_change(old_revision, new_revision, reference)
       end
     end
 
@@ -670,8 +674,7 @@ EOF
       msg += process_delete_atag(old_revision, new_revision)
     end
 
-    #@info = PushInfo.new(old_revision, new_revision, reference, refname_type, msg)
-    #send_mail make_mail
+    PushInfo.new(old_revision, new_revision, reference, refname_type, msg)
   end
 
   def process_create_branch(old_revision, new_revision, block)
@@ -898,15 +901,33 @@ EOF
     "      from  $oldrev (which is now obsolete)"
   end
 
-  def run(old_revision, new_revision, reference)
+  def post_process_infos
+    @push_info.author = determine_prominent_author
+  end
+
+  def determine_prominent_author
+    "foo@bar.com"
+  end
+
+  def process_single_ref_change(old_revision, new_revision, reference)
     @old_revision = old_revision
     @new_revision = new_revision
     @reference = reference
 
-    each_revision(@old_revision, @new_revision) do |revision|
-      @info = CommitInfo.new(repository, reference, revision)
-      send_mail make_mail
+    @commit_infos = []
+    @push_info = each_revision(@old_revision, @new_revision) do |revision|
+      @commit_infos << CommitInfo.new(repository, reference, revision)
     end
+
+    post_process_infos
+
+    @info = @push_info
+    #send_mail make_mail
+    @commit_infos.each { |info|
+      @info = info
+      send_mail make_mail
+    }
+
     output_rss
   end
 
