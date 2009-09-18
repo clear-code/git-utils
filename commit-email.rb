@@ -135,7 +135,7 @@ class GitCommitMailer
       #  end
       #end
       if project
-        subject << "[#{project} PUSH] "
+        subject << "[push #{project}] "
       else
         subject << "#{revision_info}: "
       end
@@ -355,7 +355,7 @@ class GitCommitMailer
       #  end
       #end
       if project
-        subject << "[#{project} #{short_reference} #{revision_info}] "
+        subject << "[commit #{project} #{short_reference} #{revision_info}] "
       else
         subject << "#{revision_info}: "
       end
@@ -865,15 +865,15 @@ class GitCommitMailer
       end
     end
 
-    msg << "\n\n"
+    msg << "\n"
     msg << revision_list.reverse.join
-    msg << "\n\n"
 
     if not rewind_only
       # XXX: Need a way of detecting whether git rev-list actually
       # outputted anything, so that we can issue a "no new
       # revisions added by this update" message
     else
+      msg << "\n"
       msg << "No new revisions were added by this update.\n"
     end
 
