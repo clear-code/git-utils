@@ -381,8 +381,7 @@ class GitCommitMailer
       apply_options(mailer, options)
 
       while line = STDIN.gets
-        line = line.split
-        old_revision, new_revision, reference = line[0], line[1], line[2]
+        old_revision, new_revision, reference = line.split
         mailer.process_single_ref_change(old_revision, new_revision, reference)
       end
     end
@@ -448,7 +447,7 @@ class GitCommitMailer
       options = OpenStruct.new
       options.repository = "."
       #options.reference = "refs/heads/master"
-      options.to = ["user@localhost"]
+      options.to = []
       options.error_to = []
       options.from = nil
       options.from_domain = nil
@@ -610,7 +609,7 @@ class GitCommitMailer
     end
   end
 
-  attr_reader :old_revision, :new_revision, :to
+  attr_reader :reference, :old_revision, :new_revision, :to
   attr_writer :from, :add_diff, :show_path, :use_utf7
   attr_writer :repository
   attr_accessor :from_domain, :max_size, :repository_uri
@@ -627,10 +626,6 @@ class GitCommitMailer
 
   def repository
     @repository || Dir.pwd
-  end
-
-  def reference
-    @reference || "refs/heads/master"
   end
 
   def each_revision(&block)
@@ -685,28 +680,28 @@ class GitCommitMailer
 
     if ref_type == "branch" and change_type == "update"
       msg = "Branch (#{reference}) is updated.\n"
-      msg << process_update_branch(old_revision, new_revision, block)
+      msg << process_update_branch(block)
     elsif ref_type == "branch" and change_type == "create"
       msg = "Branch (#{reference}) is created.\n"
-      msg << process_create_branch(old_revision, new_revision, block)
+      msg << process_create_branch(block)
     elsif ref_type == "branch" and change_type == "delete"
       msg = "Branch (#{reference}) is deleted.\n"
-      msg << process_delete_branch(old_revision, new_revision, block)
+      msg << process_delete_branch(block)
     elsif ref_type == "annotated tag" and change_type == "update"
       msg = "Annotated tag (#{reference}) is updated.\n"
-      msg << process_update_atag(old_revision, new_revision)
+      msg << process_update_atag
     elsif ref_type == "annotated tag" and change_type == "create"
-      msg = "Annotated (#{reference}) is created.\n"
-      msg << process_create_atag(old_revision, new_revision)
+      msg = "Annotated tag (#{reference}) is created.\n"
+      msg << process_create_atag
     elsif ref_type == "annotated tag" and change_type == "delete"
-      msg = "Annotated (#{reference}) is deleted.\n"
-      msg << process_delete_atag(old_revision, new_revision)
+      msg = "Annotated tag (#{reference}) is deleted.\n"
+      msg << process_delete_atag
     end
 
-    PushInfo.new(old_revision, new_revision, reference, ref_type, change_type, msg)
+    [ref_type, change_type, msg]
   end
 
-  def process_create_branch(old_revision, new_revision, block)
+  def process_create_branch(block)
     # This shows all log entries that are not already covered by
     # another ref - i.e. commits that are now accessible from this
     # ref that were previously not accessible
@@ -730,7 +725,7 @@ class GitCommitMailer
       IO.popen("git log -n 1 --pretty=format:%s #{revision}").readlines[0].strip
   end
 
-  def process_update_branch(old_revision, new_revision, block)
+  def process_update_branch(block)
     # Consider this:
     #   1 --- 2 --- O --- X --- 3 --- 4 --- N
     #
@@ -902,7 +897,7 @@ class GitCommitMailer
     msg
   end
 
-  def process_delete_branch(old_revision, new_revision, block)
+  def process_delete_branch(block)
     msg = ""
     msg << "       was  #{old_revision}\n"
     msg << "\n"
@@ -913,7 +908,7 @@ class GitCommitMailer
     msg
   end
 
-  def process_delete_atag(old_revision, new_revision)
+  def process_delete_atag
     msg = ""
     msg << "       was  #{old_revision}\n"
     msg << "\n"
@@ -923,11 +918,11 @@ class GitCommitMailer
     msg
   end
 
-  def process_create_atag(old_revision, new_revision)
+  def process_create_atag
     "        at  $new_revision ($new_revision_type)"
   end
 
-  def process_update_atag(old_revision, new_revision)
+  def process_update_atag
     "        to  $new_revision ($new_revision_type)"
     "      from  $old_revision (which is now obsolete)"
   end
@@ -949,9 +944,10 @@ class GitCommitMailer
     @reference = reference
 
     @commit_infos = []
-    @push_info = each_revision do |revision|
+    push_info_args = each_revision do |revision|
       @commit_infos << CommitInfo.new(repository, reference, revision)
     end
+    @push_info = PushInfo.new(old_revision, new_revision, reference, *push_info_args)
 
     post_process_infos
 
