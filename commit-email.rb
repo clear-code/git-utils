@@ -99,7 +99,7 @@ class GitCommitMailer
       @reftype = reftype
       @log = log
       @author = get_record("%an")
-      @author_email = get_record("%ae")
+      @author_email = get_record("%an <%ae>")
       @date = Time.at(get_record("%at").to_i)
       @change_type = change_type
     end
@@ -297,7 +297,7 @@ class GitCommitMailer
 
     def parse
       @author = get_record("%an")
-      @author_email = get_record("%ae")
+      @author_email = get_record("%an <%ae>")
       @date = Time.at(get_record("%at").to_i)
       @subject = get_record("%s")
       @log = `git log -n 1 --pretty=format:%s%n%n%b #{@revision}`
@@ -346,7 +346,7 @@ class GitCommitMailer
 
   class << self
     def get_record(revision, record)
-      `git log -n 1 --pretty=format:#{record} #{revision}`.strip
+      `git log -n 1 --pretty=format:'#{record}' #{revision}`.strip
     end
 
     def run(argv=nil)
@@ -1307,7 +1307,7 @@ CONTENT
       raise "a new Info class?"
     end
 
-    NKF.nkf("-WM", subject)
+    #NKF.nkf("-WM", subject)
   end
 
   def affected_paths
@@ -1425,7 +1425,7 @@ rescue Exception => error
 #{error.backtrace.join("\n")}
 EOM
   to = to.compact
-  if true#to.empty?
+  if to.empty?
     STDERR.puts detail
   else
     sendmail(to, from, <<-MAIL, server, port)
