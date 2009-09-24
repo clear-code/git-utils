@@ -138,10 +138,16 @@ class GitCommitMailer
       else
         subject << "#{revision_info}: "
       end
-      subject << "#{reftype} (#{reference.sub(/\A.+\/.+\//,'')}) is #{@change_type}d."
+      subject << "#{reftype} (#{reference.sub(/\A.+\/.+\//,'')}) is #{CHANGE_TYPE[@change_type]}."
 
       NKF.nkf("-WM", subject)
     end
+
+    CHANGE_TYPE = {
+      :create => "created",
+      :update => "updated",
+      :delete => "deleted",
+    }
   end
 
   class CommitInfo < Info
@@ -638,40 +644,40 @@ class GitCommitMailer
     if old_revision =~ /0{40}/ and new_revision =~ /0{40}/
       raise "Invalid revision hash"
     elsif not old_revision =~ /0{40}/ and not new_revision =~ /0{40}/
-      change_type = "update"
+      change_type = :update
     elsif old_revision =~ /0{40}/
-      change_type = "create"
+      change_type = :create
     elsif new_revision =~ /0{40}/
-      change_type = "delete"
+      change_type = :delete
     else
       raise "Invalid revision hash"
     end
 
     case change_type
-    when "create", "update"
+    when :create, :update
       rev = new_revision
-      rev_type=`git cat-file -t #{new_revision}`.strip
-    when "delete"
+      rev_type=`git cat-file -t #@new_revision`.strip
+    when :delete
       rev = old_revision
-      rev_type=`git cat-file -t #{old_revision}`.strip
+      rev_type=`git cat-file -t #@old_revision`.strip
     end
 
-    if reference =~ /refs\/tags\/.*/ and rev_type == "commit"
+    if reference =~ /refs\/tags\/(.*)/ and rev_type == "commit"
       # un-annotated tag
       ref_type = "tag"
-      short_ref = reference.sub(/\Arefs\/tags\//,'')
-    elsif reference =~ /refs\/tags\/.*/ and rev_type == "tag"
+      short_ref = $1
+    elsif reference =~ /refs\/tags\/(.*)/ and rev_type == "tag"
       # annotated tag
       ref_type = "annotated tag"
-      short_ref = reference.sub(/\Arefs\/tags\//,'')
+      short_ref = $1
       # change recipients
       #if [ -n "$announcerecipients" ]; then
       #  recipients="$announcerecipients"
       #fi
-    elsif reference =~ /refs\/heads\/.*/ and rev_type == "commit"
+    elsif reference =~ /refs\/heads\/(.*)/ and rev_type == "commit"
       # branch
       ref_type = "branch"
-      short_ref = reference.sub(/\Arefs\/heads\//,'')
+      short_ref = $1
     elsif reference =~ /refs\/remotes\/.*/ and rev_type == "commit"
       # tracking branch
       # Push-update of tracking branch.
@@ -679,27 +685,21 @@ class GitCommitMailer
       return
     else
       # Anything else (is there anything else?)
-      raise "Unknown type of update to #{reference} (#{rev_type})"
+      raise "Unknown type of update to #@reference (#{rev_type})"
     end
 
-    if ref_type == "branch" and change_type == "update"
-      msg = "Branch (#{reference}) is updated.\n"
-      msg << process_update_branch(block)
-    elsif ref_type == "branch" and change_type == "create"
-      msg = "Branch (#{reference}) is created.\n"
-      msg << process_create_branch(block)
-    elsif ref_type == "branch" and change_type == "delete"
-      msg = "Branch (#{reference}) is deleted.\n"
-      msg << process_delete_branch(block)
-    elsif ref_type == "annotated tag" and change_type == "update"
-      msg = "Annotated tag (#{reference}) is updated.\n"
-      msg << process_update_atag
-    elsif ref_type == "annotated tag" and change_type == "create"
-      msg = "Annotated tag (#{reference}) is created.\n"
-      msg << process_create_atag
-    elsif ref_type == "annotated tag" and change_type == "delete"
-      msg = "Annotated tag (#{reference}) is deleted.\n"
-      msg << process_delete_atag
+    if ref_type == "branch" and change_type == :update
+      msg = process_update_branch(block)
+    elsif ref_type == "branch" and change_type == :create
+      msg = process_create_branch(block)
+    elsif ref_type == "branch" and change_type == :delete
+      msg = process_delete_branch(block)
+    elsif ref_type == "annotated tag" and change_type == :update
+      msg = process_update_atag
+    elsif ref_type == "annotated tag" and change_type == :create
+      msg = process_create_atag
+    elsif ref_type == "annotated tag" and change_type == :delete
+      msg = process_delete_atag
     end
 
     [ref_type, change_type, msg]
@@ -711,7 +711,7 @@ class GitCommitMailer
     # ref that were previously not accessible
     # (see generate_update_branch_email for the explanation of this
     # command)
-    msg = ""
+    msg = "Branch (#@reference) is created.\n"
 
     commit_list = []
     IO.popen("git rev-parse --not --branches | grep -v $(git rev-parse #{reference}) |
@@ -803,7 +803,7 @@ class GitCommitMailer
     # revisions
     fast_forward = false
     revision = nil
-    msg = ""
+    msg = "Branch (#@reference) is updated.\n"
     revision_list = []
     `git rev-list #{new_revision}..#{old_revision}`.lines.each { |revision|
       revision.strip!
@@ -896,22 +896,26 @@ class GitCommitMailer
   end
 
   def process_delete_branch(block)
+    "Branch (#@reference) is deleted.\n" +
     "       was  #@old_revision\n\n" +
     `git show -s --pretty=oneline #@old_revision`
   end
 
   def process_create_atag
+    "Annotated tag (#@reference) is created.\n" +
     "        at  #@new_revision (tag)\n" +
     process_atag
   end
 
   def process_update_atag
+    "Annotated tag (#@reference) is updated.\n" +
     "        to  #@new_revision (tag)\n" +
     "      from  #@old_revision (which is now obsolete)\n" +
     process_atag
   end
 
   def process_delete_atag
+    "Annotated tag (#@reference) is deleted.\n" +
     "       was  #@old_revision\n\n" +
     `git show -s --pretty=oneline #@old_revision`
   end
