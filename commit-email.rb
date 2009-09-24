@@ -631,14 +631,16 @@ class GitCommitMailer
   end
 
   def each_revision(&block)
-    if not old_revision =~ /0{40}/ and not new_revision =~ /0{40}/
+    if old_revision =~ /0{40}/ and new_revision =~ /0{40}/
+      raise "Invalid revision hash"
+    elsif not old_revision =~ /0{40}/ and not new_revision =~ /0{40}/
       change_type = "update"
     elsif old_revision =~ /0{40}/
       change_type = "create"
     elsif new_revision =~ /0{40}/
       change_type = "delete"
     else
-      raise "Corrupted revision hash"
+      raise "Invalid revision hash"
     end
 
     case change_type
@@ -902,23 +904,68 @@ class GitCommitMailer
     msg
   end
 
-  def process_delete_atag
-    msg = ""
-    msg << "       was  #{old_revision}\n"
-    msg << "\n"
-
-    msg << `git show -s --pretty=oneline #{old_revision}`
-
-    msg
-  end
-
   def process_create_atag
-    "        at  $new_revision ($new_revision_type)"
+    "        at  #@new_revision (tag)\n" +
+    process_atag
   end
 
   def process_update_atag
-    "        to  $new_revision ($new_revision_type)"
-    "      from  $old_revision (which is now obsolete)"
+    "        to  #@new_revision (tag)\n" +
+    "      from  #@old_revision (which is now obsolete)\n" +
+    process_atag
+  end
+
+  def process_delete_atag
+    "       was  #{old_revision}\n\n" +
+    `git show -s --pretty=oneline #{old_revision}`
+  end
+
+  def process_atag
+    msg = ''
+    # Use git for-each-ref to pull out the individual fields from the
+    # tag
+    tag_object = `git for-each-ref --format='%(*objectname)' #@reference`.strip
+    tag_type = `git for-each-ref --format='%(*objecttype)' #@reference`.strip
+    tagger = `git for-each-ref --format='%(taggername)' #@reference`.strip
+    tagged = `git for-each-ref --format='%(taggerdate)' #@reference`.strip
+    prev_tag = nil
+
+    msg << "   tagging  #{tag_object} (#{tag_type})\n"
+    case tag_type
+    when "commit"
+      # If the tagged object is a commit, then we assume this is a
+      # release, and so we calculate which tag this tag is
+      # replacing
+      prev_tag = `git describe --abbrev=0 #{@new_revision}^ 2>/dev/null`.strip
+
+      msg << "  replaces  #{prev_tag}\n" if prev_tag
+    else
+      msg << "    length  #{`git cat-file -s #{tag_object}`.strip} bytes\n"
+    end
+    msg << " tagged by  #{tagger}\n"
+    msg << "        on  #{tagged}\n\n"
+
+    # Show the content of the tag message; this might contain a change
+    # log or release notes so is worth displaying.
+    msg << `git cat-file tag #@new_revision | sed -e '1,/^$/d'` + "\n"
+
+    case tag_type
+    when "commit"
+      # Only commit tags make sense to have rev-list operations
+      # performed on them
+      if prev_tag
+        # Show changes since the previous release
+        msg << `git rev-list --pretty=short \"#{prev_tag}..#@new_revision\" | git shortlog`
+      else
+        # No previous tag, show all the changes since time
+        # began
+        msg << `git rev-list --pretty=short #@new_revision | git shortlog`
+      end
+    else
+      # XXX: Is there anything useful we can do for non-commit
+      # objects?
+    end
+    msg
   end
 
   def post_process_infos
@@ -937,11 +984,18 @@ class GitCommitMailer
     @new_revision = new_revision
     @reference = reference
 
+    @push_info = nil
     @commit_infos = []
+
     push_info_args = each_revision do |revision|
       @commit_infos << CommitInfo.new(repository, reference, revision)
     end
-    @push_info = PushInfo.new(old_revision, new_revision, reference, *push_info_args) if push_info_args
+
+    if push_info_args
+      @push_info = PushInfo.new(old_revision, new_revision, reference, *push_info_args)
+    else
+      return
+    end
 
     post_process_infos
 
