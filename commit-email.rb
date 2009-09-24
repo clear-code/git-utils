@@ -278,10 +278,8 @@ class GitCommitMailer
         end
       end
       
-      if lines.length > 0
-        #create the last diff terminated by the EOF
-        @diffs << DiffPerFile.new(lines, @revision)
-      end
+      #create the last diff terminated by the EOF
+      @diffs << DiffPerFile.new(lines, @revision) if lines.length > 0
     end
 
     attr_reader :revision, :author, :date, :subject, :log, :commit_id, :author_email, :diffs
@@ -887,21 +885,13 @@ class GitCommitMailer
     IO.popen("git rev-list #{old_revision}..#{new_revision}").readlines.reverse.each { |revision|
       block.call(revision.strip)
     }
-    #IO.popen("git rev-list --first-parent #{old_revision}..#{new_revision}").readlines.reverse.each { |revision|
-    #  block.call(revison.strip)
-    #}
+
     msg
   end
 
   def process_delete_branch(block)
-    msg = ""
-    msg << "       was  #{old_revision}\n"
-    msg << "\n"
-
-    msg << `git show -s --pretty=oneline #{old_revision}`
-
-
-    msg
+    "       was  #@old_revision\n\n" +
+    `git show -s --pretty=oneline #@old_revision`
   end
 
   def process_create_atag
@@ -916,8 +906,8 @@ class GitCommitMailer
   end
 
   def process_delete_atag
-    "       was  #{old_revision}\n\n" +
-    `git show -s --pretty=oneline #{old_revision}`
+    "       was  #@old_revision\n\n" +
+    `git show -s --pretty=oneline #@old_revision`
   end
 
   def process_atag
