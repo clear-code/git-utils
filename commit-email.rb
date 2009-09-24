@@ -74,6 +74,9 @@ require "socket"
 require "nkf"
 
 class GitCommitMailer
+  KILO_SIZE = 1000
+  DEFAULT_MAX_SIZE = "100M"
+
   class Info
     def Info.get_record(revision, record)
       GitCommitMailer.get_record(revision, record)
@@ -83,23 +86,12 @@ class GitCommitMailer
     end
 
     def short_reference
-       @reference.sub(/\Arefs\/heads\//,'');
-    end
-
-    def detect_project
-      project=`sed -ne \'1p\' \"#{ENV['GIT_DIR']}/description\"`.strip
-      # Check if the description is unchanged from it's default, and shorten it to
-      # a more manageable length if it is
-      if project =~ /Unnamed repository.*$/
-        project = nil
-      end
-
-      project
+       @reference.sub(/\A.*\/.*\//,'');
     end
   end
 
   class PushInfo < Info
-    attr_reader :old_revision, :new_revision, :reference, :reftype, :log, :author, :author_email, :date, :subject
+    attr_reader :old_revision, :new_revision, :reference, :reftype, :log, :author, :author_email, :date, :subject, :change_type
     def initialize(old_revision, new_revision, reference, reftype, change_type, log)
       @old_revision = old_revision
       @new_revision = new_revision
@@ -110,7 +102,6 @@ class GitCommitMailer
       @author_email = get_record("%ae")
       @date = Time.at(get_record("%at").to_i)
       @change_type = change_type
-      @subject = make_subject
     end
 
     def revision
@@ -122,25 +113,6 @@ class GitCommitMailer
         "X-Git-NewRev: #{new_revision}",
         "X-Git-Refname: #{reference}",
         "X-Git-Reftype: #{reftype}" ]
-    end
-
-    def make_subject
-      subject = ""
-      project = detect_project
-      #if show_path?
-      #  _affected_paths = affected_paths(project)
-      #  unless _affected_paths.empty?
-      #    revision_info = "(#{_affected_paths.join(',')}) #{revision_info}"
-      #  end
-      #end
-      if project
-        subject << "[push #{project}] "
-      else
-        subject << "#{revision_info}: "
-      end
-      subject << "#{reftype} (#{reference.sub(/\A.+\/.+\//,'')}) is #{CHANGE_TYPE[@change_type]}."
-
-      NKF.nkf("-WM", subject)
     end
 
     CHANGE_TYPE = {
@@ -260,13 +232,42 @@ class GitCommitMailer
       def link
         file
       end
-
-      def to_s
-        #puts @type + "   " + @a + "  " + @b + "(+#{@added_line} -#{@deleted_line})"
-        #puts @a + "  " + @new_revision + "   " + @old_revision
-        #puts "############################################################"
-        #puts @body
+      
+      def file_path
+        file
       end
+    end
+
+    attr_reader :revision, :author, :date, :subject, :log, :commit_id, :author_email, :diffs
+    attr_reader :added_files, :copied_files, :deleted_files, :updated_files, :renamed_files
+    def initialize(repository, reference, revision)
+      @repository = repository
+      @reference = reference
+      @revision = revision
+
+      @added_files = []
+      @copied_files = []
+      @deleted_files = []
+      @updated_files = []
+      @renamed_files = []
+
+      parse
+      parse_diff
+      init_file_status
+
+      sub_paths('driver')
+    end
+
+    def sub_paths(prefix)
+      prefixes = prefix.split(/\/+/)
+      results = []
+      @diffs.each do |diff|
+        paths = diff.file_path.split(/\/+/)
+        if prefixes.size < paths.size and prefixes == paths[0, prefixes.size]
+          results << paths[prefixes.size]
+        end
+      end
+      results
     end
 
     def parse_diff
@@ -294,29 +295,11 @@ class GitCommitMailer
       @diffs << DiffPerFile.new(lines, @revision) if lines.length > 0
     end
 
-    attr_reader :revision, :author, :date, :subject, :log, :commit_id, :author_email, :diffs
-    attr_reader :added_files, :copied_files, :deleted_files, :updated_files, :renamed_files
-    def initialize(repository, reference, revision)
-      @repository = repository
-      @reference = reference
-      @revision = revision
-
-      @added_files = []
-      @copied_files = []
-      @deleted_files = []
-      @updated_files = []
-      @renamed_files = []
-
-      parse
-      parse_diff
-      init_file_status
-    end
-
     def parse
       @author = get_record("%an")
       @author_email = get_record("%ae")
       @date = Time.at(get_record("%at").to_i)
-      @subject = make_subject
+      @subject = get_record("%s")
       @log = `git log -n 1 --pretty=format:%s%n%n%b #{@revision}`
       @commit_id = get_record("%H")
     end
@@ -359,25 +342,6 @@ class GitCommitMailer
         "X-Git-Repository: XXX",
         "X-Git-Commit-Id: #{commit_id}" ]
     end
-
-    def make_subject
-      subject = ""
-      project = detect_project
-      revision_info = "#{revision[0,7]}"
-      #if show_path?
-      #  _affected_paths = affected_paths(project)
-      #  unless _affected_paths.empty?
-      #    revision_info = "(#{_affected_paths.join(',')}) #{revision_info}"
-      #  end
-      #end
-      if project
-        subject << "[commit #{project} #{short_reference} #{revision_info}] "
-      else
-        subject << "#{revision_info}: "
-      end
-      subject << get_record("%s")
-      NKF.nkf("-WM", subject)
-    end
   end
 
   class << self
@@ -409,8 +373,6 @@ class GitCommitMailer
       [to, options]
     end
 
-    DEFAULT_MAX_SIZE = '100000B'
-    KILO_SIZE = 1024
     def format_size(size)
       return "no limit" if size.nil?
       return "#{size}B" if size < KILO_SIZE
@@ -1131,6 +1093,8 @@ class GitCommitMailer
         body << "    #{line}"
       end
       body << "\n\n"
+    else
+      raise "a new Info Class?"
     end
     body
   end
@@ -1295,27 +1259,61 @@ CONTENT
     headers << "Content-Transfer-Encoding: #{body_encoding_bit}"
     headers << "From: #{from}"
     headers << "To: #{to.join(', ')}"
-    headers << "Subject: #{(@name+' ') if @name}#{@info.subject}"
+    headers << "Subject: #{(@name+' ') if @name}#{make_subject}"
     headers << "Date: #{Time.now.rfc2822}"
     headers.find_all do |header|
       /\A\s*\z/ !~ header
     end.join("\n")
   end
 
-  def affected_paths(project)
-    paths = []
-    [nil, :branches_path, :tags_path].each do |target|
-      prefix = [project]
-      prefix << send(target) if target
-      prefix = prefix.compact.join("/")
-      sub_paths = @info.sub_paths(prefix)
-      if target.nil?
-        sub_paths = sub_paths.find_all do |sub_path|
-          sub_path == trunk_path
+  def detect_project
+    project=`sed -ne \'1p\' \"#{ENV['GIT_DIR']}/description\"`.strip
+    # Check if the description is unchanged from it's default, and shorten it to
+    # a more manageable length if it is
+    if project =~ /Unnamed repository.*$/
+      project = nil
+    end
+
+    project
+  end
+
+  def make_subject
+    subject = ""
+    project = detect_project
+    revision_info = "#{@info.revision[0,7]}"
+
+    if @info.class == CommitInfo
+      if show_path?
+        _affected_paths = affected_paths
+        unless _affected_paths.empty?
+          revision_info = "(#{_affected_paths.join(',')}) #{revision_info}"
         end
       end
-      paths.concat(sub_paths)
+
+      if project
+        subject << "[commit #{project} #{@info.short_reference} #{revision_info}] "
+      else
+        subject << "#{revision_info}: "
+      end
+      subject << @info.subject
+    elsif @info.class == PushInfo
+      if project
+        subject << "[push #{project}] "
+      else
+        subject << "[push] "
+      end
+      subject << "#{@info.reftype} (#{@info.short_reference}) is #{PushInfo::CHANGE_TYPE[@info.change_type]}."
+    else
+      raise "a new Info class?"
     end
+
+    NKF.nkf("-WM", subject)
+  end
+
+  def affected_paths
+    paths = []
+    sub_paths = @info.sub_paths('')
+    paths.concat(sub_paths)
     paths.uniq
   end
 
