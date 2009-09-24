@@ -16,17 +16,19 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 require 'English'
+require "optparse"
+require "ostruct"
+require "time"
+require "net/smtp"
+require "socket"
+require "nkf"
 
 original_argv = ARGV.dup
 argv = []
 
-
 unless ENV['GIT_DIR']
   ENV['GIT_DIR'] = ".git/"
 end
-
-#ENV.each_pair { |k, v| puts "pair[#{k}] => #{v}" }
-
 
 found_include_option = false
 while (arg = original_argv.shift)
@@ -65,14 +67,6 @@ def sendmail(to, from, mail, server=nil, port=nil)
   end
 end
 
-
-require "optparse"
-require "ostruct"
-require "time"
-require "net/smtp"
-require "socket"
-require "nkf"
-
 class GitCommitMailer
   KILO_SIZE = 1000
   DEFAULT_MAX_SIZE = "100M"
@@ -81,6 +75,7 @@ class GitCommitMailer
     def Info.get_record(revision, record)
       GitCommitMailer.get_record(revision, record)
     end
+
     def get_record(record)
       Info.get_record(@revision, record)
     end
@@ -91,12 +86,14 @@ class GitCommitMailer
   end
 
   class PushInfo < Info
-    attr_reader :old_revision, :new_revision, :reference, :reftype, :log, :author, :author_email, :date, :subject, :change_type
-    def initialize(old_revision, new_revision, reference, reftype, change_type, log)
+    attr_reader :old_revision, :new_revision, :reference, :ref_type, :log
+    attr_reader :author, :author_email, :date, :subject, :change_type
+    def initialize(old_revision, new_revision, reference,
+                   ref_type, change_type, log)
       @old_revision = old_revision
       @new_revision = new_revision
       @reference = reference
-      @reftype = reftype
+      @ref_type = ref_type
       @log = log
       @author = get_record("%an")
       @author_email = get_record("%an <%ae>")
@@ -112,7 +109,7 @@ class GitCommitMailer
       [ "X-Git-OldRev: #{old_revision}",
         "X-Git-NewRev: #{new_revision}",
         "X-Git-Refname: #{reference}",
-        "X-Git-Reftype: #{reftype}" ]
+        "X-Git-Reftype: #{ref_type}" ]
     end
 
     CHANGE_TYPE = {
@@ -124,7 +121,8 @@ class GitCommitMailer
 
   class CommitInfo < Info
     class DiffPerFile
-      attr_reader :old_revision, :new_revision, :added_line, :deleted_line, :body, :type
+      attr_reader :old_revision, :new_revision
+      attr_reader :added_line, :deleted_line, :body, :type
       def initialize(lines, revision)
         @metadata = []
         @body = ''
@@ -132,8 +130,6 @@ class GitCommitMailer
         parse_header(lines, revision)
         parse_extended_headers(lines)
         parse_body(lines)
-
-        to_s
       end
 
       def parse_header(lines, revision)
@@ -213,12 +209,11 @@ class GitCommitMailer
 
       def header
          unless @is_binary
-           result = "--- #{@a}    #{format_time(@old_date)} (#{@old_revision[0,7]})\n" +
-                    "+++ #{@b}    #{format_time(@new_date)} (#{@new_revision[0,7]})\n"
+           "--- #{@a}    #{format_time(@old_date)} (#{@old_revision[0,7]})\n" +
+           "+++ #{@b}    #{format_time(@new_date)} (#{@new_revision[0,7]})\n"
          else
-           result = "(Binary files differ)\n"
+           "(Binary files differ)\n"
          end
-         result
       end
 
       def value
@@ -238,8 +233,9 @@ class GitCommitMailer
       end
     end
 
-    attr_reader :revision, :author, :date, :subject, :log, :commit_id, :author_email, :diffs
-    attr_reader :added_files, :copied_files, :deleted_files, :updated_files, :renamed_files
+    attr_reader :revision, :author, :date, :subject, :log, :commit_id
+    attr_reader :author_email, :diffs, :added_files, :copied_files
+    attr_reader :deleted_files, :updated_files, :renamed_files
     def initialize(repository, reference, revision)
       @repository = repository
       @reference = reference
@@ -305,7 +301,8 @@ class GitCommitMailer
     end
 
     def init_file_status
-      `git log -n 1 --pretty=format:'' --name-status #{@revision}`.lines.each do |l|
+      `git log -n 1 --pretty=format:'' --name-status #{@revision}`.
+      lines.each do |l|
         l.rstrip!
         if l =~ /\A([^\t]*?)\t([^\t]*?)\Z/
           status = $1
@@ -676,13 +673,19 @@ class GitCommitMailer
     msg = "Branch (#@reference) is created.\n"
 
     commit_list = []
-    IO.popen("git rev-parse --not --branches | grep -v $(git rev-parse #{reference}) |
-    git rev-list --stdin #{new_revision}").readlines.reverse.each { |revision|
+    IO.popen("git rev-parse --not --branches |
+              grep -v $(git rev-parse #{reference}) |
+              git rev-list --stdin #{new_revision}").
+    readlines.reverse.each { |revision|
       block.call(revision.strip)
-      commit_list << "     via  #{revision[0,7]} #{GitCommitMailer.get_record(revision,'%s')}\n"
+      subject = GitCommitMailer.get_record(revision,'%s')
+      commit_list << "     via  #{revision[0,7]} #{subject}\n"
     }
-    commit_list[-1] = "      at  #{new_revision[0,7]} #{GitCommitMailer.get_record(new_revision,'%s')}\n" if commit_list.length > 0
-    msg << commit_list.join
+    if commit_list.length > 0
+      subject = GitCommitMailer.get_record(new_revision,'%s')
+      commit_list[-1] = "      at  #{new_revision[0,7]} #{subject}\n"
+      msg << commit_list.join
+    end
 
     msg
   end
@@ -769,7 +772,8 @@ class GitCommitMailer
     revision_list = []
     `git rev-list #{new_revision}..#{old_revision}`.lines.each { |revision|
       revision.strip!
-      revision_list << "discards  #{revision[0,7]} #{GitCommitMailer.get_record(revision,'%s')}\n"
+      subject = GitCommitMailer.get_record(revision,'%s')
+      revision_list << "discards  #{revision[0,7]} #{subject}\n"
     }
     unless revision
       fast_forward = true
@@ -782,10 +786,12 @@ class GitCommitMailer
     # the base revision and then forward to the new revision
     `(git rev-list #{old_revision}..#{new_revision})`.lines.each { |revision|
       revision.strip!
-      revision_list << "     via  #{revision[0,7]} #{GitCommitMailer.get_record(revision,'%s')}\n"
+      subject = GitCommitMailer.get_record(revision,'%s')
+      revision_list << "     via  #{revision[0,7]} #{subject}\n"
     }
     if fast_forward
-      revision_list << "    from  #{old_revision[0,7]} #{GitCommitMailer.get_record(old_revision,'%s')}\n"
+      subject = GitCommitMailer.get_record(old_revision,'%s')
+      revision_list << "    from  #{old_revision[0,7]} #{subject}\n"
     end
 
     unless fast_forward
@@ -850,7 +856,8 @@ class GitCommitMailer
     # - including the undoing of previous revisions in the case of
     # non-fast forward updates.
 
-    IO.popen("git rev-list #{old_revision}..#{new_revision}").readlines.reverse.each { |revision|
+    IO.popen("git rev-list #{old_revision}..#{new_revision}").
+    readlines.reverse.each { |revision|
       block.call(revision.strip)
     }
 
@@ -917,7 +924,8 @@ class GitCommitMailer
       # performed on them
       if prev_tag
         # Show changes since the previous release
-        msg << `git rev-list --pretty=short \"#{prev_tag}..#@new_revision\" | git shortlog`
+        msg << `git rev-list --pretty=short \"#{prev_tag}..#@new_revision\" |
+                git shortlog`
       else
         # No previous tag, show all the changes since time
         # began
@@ -954,7 +962,8 @@ class GitCommitMailer
     end
 
     if push_info_args
-      @push_info = PushInfo.new(old_revision, new_revision, reference, *push_info_args)
+      @push_info = PushInfo.new(old_revision, new_revision, reference,
+                                *push_info_args)
     else
       return
     end
@@ -1218,7 +1227,8 @@ INFO
         command = "show"
       when :modified, :property_changed
         command = "diff"
-        args.concat(["-r", "#{diff.old_revision[0,7]} #{diff.new_revision[0,7]}", "#{diff.link}"])
+        args.concat(["-r", "#{diff.old_revision[0,7]}",
+                           "#{diff.new_revision[0,7]}", "#{diff.link}"])
       when :deleted
         command = "show"
         rev = diff.old_revision
@@ -1291,7 +1301,8 @@ CONTENT
       end
 
       if project
-        subject << "[commit #{project} #{@info.short_reference} #{revision_info}] "
+        subject << "[commit #{project} #{@info.short_reference} " +
+                   " #{revision_info}] "
       else
         subject << "#{revision_info}: "
       end
@@ -1302,7 +1313,8 @@ CONTENT
       else
         subject << "[push] "
       end
-      subject << "#{@info.reftype} (#{@info.short_reference}) is #{PushInfo::CHANGE_TYPE[@info.change_type]}."
+      subject << "#{@info.ref_type} (#{@info.short_reference}) is" +
+                 " #{PushInfo::CHANGE_TYPE[@info.change_type]}."
     else
       raise "a new Info class?"
     end
