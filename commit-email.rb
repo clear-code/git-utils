@@ -21,7 +21,7 @@ original_argv = ARGV.dup
 argv = []
 
 
-if not ENV['GIT_DIR']
+unless ENV['GIT_DIR']
   ENV['GIT_DIR'] = ".git/"
 end
 
@@ -164,14 +164,13 @@ class GitCommitMailer
           @a = $1
           @b = $2
         else
-          puts "error!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+          raise "Corrupted diff header"
         end
         if @a != @b
-          puts "...error??????????????????????????????????"
+          raise "<a> and <b> is different in \"diff --git <a> <b>\""
         end
         @new_revision = revision
         @old_revision = `git log -n 1 --pretty=format:%H #{revision}~`.strip
-        #@old_revision = '0'*40 if not @old_revision =~ /[0-9a-fA-F]{40}/
 
         @new_date = Time.at(Info.get_record(@new_revision, "%at").to_i)
         @old_date = Time.at(Info.get_record(@old_revision, "%at").to_i)
@@ -233,7 +232,7 @@ class GitCommitMailer
       end
 
       def header
-         if not @is_binary
+         unless @is_binary
            result = "--- #{@a}    #{format_time(@old_date)} (#{@old_revision[0,7]})\n" +
                     "+++ #{@b}    #{format_time(@new_date)} (#{@new_revision[0,7]})\n"
          else
@@ -639,7 +638,7 @@ class GitCommitMailer
     elsif new_revision =~ /0{40}/
       change_type = "delete"
     else
-      return #error - should throw something?
+      raise "Corrupted revision hash"
     end
 
     case change_type
@@ -669,16 +668,12 @@ class GitCommitMailer
       short_ref = reference.sub(/\Arefs\/heads\//,'')
     elsif reference =~ /refs\/remotes\/.*/ and rev_type == "commit"
       # tracking branch
-      ref_type = "tracking branch"
-      short_ref = reference.sub(/\Arefs\/remotes\//,'')
-      $stderr << "*** Push-update of tracking branch, $ref"
-      $stderr << "***  - no email generated."
+      # Push-update of tracking branch.
+      # no email generated.
       return
     else
       # Anything else (is there anything else?)
-      $stderr << "*** Unknown type of update to $ref ($rev_type)"
-      $stderr << "***  - no email generated"
-      return #error - should throw
+      raise "Unknown type of update to #{reference} (#{rev_type})"
     end
 
     if ref_type == "branch" and change_type == "update"
@@ -808,7 +803,7 @@ class GitCommitMailer
       revision.strip!
       revision_list << "discards  #{revision[0,7]} #{GitCommitMailer.get_record(revision,'%s')}\n"
     }
-    if not revision
+    unless revision
       fast_forward = true
     end
 
@@ -825,7 +820,7 @@ class GitCommitMailer
       revision_list << "    from  #{old_revision[0,7]} #{GitCommitMailer.get_record(old_revision,'%s')}\n"
     end
 
-    if not fast_forward
+    unless fast_forward
       #  1. Existing revisions were removed.  In this case new_revision
       #     is a subset of old_revision - this is the reverse of a
       #     fast-forward, a rewind
@@ -870,7 +865,7 @@ class GitCommitMailer
     msg << "\n"
     msg << revision_list.reverse.join
 
-    if not rewind_only
+    unless rewind_only
       # XXX: Need a way of detecting whether git rev-list actually
       # outputted anything, so that we can issue a "no new
       # revisions added by this update" message
@@ -946,7 +941,7 @@ class GitCommitMailer
     push_info_args = each_revision do |revision|
       @commit_infos << CommitInfo.new(repository, reference, revision)
     end
-    @push_info = PushInfo.new(old_revision, new_revision, reference, *push_info_args)
+    @push_info = PushInfo.new(old_revision, new_revision, reference, *push_info_args) if push_info_args
 
     post_process_infos
 
