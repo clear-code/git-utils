@@ -200,7 +200,13 @@ class GitCommitMailer
               @type = :modified
             end
           else
-            @metadata << line #need to parse
+            if line =~ /\Aindex ([0-9a-f]{7})\.\.([0-9a-f]{7})/
+              @old_blob = $1
+              @new_blob = $2
+            else
+              puts "needs to parse: " + line
+              @metadata << line #need to parse
+            end
           end
 
           line = lines.shift
@@ -223,10 +229,6 @@ class GitCommitMailer
         end
       end
 
-      def link
-        "this is link."
-      end
-
       def format_time(time)
         time.strftime('%Y-%m-%d %X %z')
       end
@@ -247,6 +249,10 @@ class GitCommitMailer
 
       def file
         @a # also can be @b
+      end
+
+      def link
+        file
       end
 
       def to_s
@@ -1210,7 +1216,7 @@ INFO
     #result = "\n#{result}" unless result.empty?
     #result << "\n"
     result = ""
-    diff_info.each do |desc, link|
+    diff_info.each do |desc|
       result << "#{desc}\n"
     end
     result
@@ -1239,24 +1245,25 @@ INFO
     @info.diffs.collect do |diff|
       args = []
       rev = diff.new_revision
-      #case type
-      #when :added
-      #  command = "cat"
-      #when :modified, :property_changed
-      #  command = "diff"
-      #  args.concat(["-r", "#{@info.revision - 1}:#{@info.revision}"])
-      #when :deleted
-      #  command = "cat"
-      #  rev -= 1
-      #when :copied
-      #  command = "cat"
-      #else
-      #  raise "unknown diff type: #{value.type}"
-      #end
+      case diff.type
+      when :added
+        command = "show"
+      when :modified, :property_changed
+        command = "diff"
+        args.concat(["-r", "#{diff.old_revision[0,7]} #{diff.new_revision[0,7]}", "#{diff.link}"])
+      when :deleted
+        command = "show"
+        rev = diff.old_revision
+      when :copied
+        command = "show"
+      else
+        raise "unknown diff type: #{diff.type}"
+      end
+      if command == "show"
+        args.concat(["#{rev[0,7]}:#{diff.link}"])
+      end
 
-      #command += " #{args.join(' ')}" unless args.empty?
-
-      #link = [@repository_uri, key].compact.join("/")
+      command += " #{args.join(' ')}" unless args.empty?
 
       line_info = "+#{diff.added_line} -#{diff.deleted_line}"
       desc = <<-HEADER
@@ -1268,11 +1275,11 @@ HEADER
         desc << diff.value
       else
         desc << <<-CONTENT
-    % git #{command} #{link}@#{rev}
+    % git #{command}
 CONTENT
       end
 
-      [desc, "link link link"]
+      desc
     end
   end
 
