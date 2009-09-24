@@ -688,19 +688,19 @@ class GitCommitMailer
       raise "Unknown type of update to #@reference (#{rev_type})"
     end
 
-    if ref_type == "branch" and change_type == :update
-      msg = process_update_branch(block)
-    elsif ref_type == "branch" and change_type == :create
-      msg = process_create_branch(block)
-    elsif ref_type == "branch" and change_type == :delete
-      msg = process_delete_branch(block)
-    elsif ref_type == "annotated tag" and change_type == :update
-      msg = process_update_atag
-    elsif ref_type == "annotated tag" and change_type == :create
-      msg = process_create_atag
-    elsif ref_type == "annotated tag" and change_type == :delete
-      msg = process_delete_atag
-    end
+    msg = if ref_type == "branch" and change_type == :update
+            process_update_branch(block)
+          elsif ref_type == "branch" and change_type == :create
+            process_create_branch(block)
+          elsif ref_type == "branch" and change_type == :delete
+            process_delete_branch(block)
+          elsif ref_type == "annotated tag" and change_type == :update
+            process_update_atag
+          elsif ref_type == "annotated tag" and change_type == :create
+            process_create_atag
+          elsif ref_type == "annotated tag" and change_type == :delete
+            process_delete_atag
+          end
 
     [ref_type, change_type, msg]
   end
