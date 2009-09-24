@@ -76,9 +76,8 @@ require "nkf"
 class GitCommitMailer
   class Info
     def Info.get_record(revision, record)
-      IO.popen("git log -n 1 --pretty=format:#{record} #{revision}").readlines[0].strip
+      GitCommitMailer.get_record(revision, record)
     end
-
     def get_record(record)
       Info.get_record(@revision, record)
     end
@@ -88,7 +87,7 @@ class GitCommitMailer
     end
 
     def detect_project
-      project=IO.popen("sed -ne \'1p\' \"#{ENV['GIT_DIR']}/description\"").readlines[0].strip
+      project=`sed -ne \'1p\' \"#{ENV['GIT_DIR']}/description\"`.strip
       # Check if the description is unchanged from it's default, and shorten it to
       # a more manageable length if it is
       if project =~ /Unnamed repository.*$/
@@ -174,8 +173,8 @@ class GitCommitMailer
         @old_revision = `git log -n 1 --pretty=format:%H #{revision}~`.strip
         #@old_revision = '0'*40 if not @old_revision =~ /[0-9a-fA-F]{40}/
 
-        @new_date = Time.at(CommitInfo.get_record(@new_revision, "%at").to_i)
-        @old_date = Time.at(CommitInfo.get_record(@old_revision, "%at").to_i)
+        @new_date = Time.at(Info.get_record(@new_revision, "%at").to_i)
+        @old_date = Time.at(Info.get_record(@old_revision, "%at").to_i)
       end
 
       def parse_extended_headers(lines)
@@ -373,6 +372,10 @@ class GitCommitMailer
   end
 
   class << self
+    def get_record(revision, record)
+      `git log -n 1 --pretty=format:#{record} #{revision}`.strip
+    end
+
     def run(argv=nil)
       argv ||= ARGV
       to, options = parse(argv)
@@ -713,16 +716,12 @@ class GitCommitMailer
     IO.popen("git rev-parse --not --branches | grep -v $(git rev-parse #{reference}) |
     git rev-list --stdin #{new_revision}").readlines.reverse.each { |revision|
       block.call(revision.strip)
-      commit_list << "     via  #{revision[0,7]} #{get_commit_subject(revision)}\n"
+      commit_list << "     via  #{revision[0,7]} #{GitCommitMailer.get_record(revision,'%s')}\n"
     }
-    commit_list[-1] = "      at  #{new_revision[0,7]} #{get_commit_subject(new_revision)}\n"
+    commit_list[-1] = "      at  #{new_revision[0,7]} #{GitCommitMailer.get_record(new_revision,'%s')}\n" if commit_list.length > 0
     msg << commit_list.join
 
     msg
-  end
-
-  def get_commit_subject(revision)
-      IO.popen("git log -n 1 --pretty=format:%s #{revision}").readlines[0].strip
   end
 
   def process_update_branch(block)
@@ -807,7 +806,7 @@ class GitCommitMailer
     revision_list = []
     `git rev-list #{new_revision}..#{old_revision}`.lines.each { |revision|
       revision.strip!
-      revision_list << "discards  #{revision[0,7]} #{get_commit_subject(revision)}\n"
+      revision_list << "discards  #{revision[0,7]} #{GitCommitMailer.get_record(revision,'%s')}\n"
     }
     if not revision
       fast_forward = true
@@ -820,10 +819,10 @@ class GitCommitMailer
     # the base revision and then forward to the new revision
     `(git rev-list #{old_revision}..#{new_revision})`.lines.each { |revision|
       revision.strip!
-      revision_list << "     via  #{revision[0,7]} #{get_commit_subject(revision)}\n"
+      revision_list << "     via  #{revision[0,7]} #{GitCommitMailer.get_record(revision,'%s')}\n"
     }
     if fast_forward
-      revision_list << "    from  #{old_revision[0,7]} #{get_commit_subject(old_revision)}\n"
+      revision_list << "    from  #{old_revision[0,7]} #{GitCommitMailer.get_record(old_revision,'%s')}\n"
     end
 
     if not fast_forward
@@ -1378,7 +1377,7 @@ rescue Exception => error
 #{error.backtrace.join("\n")}
 EOM
   to = to.compact
-  if to.empty?
+  if true#to.empty?
     STDERR.puts detail
   else
     sendmail(to, from, <<-MAIL, server, port)
