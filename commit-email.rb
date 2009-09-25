@@ -121,7 +121,7 @@ class GitCommitMailer
 
   class CommitInfo < Info
     class DiffPerFile
-      attr_reader :old_revision, :new_revision, :a, :b
+      attr_reader :old_revision, :new_revision, :from_file, :to_file
       attr_reader :added_line, :deleted_line, :body, :type
       attr_reader :deleted_file_mode, :new_file_mode, :old_mode, :new_mode
       attr_reader :similarity_index
@@ -137,8 +137,8 @@ class GitCommitMailer
       def parse_header(lines, revision)
         line = lines.shift
         if line =~ /\Adiff --git a\/(.*) b\/(.*)/
-          @a = $1
-          @b = $2
+          @from_file = $1
+          @to_file = $2
         else
           raise "Corrupted diff header"
         end
@@ -228,8 +228,8 @@ class GitCommitMailer
 
       def header
          unless @is_binary
-           "--- #{@a}    #{format_time(@old_date)} (#{@old_revision[0,7]})\n" +
-           "+++ #{@b}    #{format_time(@new_date)} (#{@new_revision[0,7]})\n"
+           "--- #{@from_file}    #{format_time(@old_date)} (#{@old_revision[0,7]})\n" +
+           "+++ #{@to_file}    #{format_time(@new_date)} (#{@new_revision[0,7]})\n"
          else
            "(Binary files differ)\n"
          end
@@ -240,7 +240,7 @@ class GitCommitMailer
       end
 
       def file
-        @b # the new file entity when copied and renamed
+        @to_file # the new file entity when copied and renamed
       end
 
       def link
@@ -1214,13 +1214,13 @@ INFO
         command = "diff"
         args.concat(["-C","--diff-filter=R",
                      "-r", diff.old_revision[0,7], diff.new_revision[0,7], "--",
-                     diff.a, diff.b])
+                     diff.from_file, diff.to_file])
         similarity_index = "Similarity: #{diff.similarity_index}"
       when :copied
         command = "diff"
         args.concat(["-C","--diff-filter=C",
                      "-r", diff.old_revision[0,7], diff.new_revision[0,7], "--",
-                     diff.a, diff.b])
+                     diff.from_file, diff.to_file])
         similarity_index = "Similarity: #{diff.similarity_index}"
       else
         raise "unknown diff type: #{diff.type}"
