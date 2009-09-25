@@ -121,8 +121,10 @@ class GitCommitMailer
 
   class CommitInfo < Info
     class DiffPerFile
-      attr_reader :old_revision, :new_revision
+      attr_reader :old_revision, :new_revision, :a, :b
       attr_reader :added_line, :deleted_line, :body, :type
+      attr_reader :deleted_file_mode, :new_file_mode, :old_mode, :new_mode
+      attr_reader :similarity_index
       def initialize(lines, revision)
         @metadata = []
         @body = ''
@@ -140,9 +142,6 @@ class GitCommitMailer
         else
           raise "Corrupted diff header"
         end
-        if @a != @b
-          raise "<a> and <b> is different in \"diff --git <a> <b>\""
-        end
         @new_revision = revision
         @old_revision = `git log -n 1 --pretty=format:%H #{revision}~`.strip
 
@@ -150,9 +149,15 @@ class GitCommitMailer
         @old_date = Time.at(Info.get_record(@old_revision, "%at").to_i)
       end
 
+      def mode_changed?
+        @is_mode_changed
+      end
+
       def parse_extended_headers(lines)
         @type = :modified
         @is_binary = false
+        @is_mode_changed = false
+
         line = lines.shift
         while line != nil and not line =~ /\A@@/
           case line
@@ -162,8 +167,12 @@ class GitCommitMailer
           when /\A\+\+\+ (b\/.*|\/dev\/null)\Z/
             @plus_file = $1
             @type = :deleted if $1 == '/dev/null'
-          when /\Adeleted file mode/
+          when /\Anew file mode (.*)\Z/
+            @type = :added
+            @new_file_mode = $1
+          when /\Adeleted file mode (.*)\Z/
             @type = :deleted
+            @deleted_file_mode = $1
           when /\ABinary files (.*) and (.*) differ\Z/
             @is_binary = true
             if $1 == '/dev/null'
@@ -173,14 +182,24 @@ class GitCommitMailer
             else
               @type = :modified
             end
+          when /\Aindex ([0-9a-f]{7})\.\.([0-9a-f]{7})/
+            @old_blob = $1
+            @new_blob = $2
+          when /\Arename (from|to) (.*)\Z/
+            @type = :renamed
+          when /\Acopy (from|to) (.*)\Z/
+            @type = :copied
+          when /\Asimilarity index (.*)\Z/
+            @similarity_index = $1
+          when /\Aold mode (.*)\Z/
+            @old_mode = $1
+            @is_mode_changed = true
+          when /\Anew mode (.*)\Z/
+            @new_mode = $1
+            @is_mode_changed = true
           else
-            if line =~ /\Aindex ([0-9a-f]{7})\.\.([0-9a-f]{7})/
-              @old_blob = $1
-              @new_blob = $2
-            else
-              puts "needs to parse: " + line
-              @metadata << line #need to parse
-            end
+            puts "needs to parse: " + line
+            @metadata << line #need to parse
           end
 
           line = lines.shift
@@ -221,7 +240,7 @@ class GitCommitMailer
       end
 
       def file
-        @a # also can be @b
+        @b # the new file entity when copied and renamed
       end
 
       def link
@@ -267,7 +286,7 @@ class GitCommitMailer
     end
 
     def parse_diff
-      f = IO.popen("git log -n 1 --pretty=format:'' -p #{@revision}")
+      f = IO.popen("git log -n 1 --pretty=format:'' -C -p #{@revision}")
       f.gets #removes the first empty line
 
       #f = IO.popen("git diff #{revision}~ #{revision}")
@@ -301,7 +320,7 @@ class GitCommitMailer
     end
 
     def init_file_status
-      `git log -n 1 --pretty=format:'' --name-status #{@revision}`.
+      `git log -n 1 --pretty=format:'' -C --name-status #{@revision}`.
       lines.each do |l|
         l.rstrip!
         if l =~ /\A([^\t]*?)\t([^\t]*?)\Z/
@@ -316,18 +335,17 @@ class GitCommitMailer
           when /^D/ # Deleted
             @deleted_files << file
           end
-        #elsif l =~ /\A([^\t]*?)\t([^\t]*?)\t([^\t]*?)\Z/
-        #  status = $1
-        #  from_file = $2
-        #  to_file = $3
+        elsif l =~ /\A([^\t]*?)\t([^\t]*?)\t([^\t]*?)\Z/
+          status = $1
+          from_file = $2
+          to_file = $3
 
-          #puts "#{status}, #{from_file}, #{to_file}"
-        #  case status
-        #  when /^R/ # Renamed
-        #    @renamed_files << [from_file, to_file]
-        #  when /^C/ # Copied
-        #    @copied_files << [from_file, to_file]
-        #  end
+          case status
+          when /^R/ # Renamed
+            @renamed_files << [from_file, to_file]
+          when /^C/ # Copied
+            @copied_files << [from_file, to_file]
+          end
         end
       end
     end
@@ -1082,7 +1100,7 @@ class GitCommitMailer
       body << copied_files
       body << deleted_files
       body << modified_files
-      #body << renamed_files
+      body << renamed_files
 
       body << "\n"
       body << change_info
@@ -1138,10 +1156,21 @@ class GitCommitMailer
 
   def copied_files
     changed_files("Copied", @info.copied_files) do |rv, files|
-      rv << files.collect do |file, from_file, from_rev|
+      rv << files.collect do |from_file, to_file|
         <<-INFO
-    #{file}
-      (from rev #{from_rev}, #{from_file})
+    #{to_file}
+      (from #{from_file})
+INFO
+      end.join("")
+    end
+  end
+
+  def renamed_files
+    changed_files("Renamed", @info.renamed_files) do |rv, files|
+      rv << files.collect do |from_file, to_file|
+        <<-INFO
+    #{to_file}
+      (from #{from_file})
 INFO
       end.join("")
     end
@@ -1152,11 +1181,8 @@ INFO
     :modified => "Modified",
     :deleted => "Deleted",
     :copied => "Copied",
-    :property_changed => "Property changed",
+    :renamed => "Renamed",
   }
-
-  CHANGED_MARK = Hash.new("=")
-  CHANGED_MARK[:property_changed] = "_"
 
   def change_info
     result = ""
@@ -1170,18 +1196,32 @@ INFO
     @info.diffs.collect do |diff|
       args = []
       rev = diff.new_revision
+      similarity_index = ""
+      file_mode = ""
       case diff.type
       when :added
         command = "show"
-      when :modified, :property_changed
-        command = "diff"
-        args.concat(["-r", "#{diff.old_revision[0,7]}",
-                           "#{diff.new_revision[0,7]}", "#{diff.link}"])
+        file_mode = "Mode: #{diff.new_file_mode}"
       when :deleted
         command = "show"
+        file_mode = "Mode: #{diff.deleted_file_mode}"
         rev = diff.old_revision
+      when :modified
+        command = "diff"
+        args.concat(["-r", diff.old_revision[0,7], diff.new_revision[0,7],
+                     diff.link])
+      when :renamed
+        command = "diff"
+        args.concat(["-C","--diff-filter=R",
+                     "-r", diff.old_revision[0,7], diff.new_revision[0,7], "--",
+                     diff.a, diff.b])
+        similarity_index = "Similarity: #{diff.similarity_index}"
       when :copied
-        command = "show"
+        command = "diff"
+        args.concat(["-C","--diff-filter=C",
+                     "-r", diff.old_revision[0,7], diff.new_revision[0,7], "--",
+                     diff.a, diff.b])
+        similarity_index = "Similarity: #{diff.similarity_index}"
       else
         raise "unknown diff type: #{diff.type}"
       end
@@ -1192,10 +1232,12 @@ INFO
       command += " #{args.join(' ')}" unless args.empty?
 
       line_info = "+#{diff.added_line} -#{diff.deleted_line}"
-      desc = <<-HEADER
-  #{CHANGED_TYPE[diff.type]}: #{diff.file} (#{line_info})
-#{CHANGED_MARK[diff.type] * 67}
-HEADER
+      desc =  "  #{CHANGED_TYPE[diff.type]}: #{diff.file} (#{line_info})"
+      desc << " #{file_mode}#{similarity_index}\n"
+      if diff.mode_changed?
+        desc << "  Mode: #{diff.old_mode} -> #{diff.new_mode}\n"
+      end
+      desc << "#{"=" * 67}\n"
 
       if add_diff?
         desc << diff.value
@@ -1250,7 +1292,7 @@ CONTENT
 
       if project
         subject << "[commit #{project} #{@info.short_reference} " +
-                   " #{revision_info}] "
+                   "#{revision_info}] "
       else
         subject << "#{revision_info}: "
       end
