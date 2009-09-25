@@ -1078,15 +1078,10 @@ class GitCommitMailer
         body << "    #{line}"
       end
       body << "\n\n"
-      #body << added_dirs
       body << added_files
-      #body << copied_dirs
       body << copied_files
-      #body << deleted_dirs
       body << deleted_files
-      #body << modified_dirs
       body << modified_files
-
       #body << renamed_files
 
       body << "\n"
@@ -1152,31 +1147,6 @@ INFO
     end
   end
 
-  def changed_dirs(title, files, &block)
-    changed_items(title, "directories", files, &block)
-  end
-
-  def added_dirs
-    changed_dirs("Added", @info.added_dirs)
-  end
-
-  def deleted_dirs
-    changed_dirs("Removed", @info.deleted_dirs)
-  end
-
-  def modified_dirs
-    changed_dirs("Modified", @info.updated_dirs)
-  end
-
-  def copied_dirs
-    changed_dirs("Copied", @info.copied_dirs) do |rv, dirs|
-      rv << dirs.collect do |dir, from_dir, from_rev|
-        "    #{dir} (from rev #{from_rev}, #{from_dir})\n"
-      end.join("")
-    end
-  end
-
-
   CHANGED_TYPE = {
     :added => "Added",
     :modified => "Modified",
@@ -1189,33 +1159,11 @@ INFO
   CHANGED_MARK[:property_changed] = "_"
 
   def change_info
-    #result = changed_dirs_info
-    #result = "\n#{result}" unless result.empty?
-    #result << "\n"
     result = ""
     diff_info.each do |desc|
       result << "#{desc}\n"
     end
     result
-  end
-
-  def changed_dirs_info
-    rev = @info.revision
-    (@info.added_dirs.collect do |dir|
-       "  Added: #{dir}\n"
-     end + @info.copied_dirs.collect do |dir, from_dir, from_rev|
-       <<-INFO
-  Copied: #{dir}
-    (from rev #{from_rev}, #{from_dir})
-INFO
-     end + @info.deleted_dirs.collect do |dir|
-       <<-INFO
-  Deleted: #{dir}
-    % git ls #{[@repository_uri, dir].compact.join("/")}@#{rev - 1}
-INFO
-     end + @info.updated_dirs.collect do |dir|
-       "  Modified: #{dir}\n"
-     end).join("\n")
   end
 
   def diff_info
