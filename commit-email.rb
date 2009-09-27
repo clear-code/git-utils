@@ -161,19 +161,19 @@ class GitCommitMailer
         line = lines.shift
         while line != nil and not line =~ /\A@@/
           case line
-          when /\A--- (a\/.*|\/dev\/null)\Z/
+          when /\A--- (a\/.*|\/dev\/null)\z/
             @minus_file = $1
             @type = :added if $1 == '/dev/null'
-          when /\A\+\+\+ (b\/.*|\/dev\/null)\Z/
+          when /\A\+\+\+ (b\/.*|\/dev\/null)\z/
             @plus_file = $1
             @type = :deleted if $1 == '/dev/null'
-          when /\Anew file mode (.*)\Z/
+          when /\Anew file mode (.*)\z/
             @type = :added
             @new_file_mode = $1
-          when /\Adeleted file mode (.*)\Z/
+          when /\Adeleted file mode (.*)\z/
             @type = :deleted
             @deleted_file_mode = $1
-          when /\ABinary files (.*) and (.*) differ\Z/
+          when /\ABinary files (.*) and (.*) differ\z/
             @is_binary = true
             if $1 == '/dev/null'
               @type = :added
@@ -185,16 +185,16 @@ class GitCommitMailer
           when /\Aindex ([0-9a-f]{7})\.\.([0-9a-f]{7})/
             @old_blob = $1
             @new_blob = $2
-          when /\Arename (from|to) (.*)\Z/
+          when /\Arename (from|to) (.*)\z/
             @type = :renamed
-          when /\Acopy (from|to) (.*)\Z/
+          when /\Acopy (from|to) (.*)\z/
             @type = :copied
-          when /\Asimilarity index (.*)\Z/
+          when /\Asimilarity index (.*)\z/
             @similarity_index = $1
-          when /\Aold mode (.*)\Z/
+          when /\Aold mode (.*)\z/
             @old_mode = $1
             @is_mode_changed = true
-          when /\Anew mode (.*)\Z/
+          when /\Anew mode (.*)\z/
             @new_mode = $1
             @is_mode_changed = true
           else
@@ -323,7 +323,7 @@ class GitCommitMailer
       `git log -n 1 --pretty=format:'' -C --name-status #{@revision}`.
       lines.each do |l|
         l.rstrip!
-        if l =~ /\A([^\t]*?)\t([^\t]*?)\Z/
+        if l =~ /\A([^\t]*?)\t([^\t]*?)\z/
           status = $1
           file = $2
           
@@ -335,7 +335,7 @@ class GitCommitMailer
           when /^D/ # Deleted
             @deleted_files << file
           end
-        elsif l =~ /\A([^\t]*?)\t([^\t]*?)\t([^\t]*?)\Z/
+        elsif l =~ /\A([^\t]*?)\t([^\t]*?)\t([^\t]*?)\z/
           status = $1
           from_file = $2
           to_file = $3
@@ -691,11 +691,10 @@ class GitCommitMailer
     msg = "Branch (#@reference) is created.\n"
 
     commit_list = []
-    IO.popen("git rev-parse --not --branches |
-              grep -v $(git rev-parse #{reference}) |
-              git rev-list --stdin #{new_revision}").
-    readlines.reverse.each { |revision|
-      block.call(revision.strip)
+    `git rev-parse --not --branches | grep -v $(git rev-parse #{reference}) |
+     git rev-list --stdin #{new_revision}`.lines.reverse_each { |revision|
+      revision.strip!
+      block.call(revision)
       subject = GitCommitMailer.get_record(revision,'%s')
       commit_list << "     via  #{revision[0,7]} #{subject}\n"
     }
@@ -788,7 +787,7 @@ class GitCommitMailer
     revision = nil
     msg = "Branch (#@reference) is updated.\n"
     revision_list = []
-    `git rev-list #{new_revision}..#{old_revision}`.lines.each { |revision|
+    `git rev-list #@new_revision..#@old_revision`.lines.each { |revision|
       revision.strip!
       subject = GitCommitMailer.get_record(revision,'%s')
       revision_list << "discards  #{revision[0,7]} #{subject}\n"
@@ -802,7 +801,7 @@ class GitCommitMailer
     # have already had notification emails and is present to show the
     # full detail of the change from rolling back the old revision to
     # the base revision and then forward to the new revision
-    `(git rev-list #{old_revision}..#{new_revision})`.lines.each { |revision|
+    `(git rev-list #@old_revision..#@new_revision)`.lines.each { |revision|
       revision.strip!
       subject = GitCommitMailer.get_record(revision,'%s')
       revision_list << "     via  #{revision[0,7]} #{subject}\n"
@@ -825,7 +824,7 @@ class GitCommitMailer
 
       # Find the common ancestor of the old and new revisions and
       # compare it with new_revision
-      baserev = `git merge-base #{old_revision} #{new_revision}`.strip
+      baserev = `git merge-base #@old_revision #@new_revision`.strip
       rewind_only = false
       if baserev == new_revision
         msg << "This update discarded existing revisions and left the branch pointing at\n"
@@ -874,8 +873,7 @@ class GitCommitMailer
     # - including the undoing of previous revisions in the case of
     # non-fast forward updates.
 
-    IO.popen("git rev-list #{old_revision}..#{new_revision}").
-    readlines.reverse.each { |revision|
+    `git rev-list #{old_revision}..#{new_revision}`.lines.reverse_each{|revision|
       block.call(revision.strip)
     }
 
@@ -923,7 +921,7 @@ class GitCommitMailer
       # If the tagged object is a commit, then we assume this is a
       # release, and so we calculate which tag this tag is
       # replacing
-      prev_tag = `git describe --abbrev=0 #{@new_revision}^ 2>/dev/null`.strip
+      prev_tag = `git describe --abbrev=0 #@new_revision^`.strip
 
       msg << "  replaces  #{prev_tag}\n" if prev_tag
     else
@@ -934,7 +932,10 @@ class GitCommitMailer
 
     # Show the content of the tag message; this might contain a change
     # log or release notes so is worth displaying.
-    msg << `git cat-file tag #@new_revision | sed -e '1,/^$/d'` + "\n"
+    tag_content = `git cat-file tag #@new_revision`.split("\n")
+    tag_content.shift while not tag_content[0].empty?
+    tag_content.shift
+    msg << tag_content.join("\n")
 
     case tag_type
     when "commit"
@@ -1267,7 +1268,7 @@ CONTENT
   end
 
   def detect_project
-    project=`sed -ne \'1p\' \"#{ENV['GIT_DIR']}/description\"`.strip
+    project = File.open("#{ENV['GIT_DIR']}/description").gets.strip
     # Check if the description is unchanged from it's default, and shorten it to
     # a more manageable length if it is
     if project =~ /Unnamed repository.*$/
