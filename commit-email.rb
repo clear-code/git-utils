@@ -164,14 +164,14 @@ class GitCommitMailer
   end
 
   class PushInfo < Info
-    attr_reader :old_revision, :new_revision, :reference, :ref_type, :log
+    attr_reader :old_revision, :new_revision, :reference, :reference_type, :log
     attr_reader :author, :author_email, :date, :subject, :change_type
     def initialize(old_revision, new_revision, reference,
-                   ref_type, change_type, log)
+                   reference_type, change_type, log)
       @old_revision = old_revision
       @new_revision = new_revision
       @reference = reference
-      @ref_type = ref_type
+      @reference_type = reference_type
       @log = log
       @author = get_record("%an")
       @author_email = get_record("%an <%ae>")
@@ -187,7 +187,7 @@ class GitCommitMailer
       [ "X-Git-OldRev: #{old_revision}",
         "X-Git-NewRev: #{new_revision}",
         "X-Git-Refname: #{reference}",
-        "X-Git-Reftype: #{ref_type}" ]
+        "X-Git-Reftype: #{reference_type}" ]
     end
 
     CHANGE_TYPE = {
@@ -344,7 +344,7 @@ class GitCommitMailer
       @updated_files = []
       @renamed_files = []
 
-      parse
+      initialize_by_getting_records
       parse_diff
       init_file_status
 
@@ -361,6 +361,15 @@ class GitCommitMailer
         end
       end
       results
+    end
+
+    def initialize_by_getting_records
+      @author = get_record("%an")
+      @author_email = get_record("%an <%ae>")
+      @date = Time.at(get_record("%at").to_i)
+      @subject = get_record("%s")
+      @log = `git log -n 1 --pretty=format:%s%n%n%b #{@revision}`
+      @commit_id = get_record("%H")
     end
 
     def parse_diff
@@ -388,20 +397,11 @@ class GitCommitMailer
       @diffs << DiffPerFile.new(lines, @revision) if lines.length > 0
     end
 
-    def parse
-      @author = get_record("%an")
-      @author_email = get_record("%an <%ae>")
-      @date = Time.at(get_record("%at").to_i)
-      @subject = get_record("%s")
-      @log = `git log -n 1 --pretty=format:%s%n%n%b #{@revision}`
-      @commit_id = get_record("%H")
-    end
-
     def init_file_status
       `git log -n 1 --pretty=format:'' -C --name-status #{@revision}`.
-      lines.each do |l|
-        l.rstrip!
-        if l =~ /\A([^\t]*?)\t([^\t]*?)\z/
+      lines.each do |line|
+        line.rstrip!
+        if line =~ /\A([^\t]*?)\t([^\t]*?)\z/
           status = $1
           file = $2
           
@@ -413,7 +413,7 @@ class GitCommitMailer
           when /^D/ # Deleted
             @deleted_files << file
           end
-        elsif l =~ /\A([^\t]*?)\t([^\t]*?)\t([^\t]*?)\z/
+        elsif line =~ /\A([^\t]*?)\t([^\t]*?)\t([^\t]*?)\z/
           status = $1
           from_file = $2
           to_file = $3
@@ -700,7 +700,7 @@ class GitCommitMailer
   def detect_change_type
     if old_revision =~ /0{40}/ and new_revision =~ /0{40}/
       raise "Invalid revision hash"
-    elsif not old_revision =~ /0{40}/ and not new_revision =~ /0{40}/
+    elsif old_revision !~ /0{40}/ and new_revision !~ /0{40}/
       :update
     elsif old_revision =~ /0{40}/
       :create
@@ -1014,12 +1014,10 @@ EOF
 
     @info = @push_info
     send_mail make_mail
-    sleep 1
 
     @commit_infos.each { |info|
       @info = info
       send_mail make_mail
-      sleep 0.1
     }
 
     output_rss
@@ -1327,7 +1325,7 @@ CONTENT
       else
         subject << "[push] "
       end
-      subject << "#{@info.ref_type} (#{@info.short_reference}) is" +
+      subject << "#{@info.reference_type} (#{@info.short_reference}) is" +
                  " #{PushInfo::CHANGE_TYPE[@info.change_type]}."
     else
       raise "a new Info class?"
@@ -1441,7 +1439,7 @@ rescue Exception => error
     retry
   rescue OptionParser::ParseError
     if to.empty?
-      _, _, _to, *_ = ARGV.reject {|arg| /^-/.match(arg)}
+      _to, *_ = ARGV.reject {|arg| /^-/.match(arg)}
       to = [_to]
     end
   end
