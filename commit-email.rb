@@ -772,14 +772,22 @@ class GitCommitMailer
     [reference_type, change_type, push_messsage]
   end
 
+  def excluded_revisions
+     # refer to the long comment located at the top of this file for the
+     # explanation of this command.
+     current_reference_rev = `git rev-parse #@reference`.strip
+     `git rev-parse --not --branches`.lines.find_all { |line|
+       line.strip!
+       not line.index(current_reference_rev)
+     }.join(' ')
+  end
+
   def process_create_branch(block)
     msg = "Branch (#@reference) is created.\n"
 
     commit_list = []
-    # refer to the long comment located at the top of this file for the
-    # explanation of this command.
-    `git rev-parse --not --branches | grep -v $(git rev-parse #{reference}) |
-     git rev-list --stdin #{new_revision}`.lines.reverse_each { |revision|
+    `git rev-list #@new_revision #{excluded_revisions}`.lines.
+    reverse_each { |revision|
       revision.strip!
       block.call(revision)
       subject = GitCommitMailer.get_record(revision,'%s')
@@ -885,17 +893,15 @@ EOF
     msg << "\n"
     msg << revision_list.join
 
+    no_actual_output = true
     unless rewind_only
-      # refer to the long comment located at the top of this file for the
-      # explanation of this command.
-      `git rev-parse --not --branches | grep -v $(git rev-parse #@reference) |
-      git rev-list --stdin #@old_revision..#@new_revision`.lines.reverse_each{ |revision|
+      `git rev-list #@old_revision..#@new_revision #{excluded_revisions}`.lines.
+      reverse_each{ |revision|
         block.call(revision.strip)
+        no_actual_output = false
       }
-      # XXX: Need a way of detecting whether git rev-list actually
-      # outputted anything, so that we can issue a "no new
-      # revisions added by this update" message
-    else
+    end
+    if rewind_only or no_actual_output
       msg << "\n"
       msg << "No new revisions were added by this update.\n"
     end
@@ -1045,6 +1051,7 @@ EOF
   end
 
   def send_mail(mail)
+    sleep 0.1
     _from = extract_email_address(from)
     to = @to.collect {|address| extract_email_address(address)}
     Net::SMTP.start(@server || "localhost", @port) do |smtp|
