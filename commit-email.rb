@@ -847,7 +847,11 @@ EOF
       subject = GitCommitMailer.get_record(revision, '%s')
       revision_list << "discards  #{revision[0,7]} #{subject}\n"
     }
-    fast_forward = true unless revision
+    unless revision
+      fast_forward = true 
+      subject = GitCommitMailer.get_record(old_revision,'%s')
+      revision_list << "    from  #{old_revision[0,7]} #{subject}\n"
+    end
 
     # List all the revisions from baserev to new_revision in a kind of
     # "table-of-contents"; note this list can include revisions that
@@ -861,11 +865,6 @@ EOF
       tmp << "     via  #{revision[0,7]} #{subject}\n"
     }
     revision_list.concat(tmp.reverse)
-
-    if fast_forward
-      subject = GitCommitMailer.get_record(old_revision,'%s')
-      revision_list << "    from  #{old_revision[0,7]} #{subject}\n"
-    end
 
     unless fast_forward
       #  1. Existing revisions were removed.  In this case new_revision
@@ -896,7 +895,7 @@ EOF
     no_actual_output = true
     unless rewind_only
       `git rev-list #@old_revision..#@new_revision #{excluded_revisions}`.lines.
-      reverse_each{ |revision|
+      reverse_each { |revision|
         block.call(revision.strip)
         no_actual_output = false
       }
