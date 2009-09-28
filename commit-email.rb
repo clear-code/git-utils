@@ -346,7 +346,7 @@ class GitCommitMailer
 
       initialize_by_getting_records
       parse_diff
-      init_file_status
+      parse_file_status
 
       sub_paths('driver')
     end
@@ -397,7 +397,7 @@ class GitCommitMailer
       @diffs << DiffPerFile.new(lines, @revision) if lines.length > 0
     end
 
-    def init_file_status
+    def parse_file_status
       `git log -n 1 --pretty=format:'' -C --name-status #{@revision}`.
       lines.each do |line|
         line.rstrip!
