@@ -272,7 +272,7 @@ class GitCommitMailer
             @new_mode = $1
             @is_mode_changed = true
           else
-            #puts "needs to parse: " + line
+            puts "needs to parse: " + line
             @metadata << line #need to parse
           end
 
