@@ -711,8 +711,7 @@ class GitCommitMailer
       commit_list << "     via  #{revision[0,7]} #{subject}\n"
     }
     if commit_list.length > 0
-      subject = GitCommitMailer.get_record(new_revision,'%s')
-      commit_list[-1] = "      at  #{new_revision[0,7]} #{subject}\n"
+      commit_list[-1].sub(/     via  /,'     at   ')
       msg << commit_list.join
     end
 
@@ -813,11 +812,15 @@ class GitCommitMailer
     # have already had notification emails and is present to show the
     # full detail of the change from rolling back the old revision to
     # the base revision and then forward to the new revision
-    `(git rev-list #@old_revision..#@new_revision)`.lines.each { |revision|
+    `git rev-list #@old_revision..#@new_revision`.lines.each { |revision|
       revision.strip!
       subject = GitCommitMailer.get_record(revision,'%s')
       revision_list << "     via  #{revision[0,7]} #{subject}\n"
     }
+    `git rev-list #@old_revision..#@new_revision`.lines.reverse_each{ |revision|
+      block.call(revision.strip)
+    }
+
     if fast_forward
       subject = GitCommitMailer.get_record(old_revision,'%s')
       revision_list << "    from  #{old_revision[0,7]} #{subject}\n"
@@ -876,18 +879,6 @@ class GitCommitMailer
       msg << "\n"
       msg << "No new revisions were added by this update.\n"
     end
-
-    # The diffstat is shown from the old revision to the new revision.
-    # This is to show the truth of what happened in this change.
-    # There's no point showing the stat from the base to the new
-    # revision because the base is effectively a random revision at this
-    # point - the user will be interested in what this revision changed
-    # - including the undoing of previous revisions in the case of
-    # non-fast forward updates.
-
-    `git rev-list #{old_revision}..#{new_revision}`.lines.reverse_each{|revision|
-      block.call(revision.strip)
-    }
 
     msg
   end
