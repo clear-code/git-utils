@@ -451,6 +451,7 @@ class GitCommitMailer
 
       while line = STDIN.gets
         old_revision, new_revision, reference = line.split
+        puts "######Got: old_rev:#{old_revision} new_rev:#{new_revision} #{reference}"
         catch (:no_email) do
           mailer.process_single_ref_change(old_revision, new_revision, reference)
         end
@@ -1455,9 +1456,9 @@ rescue Exception => error
 #{error.backtrace.join("\n")}
 EOM
   to = to.compact
-  if to.empty?
+  #if to.empty?
     STDERR.puts detail
-  else
+  #else
     sendmail(to, from, <<-MAIL, server, port)
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -1469,5 +1470,5 @@ Date: #{Time.now.rfc2822}
 
 #{detail}
 MAIL
-  end
+  #end
 end
