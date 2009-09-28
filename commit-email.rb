@@ -1016,8 +1016,8 @@ EOF
 
     post_process_infos
 
-    @info = @push_info
-    send_mail make_mail
+    #@info = @push_info
+    #send_mail make_mail
 
     @commit_infos.each { |info|
       @info = info
@@ -1228,10 +1228,10 @@ INFO
       case diff.type
       when :added
         command = "show"
-        file_mode = "Mode: #{diff.new_file_mode}"
+        file_mode = " Mode: #{diff.new_file_mode}"
       when :deleted
         command = "show"
-        file_mode = "Mode: #{diff.deleted_file_mode}"
+        file_mode = " Mode: #{diff.deleted_file_mode}"
         rev = diff.old_revision
       when :modified
         command = "diff"
@@ -1260,7 +1260,7 @@ INFO
 
       line_info = "+#{diff.added_line} -#{diff.deleted_line}"
       desc =  "  #{CHANGED_TYPE[diff.type]}: #{diff.file} (#{line_info})"
-      desc << " #{file_mode}#{similarity_index}\n"
+      desc << "#{file_mode}#{similarity_index}\n"
       if diff.mode_changed?
         desc << "  Mode: #{diff.old_mode} -> #{diff.new_mode}\n"
       end
