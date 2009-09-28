@@ -718,6 +718,37 @@ class GitCommitMailer
     msg
   end
 
+  def explain_rewind
+<<EOF
+This update discarded existing revisions and left the branch pointing at
+a previous point in the repository history.
+
+ * -- * -- N (#{new_revision[0,7]})
+            \\
+             O -- O -- O (#{old_revision[0,7]})
+
+The removed revisions are not necessarilly gone - if another reference
+still refers to them they will stay in the repository.
+EOF
+  end
+
+  def explain_rewind_and_new_commits
+<<EOF
+This update added new revisions after undoing existing revisions.  That is
+to say, the old revision is not a strict subset of the new revision.  This
+situation occurs when you --force push a change and generate a repository
+containing something like this:
+
+ * -- * -- B -- O -- O -- O (#{old_revision[0,7]})
+            \\
+             N -- N -- N (#{new_revision[0,7]})
+
+When this happens we assume that you've already had alert emails for all
+of the O revisions, and so we here report only the revisions in the N
+branch from the common base, B.
+EOF
+  end
+
   def process_update_branch(block)
     # Consider this:
     #   1 --- 2 --- O --- X --- 3 --- 4 --- N
@@ -800,7 +831,7 @@ class GitCommitMailer
     revision_list = []
     `git rev-list #@new_revision..#@old_revision`.lines.each { |revision|
       revision.strip!
-      subject = GitCommitMailer.get_record(revision,'%s')
+      subject = GitCommitMailer.get_record(revision, '%s')
       revision_list << "discards  #{revision[0,7]} #{subject}\n"
     }
     unless revision
@@ -812,11 +843,13 @@ class GitCommitMailer
     # have already had notification emails and is present to show the
     # full detail of the change from rolling back the old revision to
     # the base revision and then forward to the new revision
+    tmp = []
     `git rev-list #@old_revision..#@new_revision`.lines.each { |revision|
       revision.strip!
-      subject = GitCommitMailer.get_record(revision,'%s')
-      revision_list << "     via  #{revision[0,7]} #{subject}\n"
+      subject = GitCommitMailer.get_record(revision, '%s')
+      tmp << "     via  #{revision[0,7]} #{subject}\n"
     }
+    revision_list.concat(tmp.reverse)
     `git rev-list #@old_revision..#@new_revision`.lines.reverse_each{ |revision|
       block.call(revision.strip)
     }
@@ -842,34 +875,15 @@ class GitCommitMailer
       baserev = `git merge-base #@old_revision #@new_revision`.strip
       rewind_only = false
       if baserev == new_revision
-        msg << "This update discarded existing revisions and left the branch pointing at\n"
-        msg << "a previous point in the repository history.\n"
-        msg << "\n"
-        msg << " * -- * -- N (#{new_revision[0,7]})\n"
-        msg << "            \\\n"
-        msg << "             O -- O -- O (#{old_revision[0,7]})\n"
-        msg << "\n"
-        msg << "The removed revisions are not necessarilly gone - if another reference\n"
-        msg << "still refers to them they will stay in the repository.\n"
+        msg << explain_rewind
         rewind_only = true
       else
-        msg << "This update added new revisions after undoing existing revisions.  That is\n"
-        msg << "to say, the old revision is not a strict subset of the new revision.  This\n"
-        msg << "situation occurs when you --force push a change and generate a repository\n"
-        msg << "containing something like this:\n"
-        msg << "\n"
-        msg << " * -- * -- B -- O -- O -- O (#{old_revision[0,7]})\n"
-        msg << "            \\\n"
-        msg << "             N -- N -- N (#{new_revision[0,7]})\n"
-        msg << "\n"
-        msg << "When this happens we assume that you've already had alert emails for all\n"
-        msg << "of the O revisions, and so we here report only the revisions in the N\n"
-        msg << "branch from the common base, B.\n"
+        msg << explain_rewind_and_new_commits
       end
     end
 
     msg << "\n"
-    msg << revision_list.reverse.join
+    msg << revision_list.join
 
     unless rewind_only
       # XXX: Need a way of detecting whether git rev-list actually
