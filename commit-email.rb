@@ -104,10 +104,6 @@ require "nkf"
 original_argv = ARGV.dup
 argv = []
 
-unless ENV['GIT_DIR']
-  ENV['GIT_DIR'] = ".git/"
-end
-
 found_include_option = false
 while (arg = original_argv.shift)
   if found_include_option
@@ -483,6 +479,8 @@ class GitCommitMailer
     private
     def apply_options(mailer, options)
       mailer.repository = options.repository
+      ENV['GIT_DIR'] = options.repository
+      puts "@@@@@@@setting GIT_DIR to #{options.repository}"
       #mailer.reference = options.reference
       mailer.from = options.from
       mailer.from_domain = options.from_domain
@@ -1296,7 +1294,7 @@ CONTENT
   end
 
   def detect_project
-    project = File.open("#{ENV['GIT_DIR']}/description").gets.strip
+    project = File.open("#{repository}/description").gets.strip
     # Check if the description is unchanged from it's default, and shorten it to
     # a more manageable length if it is
     if project =~ /Unnamed repository.*$/
