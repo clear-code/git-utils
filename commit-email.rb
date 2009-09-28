@@ -15,6 +15,84 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+#### An explanation for the complicated command used in GitCommitMailer#
+#### process_create_branch and GitCommitMailer#process_update_branch
+#
+# Basically, that command shows all log entries that are not already covered by
+# another ref - i.e. commits that are now accessible from this
+# ref that were previously not accessible
+#
+# Consider this:
+#   1 --- 2 --- O --- X --- 3 --- 4 --- N
+#
+# O is $old_revision for $refname
+# N is $new_revision for $refname
+# X is a revision pointed to by some other ref, for which we may
+#   assume that an email has already been generated.
+# In this case we want to issue an email containing only revisions
+# 3, 4, and N.  Given (almost) by
+#
+#  git rev-list N ^O --not --all
+#
+# The reason for the "almost", is that the "--not --all" will take
+# precedence over the "N", and effectively will translate to
+#
+#  git rev-list N ^O ^X ^N
+#
+# So, we need to build up the list more carefully.  git rev-parse
+# will generate a list of revs that may be fed into git rev-list.
+# We can get it to make the "--not --all" part and then filter out
+# the "^N" with:
+#
+#  git rev-parse --not --all | grep -v N
+#
+# Then, using the --stdin switch to git rev-list we have effectively
+# manufactured
+#
+#  git rev-list N ^O ^X
+#
+# This leaves a problem when someone else updates the repository
+# while this script is running.  Their new value of the ref we're
+# working on would be included in the "--not --all" output; and as
+# our $new_revision would be an ancestor of that commit, it would exclude
+# all of our commits.  What we really want is to exclude the current
+# value of $refname from the --not list, rather than N itself.  So:
+#
+#  git rev-parse --not --all | grep -v $(git rev-parse $refname)
+#
+# Get's us to something pretty safe (apart from the small time
+# between refname being read, and git rev-parse running - for that,
+# I give up)
+#
+#
+# Next problem, consider this:
+#   * --- B --- * --- O ($old_revision)
+#          \
+#           * --- X --- * --- N ($new_revision)
+#
+# That is to say, there is no guarantee that old_revision is a strict
+# subset of new_revision (it would have required a --force, but that's
+# allowed).  So, we can't simply say rev-list $old_revision..$new_revision.
+# Instead we find the common base of the two revs and list from
+# there.
+#
+# As above, we need to take into account the presence of X; if
+# another branch is already in the repository and points at some of
+# the revisions that we are about to output - we don't want them.
+# The solution is as before: git rev-parse output filtered.
+#
+# Finally, tags: 1 --- 2 --- O --- T --- 3 --- 4 --- N
+#
+# Tags pushed into the repository generate nice shortlog emails that
+# summarise the commits between them and the previous tag.  However,
+# those emails don't include the full commit messages that we output
+# for a branch update.  Therefore we still want to output revisions
+# that have been output on a tag email.
+#
+# Luckily, git rev-parse includes just the tool.  Instead of using
+# "--all" we use "--branches"; this has the added benefit that
+# "remotes/" will be ignored as well.
+
 require 'English'
 require "optparse"
 require "ostruct"
@@ -695,14 +773,11 @@ class GitCommitMailer
   end
 
   def process_create_branch(block)
-    # This shows all log entries that are not already covered by
-    # another ref - i.e. commits that are now accessible from this
-    # ref that were previously not accessible
-    # (see generate_update_branch_email for the explanation of this
-    # command)
     msg = "Branch (#@reference) is created.\n"
 
     commit_list = []
+    # refer to the long comment located at the top of this file for the
+    # explanation of this command.
     `git rev-parse --not --branches | grep -v $(git rev-parse #{reference}) |
      git rev-list --stdin #{new_revision}`.lines.reverse_each { |revision|
       revision.strip!
@@ -725,7 +800,7 @@ a previous point in the repository history.
 
  * -- * -- N (#{new_revision[0,7]})
             \\
-             O -- O -- O (#{old_revision[0,7]})
+             O <- O <- O (#{old_revision[0,7]})
 
 The removed revisions are not necessarilly gone - if another reference
 still refers to them they will stay in the repository.
@@ -739,9 +814,9 @@ to say, the old revision is not a strict subset of the new revision.  This
 situation occurs when you --force push a change and generate a repository
 containing something like this:
 
- * -- * -- B -- O -- O -- O (#{old_revision[0,7]})
+ * -- * -- B <- O <- O <- O (#{old_revision[0,7]})
             \\
-             N -- N -- N (#{new_revision[0,7]})
+             N -> N -> N (#{new_revision[0,7]})
 
 When this happens we assume that you've already had alert emails for all
 of the O revisions, and so we here report only the revisions in the N
@@ -750,76 +825,7 @@ EOF
   end
 
   def process_update_branch(block)
-    # Consider this:
-    #   1 --- 2 --- O --- X --- 3 --- 4 --- N
-    #
-    # O is $old_revision for $refname
-    # N is $new_revision for $refname
-    # X is a revision pointed to by some other ref, for which we may
-    #   assume that an email has already been generated.
-    # In this case we want to issue an email containing only revisions
-    # 3, 4, and N.  Given (almost) by
-    #
-    #  git rev-list N ^O --not --all
-    #
-    # The reason for the "almost", is that the "--not --all" will take
-    # precedence over the "N", and effectively will translate to
-    #
-    #  git rev-list N ^O ^X ^N
-    #
-    # So, we need to build up the list more carefully.  git rev-parse
-    # will generate a list of revs that may be fed into git rev-list.
-    # We can get it to make the "--not --all" part and then filter out
-    # the "^N" with:
-    #
-    #  git rev-parse --not --all | grep -v N
-    #
-    # Then, using the --stdin switch to git rev-list we have effectively
-    # manufactured
-    #
-    #  git rev-list N ^O ^X
-    #
-    # This leaves a problem when someone else updates the repository
-    # while this script is running.  Their new value of the ref we're
-    # working on would be included in the "--not --all" output; and as
-    # our $new_revision would be an ancestor of that commit, it would exclude
-    # all of our commits.  What we really want is to exclude the current
-    # value of $refname from the --not list, rather than N itself.  So:
-    #
-    #  git rev-parse --not --all | grep -v $(git rev-parse $refname)
-    #
-    # Get's us to something pretty safe (apart from the small time
-    # between refname being read, and git rev-parse running - for that,
-    # I give up)
-    #
-    #
-    # Next problem, consider this:
-    #   * --- B --- * --- O ($old_revision)
-    #          \
-    #           * --- X --- * --- N ($new_revision)
-    #
-    # That is to say, there is no guarantee that old_revision is a strict
-    # subset of new_revision (it would have required a --force, but that's
-    # allowed).  So, we can't simply say rev-list $old_revision..$new_revision.
-    # Instead we find the common base of the two revs and list from
-    # there.
-    #
-    # As above, we need to take into account the presence of X; if
-    # another branch is already in the repository and points at some of
-    # the revisions that we are about to output - we don't want them.
-    # The solution is as before: git rev-parse output filtered.
-    #
-    # Finally, tags: 1 --- 2 --- O --- T --- 3 --- 4 --- N
-    #
-    # Tags pushed into the repository generate nice shortlog emails that
-    # summarise the commits between them and the previous tag.  However,
-    # those emails don't include the full commit messages that we output
-    # for a branch update.  Therefore we still want to output revisions
-    # that have been output on a tag email.
-    #
-    # Luckily, git rev-parse includes just the tool.  Instead of using
-    # "--all" we use "--branches"; this has the added benefit that
-    # "remotes/" will be ignored as well.
+    msg = "Branch (#@reference) is updated.\n"
 
     # List all of the revisions that were removed by this update, in a
     # fast forward update, this list will be empty, because rev-list O
@@ -827,16 +833,13 @@ EOF
     # revisions
     fast_forward = false
     revision = nil
-    msg = "Branch (#@reference) is updated.\n"
     revision_list = []
     `git rev-list #@new_revision..#@old_revision`.lines.each { |revision|
       revision.strip!
       subject = GitCommitMailer.get_record(revision, '%s')
       revision_list << "discards  #{revision[0,7]} #{subject}\n"
     }
-    unless revision
-      fast_forward = true
-    end
+    fast_forward = true unless revision
 
     # List all the revisions from baserev to new_revision in a kind of
     # "table-of-contents"; note this list can include revisions that
@@ -850,9 +853,6 @@ EOF
       tmp << "     via  #{revision[0,7]} #{subject}\n"
     }
     revision_list.concat(tmp.reverse)
-    `git rev-list #@old_revision..#@new_revision`.lines.reverse_each{ |revision|
-      block.call(revision.strip)
-    }
 
     if fast_forward
       subject = GitCommitMailer.get_record(old_revision,'%s')
@@ -886,6 +886,12 @@ EOF
     msg << revision_list.join
 
     unless rewind_only
+      # refer to the long comment located at the top of this file for the
+      # explanation of this command.
+      `git rev-parse --not --branches | grep -v $(git rev-parse #@reference) |
+      git rev-list --stdin #@old_revision..#@new_revision`.lines.reverse_each{ |revision|
+        block.call(revision.strip)
+      }
       # XXX: Need a way of detecting whether git rev-list actually
       # outputted anything, so that we can issue a "no new
       # revisions added by this update" message
