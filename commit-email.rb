@@ -513,7 +513,7 @@ class GitCommitMailer
 
     def make_options
       options = OpenStruct.new
-      options.repository = "."
+      options.repository = ".git"
       #options.reference = "refs/heads/master"
       options.to = []
       options.error_to = []
