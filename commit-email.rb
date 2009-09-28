@@ -1016,8 +1016,8 @@ EOF
 
     post_process_infos
 
-    #@info = @push_info
-    #send_mail make_mail
+    @info = @push_info
+    send_mail make_mail
 
     @commit_infos.each { |info|
       @info = info
