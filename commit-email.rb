@@ -711,7 +711,7 @@ class GitCommitMailer
       commit_list << "     via  #{revision[0,7]} #{subject}\n"
     }
     if commit_list.length > 0
-      commit_list[-1].sub(/     via  /,'     at   ')
+      commit_list[-1].sub!(/\A     via  /,'     at   ')
       msg << commit_list.join
     end
 
