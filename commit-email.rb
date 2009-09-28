@@ -272,7 +272,7 @@ class GitCommitMailer
             @new_mode = $1
             @is_mode_changed = true
           else
-            puts "needs to parse: " + line
+            #puts "needs to parse: " + line
             @metadata << line #need to parse
           end
 
@@ -447,7 +447,7 @@ class GitCommitMailer
 
       while line = STDIN.gets
         old_revision, new_revision, reference = line.split
-        puts "######Got: old_rev:#{old_revision} new_rev:#{new_revision} #{reference}"
+        #puts "######Got: old_rev:#{old_revision} new_rev:#{new_revision} #{reference}"
         catch (:no_email) do
           mailer.process_single_ref_change(old_revision, new_revision, reference)
         end
@@ -480,7 +480,7 @@ class GitCommitMailer
     def apply_options(mailer, options)
       mailer.repository = options.repository
       ENV['GIT_DIR'] = options.repository
-      puts "@@@@@@@setting GIT_DIR to #{options.repository}"
+      #puts "@@@@@@@setting GIT_DIR to #{options.repository}"
       #mailer.reference = options.reference
       mailer.from = options.from
       mailer.from_domain = options.from_domain
@@ -1454,9 +1454,9 @@ rescue Exception => error
 #{error.backtrace.join("\n")}
 EOM
   to = to.compact
-  #if to.empty?
+  if to.empty?
     STDERR.puts detail
-  #else
+  else
     sendmail(to, from, <<-MAIL, server, port)
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -1468,5 +1468,5 @@ Date: #{Time.now.rfc2822}
 
 #{detail}
 MAIL
-  #end
+  end
 end
