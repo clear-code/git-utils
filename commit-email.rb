@@ -373,7 +373,9 @@ class GitCommitMailer
 
       while line = STDIN.gets
         old_revision, new_revision, reference = line.split
-        mailer.process_single_ref_change(old_revision, new_revision, reference)
+        catch (:no_email) do
+          mailer.process_single_ref_change(old_revision, new_revision, reference)
+        end
       end
     end
 
@@ -617,69 +619,79 @@ class GitCommitMailer
     @repository || Dir.pwd
   end
 
-  def each_revision(&block)
+  def detect_change_type
     if old_revision =~ /0{40}/ and new_revision =~ /0{40}/
       raise "Invalid revision hash"
     elsif not old_revision =~ /0{40}/ and not new_revision =~ /0{40}/
-      change_type = :update
+      :update
     elsif old_revision =~ /0{40}/
-      change_type = :create
+      :create
     elsif new_revision =~ /0{40}/
-      change_type = :delete
+      :delete
     else
       raise "Invalid revision hash"
     end
+  end
 
+  def detect_revision_type(change_type)
     case change_type
     when :create, :update
-      rev = new_revision
-      rev_type=`git cat-file -t #@new_revision`.strip
+      `git cat-file -t #@new_revision`.strip
     when :delete
-      rev = old_revision
-      rev_type=`git cat-file -t #@old_revision`.strip
+      `git cat-file -t #@old_revision`.strip
     end
+  end
 
-    if reference =~ /refs\/tags\/(.*)/ and rev_type == "commit"
+  def detect_reference_type(revision_type)
+    if reference =~ /refs\/tags\/.*/ and revision_type == "commit"
       # un-annotated tag
-      ref_type = "tag"
-      short_ref = $1
-    elsif reference =~ /refs\/tags\/(.*)/ and rev_type == "tag"
+      "tag"
+    elsif reference =~ /refs\/tags\/.*/ and revision_type == "tag"
       # annotated tag
-      ref_type = "annotated tag"
-      short_ref = $1
       # change recipients
       #if [ -n "$announcerecipients" ]; then
       #  recipients="$announcerecipients"
       #fi
-    elsif reference =~ /refs\/heads\/(.*)/ and rev_type == "commit"
+      "annotated tag"
+    elsif reference =~ /refs\/heads\/.*/ and revision_type == "commit"
       # branch
-      ref_type = "branch"
-      short_ref = $1
-    elsif reference =~ /refs\/remotes\/.*/ and rev_type == "commit"
+      "branch"
+    elsif reference =~ /refs\/remotes\/.*/ and revision_type == "commit"
       # tracking branch
       # Push-update of tracking branch.
       # no email generated.
-      return
+      throw :no_email
     else
       # Anything else (is there anything else?)
-      raise "Unknown type of update to #@reference (#{rev_type})"
+      raise "Unknown type of update to #@reference (#{revision_type})"
     end
+  end
 
-    msg = if ref_type == "branch" and change_type == :update
-            process_update_branch(block)
-          elsif ref_type == "branch" and change_type == :create
-            process_create_branch(block)
-          elsif ref_type == "branch" and change_type == :delete
-            process_delete_branch(block)
-          elsif ref_type == "annotated tag" and change_type == :update
-            process_update_atag
-          elsif ref_type == "annotated tag" and change_type == :create
-            process_create_atag
-          elsif ref_type == "annotated tag" and change_type == :delete
-            process_delete_atag
-          end
+  def return_push_message_and_yield(reference_type, change_type, block)
+    if reference_type == "branch" and change_type == :update
+      process_update_branch(block)
+    elsif reference_type == "branch" and change_type == :create
+      process_create_branch(block)
+    elsif reference_type == "branch" and change_type == :delete
+      process_delete_branch(block)
+    elsif reference_type == "annotated tag" and change_type == :update
+      process_update_atag
+    elsif reference_type == "annotated tag" and change_type == :create
+      process_create_atag
+    elsif reference_type == "annotated tag" and change_type == :delete
+      process_delete_atag
+    end
+  end
 
-    [ref_type, change_type, msg]
+  def each_revision(&block)
+    change_type = detect_change_type
+    revision_type = detect_revision_type(change_type)
+    reference_type = detect_reference_type(revision_type)
+
+    push_messsage = return_push_message_and_yield(reference_type, change_type,
+                                                  block)
+
+    [reference_type, change_type, push_messsage]
   end
 
   def process_create_branch(block)
