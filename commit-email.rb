@@ -1242,13 +1242,13 @@ INFO
         args.concat(["-C","--diff-filter=R",
                      "-r", diff.old_revision[0,7], diff.new_revision[0,7], "--",
                      diff.from_file, diff.to_file])
-        similarity_index = "Similarity: #{diff.similarity_index}"
+        similarity_index = " #{diff.similarity_index}"
       when :copied
         command = "diff"
         args.concat(["-C","--diff-filter=C",
                      "-r", diff.old_revision[0,7], diff.new_revision[0,7], "--",
                      diff.from_file, diff.to_file])
-        similarity_index = "Similarity: #{diff.similarity_index}"
+        similarity_index = " #{diff.similarity_index}"
       else
         raise "unknown diff type: #{diff.type}"
       end
