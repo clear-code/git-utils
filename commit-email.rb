@@ -300,10 +300,18 @@ class GitCommitMailer
         time.strftime('%Y-%m-%d %X %z')
       end
 
+      def short_old_revision
+        GitCommitMailer.short_revision(@old_revision)
+      end
+
+      def short_new_revision
+        GitCommitMailer.short_revision(@new_revision)
+      end
+
       def header
          unless @is_binary
-           "--- #{@from_file}    #{format_time(@old_date)} (#{@old_revision[0,7]})\n" +
-           "+++ #{@to_file}    #{format_time(@new_date)} (#{@new_revision[0,7]})\n"
+           "--- #{@from_file}    #{format_time(@old_date)} (#{short_old_revision})\n" +
+           "+++ #{@to_file}    #{format_time(@new_date)} (#{short_new_revision})\n"
          else
            "(Binary files differ)\n"
          end
@@ -436,6 +444,10 @@ class GitCommitMailer
   class << self
     def get_record(revision, record)
       `git log -n 1 --pretty=format:'#{record}' #{revision}`.strip
+    end
+
+    def short_revision(revision)
+      revision[0,7]
     end
 
     def run(argv=nil)
@@ -696,6 +708,14 @@ class GitCommitMailer
     @repository || Dir.pwd
   end
 
+  def short_new_revision
+    GitCommitMailer.short_revision(@new_revision)
+  end
+
+  def short_old_revision
+    GitCommitMailer.short_revision(@old_revision)
+  end
+
   def detect_change_type
     if old_revision =~ /0{40}/ and new_revision =~ /0{40}/
       raise "Invalid revision hash"
@@ -788,9 +808,10 @@ class GitCommitMailer
     `git rev-list #@new_revision #{excluded_revisions}`.lines.
     reverse_each { |revision|
       revision.strip!
+      short_revision = GitCommitMailer.short_revision(revision)
       block.call(revision)
       subject = GitCommitMailer.get_record(revision,'%s')
-      commit_list << "     via  #{revision[0,7]} #{subject}\n"
+      commit_list << "     via  #{short_revision} #{subject}\n"
     }
     if commit_list.length > 0
       commit_list[-1].sub!(/\A     via  /,'     at   ')
@@ -805,9 +826,9 @@ class GitCommitMailer
 This update discarded existing revisions and left the branch pointing at
 a previous point in the repository history.
 
- * -- * -- N (#{new_revision[0,7]})
+ * -- * -- N (#{short_new_revision})
             \\
-             O <- O <- O (#{old_revision[0,7]})
+             O <- O <- O (#{short_old_revision})
 
 The removed revisions are not necessarilly gone - if another reference
 still refers to them they will stay in the repository.
@@ -821,9 +842,9 @@ to say, the old revision is not a strict subset of the new revision.  This
 situation occurs when you --force push a change and generate a repository
 containing something like this:
 
- * -- * -- B <- O <- O <- O (#{old_revision[0,7]})
+ * -- * -- B <- O <- O <- O (#{short_old_revision})
             \\
-             N -> N -> N (#{new_revision[0,7]})
+             N -> N -> N (#{short_new_revision})
 
 When this happens we assume that you've already had alert emails for all
 of the O revisions, and so we here report only the revisions in the N
@@ -840,16 +861,18 @@ EOF
     # revisions
     fast_forward = false
     revision = nil
+    short_revision = nil
     revision_list = []
     `git rev-list #@new_revision..#@old_revision`.lines.each { |revision|
       revision.strip!
+      short_revision = GitCommitMailer.short_revision(revision)
       subject = GitCommitMailer.get_record(revision, '%s')
-      revision_list << "discards  #{revision[0,7]} #{subject}\n"
+      revision_list << "discards  #{short_revision} #{subject}\n"
     }
     unless revision
       fast_forward = true 
       subject = GitCommitMailer.get_record(old_revision,'%s')
-      revision_list << "    from  #{old_revision[0,7]} #{subject}\n"
+      revision_list << "    from  #{short_old_revision} #{subject}\n"
     end
 
     # List all the revisions from baserev to new_revision in a kind of
@@ -860,8 +883,10 @@ EOF
     tmp = []
     `git rev-list #@old_revision..#@new_revision`.lines.each { |revision|
       revision.strip!
+      short_revision = GitCommitMailer.short_revision(revision)
+
       subject = GitCommitMailer.get_record(revision, '%s')
-      tmp << "     via  #{revision[0,7]} #{subject}\n"
+      tmp << "     via  #{short_revision} #{subject}\n"
     }
     revision_list.concat(tmp.reverse)
 
@@ -1222,7 +1247,7 @@ INFO
   def diff_info
     @info.diffs.collect do |diff|
       args = []
-      rev = diff.new_revision
+      short_revision = diff.short_new_revision
       similarity_index = ""
       file_mode = ""
       case diff.type
@@ -1232,28 +1257,28 @@ INFO
       when :deleted
         command = "show"
         file_mode = " #{diff.deleted_file_mode}"
-        rev = diff.old_revision
+        short_revision = diff.short_old_revision
       when :modified
         command = "diff"
-        args.concat(["-r", diff.old_revision[0,7], diff.new_revision[0,7],
+        args.concat(["-r", diff.short_old_revision, diff.short_new_revision,
                      diff.link])
       when :renamed
         command = "diff"
         args.concat(["-C","--diff-filter=R",
-                     "-r", diff.old_revision[0,7], diff.new_revision[0,7], "--",
+                     "-r", diff.short_old_revision, diff.short_new_revision, "--",
                      diff.from_file, diff.to_file])
         similarity_index = " #{diff.similarity_index}"
       when :copied
         command = "diff"
         args.concat(["-C","--diff-filter=C",
-                     "-r", diff.old_revision[0,7], diff.new_revision[0,7], "--",
+                     "-r", diff.short_old_revision, diff.short_new_revision, "--",
                      diff.from_file, diff.to_file])
         similarity_index = " #{diff.similarity_index}"
       else
         raise "unknown diff type: #{diff.type}"
       end
       if command == "show"
-        args.concat(["#{rev[0,7]}:#{diff.link}"])
+        args.concat(["#{short_revision}:#{diff.link}"])
       end
 
       command += " #{args.join(' ')}" unless args.empty?
