@@ -1,8 +1,9 @@
 #!/usr/bin/env ruby
 
 require 'test/unit'
-require 'commit-emailer'
 require 'tempfile'
+
+require 'commit-email'
 
 class TC_GitCommitMailer < Test::Unit::TestCase
   def execute(command)
@@ -39,19 +40,16 @@ class TC_GitCommitMailer < Test::Unit::TestCase
   end
 
   def setup
-    @is_called = true
     create_repository
   end
 
   def teardown
-    @is_called = false
     #delete_repository
   end
 
   def zero_revision
     '0' * 40
   end
-
 
   def create_mailer(argv)
     @mailer = GitCommitMailer.parse_options_and_create(argv.split)
@@ -112,4 +110,3 @@ EOF
     end
   end
 end
-
