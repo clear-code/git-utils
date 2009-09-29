@@ -5,7 +5,7 @@ require 'tempfile'
 
 require 'commit-email'
 
-class TC_GitCommitMailer < Test::Unit::TestCase
+class GitCommitMailerTest < Test::Unit::TestCase
   def execute(command)
     puts "##### cd #{@git_dir} && #{command}"
     result = `(cd #{@git_dir} && #{command}) #< /dev/null > /dev/null 2> /dev/null`
