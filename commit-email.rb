@@ -328,7 +328,7 @@ class GitCommitMailer
       def link
         file
       end
-      
+
       def file_path
         file
       end
@@ -396,7 +396,7 @@ class GitCommitMailer
           lines << line
         end
       end
-      
+
       #create the last diff terminated by the EOF
       @diffs << DiffPerFile.new(lines, @revision) if lines.length > 0
     end
@@ -408,7 +408,7 @@ class GitCommitMailer
         if line =~ /\A([^\t]*?)\t([^\t]*?)\z/
           status = $1
           file = $2
-          
+
           case status
           when /^A/ # Added
             @added_files << file
@@ -863,7 +863,7 @@ EOF
       revision_list << "discards  #{short_revision} #{subject}\n"
     end
     unless revision
-      fast_forward = true 
+      fast_forward = true
       subject = GitCommitMailer.get_record(old_revision,'%s')
       revision_list << "    from  #{short_old_revision} #{subject}\n"
     end
@@ -1008,7 +1008,7 @@ EOF
 
   def determine_prominent_author
     #if @commit_infos.length > 0
-    #  
+    #
     #else
     #   @push_info
   end
