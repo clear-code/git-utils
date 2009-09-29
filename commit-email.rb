@@ -1116,7 +1116,7 @@ EOF
       body = ""
       body << "#{@info.author}\t#{format_time(@info.date)}\n"
       body << "\n"
-      body << "New Revision: #{@info.revision}\n"
+      body << "  New Revision: #{@info.revision}\n"
       body << "\n"
       body << "  Log:\n"
       @info.log.rstrip.each_line do |line|
@@ -1326,7 +1326,7 @@ CONTENT
       raise "a new Info class?"
     end
 
-    #NKF.nkf("-WM", subject)
+    NKF.nkf("-WM", subject)
   end
 
   def affected_paths
