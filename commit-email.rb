@@ -795,10 +795,10 @@ class GitCommitMailer
      # refer to the long comment located at the top of this file for the
      # explanation of this command.
      current_reference_rev = `git rev-parse #@reference`.strip
-     `git rev-parse --not --branches`.lines.find_all { |line|
+     `git rev-parse --not --branches`.lines.find_all do |line|
        line.strip!
        not line.index(current_reference_rev)
-     }.join(' ')
+     end.join(' ')
   end
 
   def process_create_branch(block)
@@ -806,13 +806,13 @@ class GitCommitMailer
 
     commit_list = []
     `git rev-list #@new_revision #{excluded_revisions}`.lines.
-    reverse_each { |revision|
+    reverse_each do |revision|
       revision.strip!
       short_revision = GitCommitMailer.short_revision(revision)
       block.call(revision)
       subject = GitCommitMailer.get_record(revision,'%s')
       commit_list << "     via  #{short_revision} #{subject}\n"
-    }
+    end
     if commit_list.length > 0
       commit_list[-1].sub!(/\A     via  /,'     at   ')
       msg << commit_list.join
@@ -863,12 +863,12 @@ EOF
     revision = nil
     short_revision = nil
     revision_list = []
-    `git rev-list #@new_revision..#@old_revision`.lines.each { |revision|
+    `git rev-list #@new_revision..#@old_revision`.lines.each do |revision|
       revision.strip!
       short_revision = GitCommitMailer.short_revision(revision)
       subject = GitCommitMailer.get_record(revision, '%s')
       revision_list << "discards  #{short_revision} #{subject}\n"
-    }
+    end
     unless revision
       fast_forward = true 
       subject = GitCommitMailer.get_record(old_revision,'%s')
@@ -881,13 +881,13 @@ EOF
     # full detail of the change from rolling back the old revision to
     # the base revision and then forward to the new revision
     tmp = []
-    `git rev-list #@old_revision..#@new_revision`.lines.each { |revision|
+    `git rev-list #@old_revision..#@new_revision`.lines.each do |revision|
       revision.strip!
       short_revision = GitCommitMailer.short_revision(revision)
 
       subject = GitCommitMailer.get_record(revision, '%s')
       tmp << "     via  #{short_revision} #{subject}\n"
-    }
+    end
     revision_list.concat(tmp.reverse)
 
     unless fast_forward
@@ -919,10 +919,10 @@ EOF
     no_actual_output = true
     unless rewind_only
       `git rev-list #@old_revision..#@new_revision #{excluded_revisions}`.lines.
-      reverse_each { |revision|
+      reverse_each do |revision|
         block.call(revision.strip)
         no_actual_output = false
-      }
+      end
     end
     if rewind_only or no_actual_output
       msg << "\n"
@@ -1044,10 +1044,10 @@ EOF
     #@info = @push_info
     #send_mail make_mail
 
-    @commit_infos.each { |info|
+    @commit_infos.each do |info|
       @info = info
       send_mail make_mail
-    }
+    end
 
     output_rss
   end
