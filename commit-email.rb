@@ -73,6 +73,7 @@ begin
   while line = STDIN.gets
     old_revision, new_revision, reference = line.split
     mailer.process_single_ref_change(old_revision, new_revision, reference)
+    mailer.send_all_mails
   end
 rescue Exception => error
   require 'net/smtp'

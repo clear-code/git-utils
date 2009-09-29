@@ -995,16 +995,27 @@ EOF
     end
 
     post_process_infos
+    
+    @info = @push_info
+    @push_mail = make_mail
 
-    #@info = @push_info
-    #send_mail make_mail
-
+    @commit_mails = []
     @commit_infos.each do |info|
       @info = info
-      send_mail make_mail
+      @commit_mails << make_mail
     end
 
-    output_rss
+    #output_rss #XXX eneble this in the future
+
+    [@push_mail, @commit_mails]
+  end
+
+  def send_all_mails
+    #send_mail @push_mail
+
+    @commit_mails.each do |mail|
+      send_mail mail
+    end
   end
 
   def use_utf7?

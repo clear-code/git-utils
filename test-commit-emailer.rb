@@ -5,11 +5,6 @@ require 'commit-emailer'
 require 'tempfile'
 
 class TC_GitCommitMailer < Test::Unit::TestCase
-  def initialize(*args)
-    @@last_instance = self
-    super(*args)
-  end
-
   def execute(command)
     puts "##### cd #{@git_dir} && #{command}"
     result = `(cd #{@git_dir} && #{command}) #< /dev/null > /dev/null 2> /dev/null`
@@ -57,32 +52,13 @@ class TC_GitCommitMailer < Test::Unit::TestCase
     '0' * 40
   end
 
-  def TC_GitCommitMailer.on_send_mail(mail)
-    @@last_instance.on_send_mail(mail)
-  end
-
-  def on_send_mail(mail)
-    raise "on_send_mail is called when not @is_called" unless @is_called
-    raise "on_send_mail is called when not @is_processing" unless @is_called
-
-    @mails << mail
-  end
 
   def create_mailer(argv)
     @mailer = GitCommitMailer.parse_options_and_create(argv.split)
-
-    #overrides the default behavior
-    def @mailer.send_mail(mail)
-      TC_GitCommitMailer.on_send_mail(mail)
-    end
   end
 
   def process_single_ref_change(*args)
-    @is_processing = true
-    @mails = []
-    @mailer.process_single_ref_change(*args)
-    @is_processing = false
-    @mails
+    @push_mail, @commit_mails = @mailer.process_single_ref_change(*args)
   end
 
   def black_out_sha1(string)
@@ -129,10 +105,10 @@ EOF
                   "--name=sample-repo " +
                   "--from from@example.com " +
                   "--error-to error@example.com to@example")
-    mails = process_single_ref_change(old_revision, new_revision, 'refs/heads/master')
+    push_mail, commit_mails = process_single_ref_change(old_revision, new_revision, 'refs/heads/master')
 
     File.open("fixtures/test_single_commit") do |file|
-      assert_equal(file.read + "\n", black_out_mail(mails.shift))
+      assert_equal(file.read + "\n", black_out_mail(commit_mails.shift))
     end
   end
 end
