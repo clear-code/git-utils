@@ -1228,10 +1228,10 @@ INFO
       case diff.type
       when :added
         command = "show"
-        file_mode = " Mode: #{diff.new_file_mode}"
+        file_mode = " #{diff.new_file_mode}"
       when :deleted
         command = "show"
-        file_mode = " Mode: #{diff.deleted_file_mode}"
+        file_mode = " #{diff.deleted_file_mode}"
         rev = diff.old_revision
       when :modified
         command = "diff"
