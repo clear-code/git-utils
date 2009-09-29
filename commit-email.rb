@@ -1306,30 +1306,20 @@ CONTENT
 
   def make_subject
     subject = ""
-    project = detect_project
-    revision_info = "#{@info.revision[0,7]}"
+    affected_path_info = ""
 
     if @info.class == CommitInfo
       if show_path?
         _affected_paths = affected_paths
         unless _affected_paths.empty?
-          revision_info = "(#{_affected_paths.join(',')}) #{revision_info}"
+          affected_path_info = " (#{_affected_paths.join(',')})"
         end
       end
 
-      if project
-        subject << "[commit #{project} #{@info.short_reference} " +
-                   "#{revision_info}] "
-      else
-        subject << "#{revision_info}: "
-      end
+      subject << "[#{@info.short_reference}#{affected_path_info}] "
       subject << @info.subject
     elsif @info.class == PushInfo
-      if project
-        subject << "[push #{project}] "
-      else
-        subject << "[push] "
-      end
+      subject << "[push] "
       subject << "#{@info.reference_type} (#{@info.short_reference}) is" +
                  " #{PushInfo::CHANGE_TYPE[@info.change_type]}."
     else
