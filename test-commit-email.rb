@@ -192,9 +192,9 @@ EOF
 
     git "checkout master"
 
-    execute "sed -ie '1 s/^/This line is appended in 'master' branch. (1)\\n/' #{sample_file}"
+    execute "sed -i -e '1 s/^/This line is appended in 'master' branch. (1)\\n/' #{sample_file}"
     git "commit -a -m \"a sample commit in 'master' branch (1)\""
-    execute "sed -ie '5 s/^/This line is inserted in 'master' branch. (2)\\n/' #{sample_file}"
+    execute "sed -i -e '5 s/^/This line is inserted in 'master' branch. (2)\\n/' #{sample_file}"
     git "commit -a -m \"a sample commit in 'master' branch (2)\""
 
     git "merge #{sample_branch}"
