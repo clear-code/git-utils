@@ -163,4 +163,49 @@ EOF
       assert_equal(file.read + "\n", black_out_mail(commit_mails.shift))
     end
   end
+
+  def test_push_with_merge
+    sample_file = 'sample_file'
+    sample_branch = 'sample_branch'
+
+    File.open(@git_dir + sample_file, 'w') do |file|
+      file.puts <<EOF
+This is a sample text file.
+This file will be modified to make commits.
+Firstly, it'll be appended with some lines in a non-master branch.
+Secondly, it'll be prepended and inserted with some lines in the master branch.
+Finally, it'll get merged.
+EOF
+    end
+    git "add ."
+    git 'commit -m "added an sample text file"'
+
+    git "branch #{sample_branch}"
+    git "checkout #{sample_branch}"
+
+    execute "echo \"This line is appended in '#{sample_branch}' branch (1)\" >> #{sample_file}"
+    git "commit -a -m \"a sample commit in '#{sample_branch}' branch (1)\""
+    execute "echo \"This line is appended in '#{sample_branch}' branch (2)\" >> #{sample_file}"
+    git "commit -a -m \"a sample commit in '#{sample_branch}' branch (2)\""
+    execute "echo \"This line is appended in '#{sample_branch}' branch (3)\" >> #{sample_file}"
+    git "commit -a -m \"a sample commit in '#{sample_branch}' branch (3)\""
+
+    git "checkout master"
+
+    execute "sed -ie '1 s/^/This line is appended in 'master' branch. (1)\\n/' #{sample_file}"
+    git "commit -a -m \"a sample commit in 'master' branch (1)\""
+    execute "sed -ie '5 s/^/This line is inserted in 'master' branch. (2)\\n/' #{sample_file}"
+    git "commit -a -m \"a sample commit in 'master' branch (2)\""
+
+    git "merge #{sample_branch}"
+
+    git 'push'
+
+    create_default_mailer
+    push_mail, commit_mails = nil, []
+    each_post_receive_output do |old_revision, new_revision, reference|
+      push_mail, commit_mails = process_single_ref_change(old_revision, new_revision, reference)
+    end
+    puts push_mail
+  end
 end
