@@ -139,7 +139,14 @@ EOF
     mail = black_out_date(mail)
   end
 
+  def read_file(file)
+    File.open(file) do |file|
+      return file.read
+    end
+  end
+
   def test_single_commit
+    create_default_mailer
     sample_filename = 'sample_file'
 
     File.open(@git_dir + sample_filename, 'w') do |file|
@@ -158,24 +165,17 @@ EOF
 
     git 'push'
 
-    create_default_mailer
     push_mail, commit_mails = nil, []
     each_post_receive_output do |old_revision, new_revision, reference|
       push_mail, commit_mails = process_single_ref_change(old_revision, new_revision, reference)
     end
 
-    File.open("fixtures/test_single_commit") do |file|
-      assert_equal(file.read, black_out_mail(commit_mails.shift))
-    end
-    File.open("fixtures/test_single_commit.push_mail") do |file|
-      assert_equal(file.read, black_out_mail(push_mail))
-    end
+    assert_equal(read_file('fixtures/test_single_commit'), black_out_mail(commit_mails.shift))
+    assert_equal(read_file('fixtures/test_single_commit.push_mail'), black_out_mail(push_mail))
   end
 
   def test_push_with_merge
     create_default_mailer
-
-    @is_debug_mode = true
     sample_file = 'sample_file'
     sample_branch = 'sample_branch'
 
@@ -213,12 +213,17 @@ EOF
     git "checkout master"
     git "merge #{sample_branch}"
 
-    git "push origin master"
+    git "push origin master" #also suppor git push origin master #{sample_branch}
+
+    push_mail, commit_mails = nil, []
     each_post_receive_output do |old_revision, new_revision, reference|
       push_mail, commit_mails = process_single_ref_change(old_revision, new_revision, reference)
-      puts push_mail
-      commit_mails.each {|mail| puts mail}
-      #puts "@@@@@@" + commit_mails.length.to_s
     end
+
+    assert_equal(read_file('fixtures/test_push_with_merge.push_mail'), black_out_mail(push_mail))
+    assert_equal(3, commit_mails.length)
+    assert_equal(read_file('fixtures/test_push_with_merge.1'), black_out_mail(commit_mails[0]))
+    assert_equal(read_file('fixtures/test_push_with_merge.2'), black_out_mail(commit_mails[1]))
+    assert_equal(read_file('fixtures/test_push_with_merge.3'), black_out_mail(commit_mails[2]))
   end
 end
