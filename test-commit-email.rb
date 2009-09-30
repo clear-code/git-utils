@@ -6,40 +6,90 @@ require 'tempfile'
 require 'commit-email'
 
 class GitCommitMailerTest < Test::Unit::TestCase
-  def execute(command)
-    puts "##### cd #{@git_dir} && #{command}"
-    result = `(cd #{@git_dir} && #{command}) #< /dev/null > /dev/null 2> /dev/null`
-    raise "execute failed." unless $?.exitstatus.zero?
+  def execute(command, is_debug_mode = false)
+    unless is_debug_mode
+      result = `(cd #{@git_dir} && #{command}) < /dev/null 2> /dev/null`
+      raise "execute failed." unless $?.exitstatus.zero?
+    else
+      puts "\n\nGitCommitMailerTest#execute: executing: cd #{@git_dir} && #{command}"
+      result = `(cd #{@git_dir} && #{command})`
+      raise "execute failed." unless $?.exitstatus.zero?
+    end
     result
   end
 
-  def git(command)
-    execute "git #{command}"
+  def git(command, is_debug_mode = false)
+    sleep 1.1 if command =~ /\Acommit /
+    empty_post_receive_output if command =~ /\Apush /
+
+    execute "git #{command}", is_debug_mode
   end
 
   def make_tmpname
     prefix = 'git-'
     t = Time.now.strftime("%Y%m%d")
-    path = "#{prefix}#{t}-#{$$}-#{rand(0x100000000).to_s(36)}/"
+    path = "#{prefix}#{t}-#{$$}-#{rand(0x100000000).to_s(36)}"
+  end
+
+  def config_user_info
+    git 'config user.name "User Name"'
+    git 'config user.email "user@example.com"'
   end
 
   def create_repository
-    while File.exist?(@git_dir = Dir.tmpdir + "/" + make_tmpname)
+    while File.exist?(@test_dir = Dir.tmpdir + "/" + make_tmpname + "/")
     end
-    @repository_dir = @git_dir + ".git/"
+    FileUtils.mkdir @test_dir
+    @git_dir = @test_dir + 'origin/'
+    @repository_dir = @git_dir + '.git/'
     FileUtils.mkdir @git_dir
     git 'init'
-    git 'config user.name "User Name"'
-    git 'config user.email "user@example.com"'
-    #system("chmod +x #{@repository_dir}/hooks/post-receive")
-    #system("echo \"cat >> /tmp/post-receive\" >> #{@repository_dir}/hooks/post-receive")
+    config_user_info
+    @post_receive_stdout = @repository_dir + 'post-receive.stdout'
+    execute "chmod +x .git/hooks/post-receive"
+    execute "echo \"cat >> #{@post_receive_stdout}\" >> .git/hooks/post-receive"
+
+    place_holder_file = 'PLACE_HOLDER'
+    File.open(@git_dir + place_holder_file, 'w') do |file|
+      file.puts <<EOF
+This is a place holder file to make the initial commit.
+EOF
+    end
+    git 'add .'
+    git 'commit -m "the initial commit"'
+
+    git 'clone . ../repo'
+
+    @origin_git_dir = @git_dir
+    @origin_repository_dir = @repository_dir
+    @git_dir = @test_dir + 'repo/'
+    @repository_dir = @git_dir + '.git/'
+    config_user_info
+  end
+
+  def each_post_receive_output
+    File.open(@post_receive_stdout, 'r') do |file|
+      while line = file.gets
+        old_revision, new_revision, reference = line.split
+        yield old_revision, new_revision, reference
+      end
+    end
+  end
+
+  def process_single_ref_change(*args)
+    @push_mail, @commit_mails = @mailer.process_single_ref_change(*args)
+  end
+
+  def empty_post_receive_output
+    FileUtils.rm @post_receive_stdout
   end
 
   def delete_repository
-    FileUtils.rm_r @git_dir
+    FileUtils.rm_r @test_dir
   end
 
   def setup
+    ENV['GIT_DIR'] = nil #XXX without this, git init would segfault.... why??
     create_repository
   end
 
@@ -55,8 +105,11 @@ class GitCommitMailerTest < Test::Unit::TestCase
     @mailer = GitCommitMailer.parse_options_and_create(argv.split)
   end
 
-  def process_single_ref_change(*args)
-    @push_mail, @commit_mails = @mailer.process_single_ref_change(*args)
+  def create_default_mailer
+    create_mailer("--repository=#{@origin_repository_dir} " +
+                  "--name=sample-repo " +
+                  "--from from@example.com " +
+                  "--error-to error@example.com to@example")
   end
 
   def black_out_sha1(string)
@@ -93,17 +146,18 @@ EOF
     git "add ."
     git 'commit -m "an initial commit"'
 
+    git 'push'
+
     execute "echo \"This line is appended to commit\" >> #{sample_filename}"
     git 'commit -a -m "a sample commit"'
 
-    old_revision = git('rev-parse HEAD~').strip
-    new_revision = git('rev-parse HEAD').strip
+    git 'push'
 
-    create_mailer("--repository=#{@repository_dir} " +
-                  "--name=sample-repo " +
-                  "--from from@example.com " +
-                  "--error-to error@example.com to@example")
-    push_mail, commit_mails = process_single_ref_change(old_revision, new_revision, 'refs/heads/master')
+    create_default_mailer
+    push_mail, commit_mails = nil, []
+    each_post_receive_output do |old_revision, new_revision, reference|
+      push_mail, commit_mails = process_single_ref_change(old_revision, new_revision, reference)
+    end
 
     File.open("fixtures/test_single_commit") do |file|
       assert_equal(file.read + "\n", black_out_mail(commit_mails.shift))
