@@ -162,6 +162,9 @@ EOF
     File.open("fixtures/test_single_commit") do |file|
       assert_equal(file.read, black_out_mail(commit_mails.shift))
     end
+    File.open("fixtures/test_single_commit.push_mail") do |file|
+      assert_equal(file.read, black_out_mail(push_mail))
+    end
   end
 
   def test_push_with_merge
