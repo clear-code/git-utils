@@ -68,12 +68,14 @@ EOF
   end
 
   def each_post_receive_output
+    ENV['GIT_DIR'] = @origin_repository_dir
     File.open(@post_receive_stdout, 'r') do |file|
       while line = file.gets
         old_revision, new_revision, reference = line.split
         yield old_revision, new_revision, reference
       end
     end
+    ENV['GIT_DIR'] = nil
   end
 
   def process_single_ref_change(*args)
@@ -81,7 +83,7 @@ EOF
   end
 
   def empty_post_receive_output
-    FileUtils.rm @post_receive_stdout
+    FileUtils.rm(@post_receive_stdout) if File.exist?(@post_receive_stdout)
   end
 
   def delete_repository
@@ -105,6 +107,7 @@ EOF
 
   def create_mailer(argv)
     @mailer = GitCommitMailer.parse_options_and_create(argv.split)
+    ENV['GIT_DIR'] = nil
   end
 
   def create_default_mailer
@@ -170,6 +173,8 @@ EOF
   end
 
   def test_push_with_merge
+    create_default_mailer
+
     @is_debug_mode = true
     sample_file = 'sample_file'
     sample_branch = 'sample_branch'
@@ -188,30 +193,32 @@ EOF
 
     git "branch #{sample_branch}"
     git "checkout #{sample_branch}"
-
     execute "echo \"This line is appended in '#{sample_branch}' branch (1)\" >> #{sample_file}"
     git "commit -a -m \"a sample commit in '#{sample_branch}' branch (1)\""
+
+    git "checkout master"
+    execute "sed -i -e '1 s/^/This line is appended in 'master' branch. (1)\\n/' #{sample_file}"
+    git "commit -a -m \"a sample commit in 'master' branch (1)\""
+    execute "sed -i -e '5 s/^/This line is inserted in 'master' branch. (2)\\n/' #{sample_file}"
+    git "commit -a -m \"a sample commit in 'master' branch (2)\""
+
+    git "push origin #{sample_branch} master"
+
+    git "checkout #{sample_branch}"
     execute "echo \"This line is appended in '#{sample_branch}' branch (2)\" >> #{sample_file}"
     git "commit -a -m \"a sample commit in '#{sample_branch}' branch (2)\""
     execute "echo \"This line is appended in '#{sample_branch}' branch (3)\" >> #{sample_file}"
     git "commit -a -m \"a sample commit in '#{sample_branch}' branch (3)\""
 
     git "checkout master"
-
-    execute "sed -i -e '1 s/^/This line is appended in 'master' branch. (1)\\n/' #{sample_file}"
-    git "commit -a -m \"a sample commit in 'master' branch (1)\""
-    execute "sed -i -e '5 s/^/This line is inserted in 'master' branch. (2)\\n/' #{sample_file}"
-    git "commit -a -m \"a sample commit in 'master' branch (2)\""
-
     git "merge #{sample_branch}"
 
-    git 'push'
-
-    create_default_mailer
-    push_mail, commit_mails = nil, []
+    git "push origin master"
     each_post_receive_output do |old_revision, new_revision, reference|
       push_mail, commit_mails = process_single_ref_change(old_revision, new_revision, reference)
+      puts push_mail
+      commit_mails.each {|mail| puts mail}
+      #puts "@@@@@@" + commit_mails.length.to_s
     end
-    puts push_mail
   end
 end

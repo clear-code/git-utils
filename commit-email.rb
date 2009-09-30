@@ -334,9 +334,11 @@ class GitCommitMailer
       end
     end
 
-    attr_reader :revision, :author, :date, :subject, :log, :commit_id
+    attr_reader :repository, :reference, :revision
+    attr_reader :author, :date, :subject, :log, :commit_id
     attr_reader :author_email, :diffs, :added_files, :copied_files
     attr_reader :deleted_files, :updated_files, :renamed_files
+    attr_accessor :merge_status
     def initialize(repository, reference, revision)
       @repository = repository
       @reference = reference
@@ -352,7 +354,11 @@ class GitCommitMailer
       parse_diff
       parse_file_status
 
-      sub_paths('driver')
+      @merge_status = []
+    end
+
+    def short_revision
+      GitCommitMailer.short_revision(@revision)
     end
 
     def sub_paths(prefix)
@@ -374,6 +380,7 @@ class GitCommitMailer
       @subject = get_record("%s")
       @log = `git log -n 1 --pretty=format:%s%n%n%b #{@revision}`
       @commit_id = get_record("%H")
+      @parent_revisions = get_record("%P").split
     end
 
     def parse_diff
@@ -430,6 +437,22 @@ class GitCommitMailer
           end
         end
       end
+    end
+
+    def first_parent
+      return nil if @parent_revisions.length.zero?
+
+      @parent_revisions[0]
+    end
+
+    def other_parents
+      return [] if @parent_revisions.length.zero?
+
+      @parent_revisions[1..-1]
+    end
+
+    def merge?
+      @parent_revisions.length >= 2
     end
 
     def headers
@@ -1002,8 +1025,24 @@ EOF
     msg
   end
 
+  def traverse_merge_commit(commit_info)
+    commit_info.other_parents.each do |parent_revision|
+      parent_commit_info = @commit_info_map[parent_revision]
+
+      while parent_commit_info
+        parent_commit_info.merge_status <<
+          "Merged in: '#{commit_info.short_reference}' at #{commit_info.short_revision}"
+        #traverse_merge_commit(parent_commit_info) if parent_commit_info.merge? #XXX is this needed???
+        parent_commit_info = @commit_info_map[parent_commit_info.first_parent]
+      end
+    end
+  end
+
   def post_process_infos
     #@push_info.author = determine_prominent_author
+    @commit_infos.reverse_each do |commit_info|
+      traverse_merge_commit(commit_info) if commit_info.merge?
+    end
   end
 
   def determine_prominent_author
@@ -1020,10 +1059,13 @@ EOF
 
     @push_info = nil
     @commit_infos = []
+    @commit_info_map = {}
 
     catch (:no_email) do
       push_info_args = each_revision do |revision|
-        @commit_infos << CommitInfo.new(repository, reference, revision)
+        commit_info = CommitInfo.new(repository, reference, revision)
+        @commit_infos << commit_info
+        @commit_info_map[revision] = commit_info
       end
 
       if push_info_args
@@ -1051,7 +1093,7 @@ EOF
   end
 
   def send_all_mails
-    #send_mail @push_mail
+    send_mail @push_mail
 
     @commit_mails.each do |mail|
       send_mail mail
@@ -1149,6 +1191,9 @@ EOF
       body << "\n"
       body << "  New Revision: #{@info.revision}\n"
       body << "\n"
+      unless @info.merge_status.length.zero?
+        body << "  #{@info.merge_status.join('\n')}\n\n"
+      end
       body << "  Log:\n"
       @info.log.rstrip.each_line do |line|
         body << "    #{line}"
