@@ -160,7 +160,7 @@ EOF
     end
 
     File.open("fixtures/test_single_commit") do |file|
-      assert_equal(file.read + "\n", black_out_mail(commit_mails.shift))
+      assert_equal(file.read, black_out_mail(commit_mails.shift))
     end
   end
 
