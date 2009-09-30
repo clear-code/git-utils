@@ -7,11 +7,11 @@ require 'commit-email'
 
 class GitCommitMailerTest < Test::Unit::TestCase
   def execute(command, is_debug_mode = false)
-    unless is_debug_mode
+    unless is_debug_mode || @is_debug_mode
       result = `(cd #{@git_dir} && #{command}) < /dev/null 2> /dev/null`
       raise "execute failed." unless $?.exitstatus.zero?
     else
-      puts "\n\nGitCommitMailerTest#execute: executing: cd #{@git_dir} && #{command}"
+      puts "$ cd #{@git_dir} && #{command}"
       result = `(cd #{@git_dir} && #{command})`
       raise "execute failed." unless $?.exitstatus.zero?
     end
@@ -90,6 +90,8 @@ EOF
 
   def setup
     ENV['GIT_DIR'] = nil #XXX without this, git init would segfault.... why??
+    @is_debug_mode = false
+
     create_repository
   end
 
@@ -168,6 +170,7 @@ EOF
   end
 
   def test_push_with_merge
+    @is_debug_mode = true
     sample_file = 'sample_file'
     sample_branch = 'sample_branch'
 
