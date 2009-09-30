@@ -19,7 +19,7 @@ class GitCommitMailerTest < Test::Unit::TestCase
   end
 
   def git(command, is_debug_mode = false)
-    sleep 1.1 if command =~ /\Acommit /
+    sleep 1.1 if command =~ /\A(commit|merge) / #wait for the timestamp to tick
     empty_post_receive_output if command =~ /\Apush /
 
     execute "git #{command}", is_debug_mode
