@@ -216,17 +216,17 @@ EOF
     git "checkout master"
     git "merge #{sample_branch}"
 
-    git "push origin master" #also suppor git push origin master #{sample_branch}
+    git "push origin master #{sample_branch}"
 
-    push_mail, commit_mails = nil, []
+    pushes = []
     each_post_receive_output do |old_revision, new_revision, reference|
-      push_mail, commit_mails = process_single_ref_change(old_revision, new_revision, reference)
+      pushes << process_single_ref_change(old_revision, new_revision, reference)
     end
 
-    assert_equal(read_file('fixtures/test_push_with_merge.push_mail'), black_out_mail(push_mail))
-    assert_equal(4, commit_mails.length)
-    assert_equal(read_file('fixtures/test_push_with_merge.1'), black_out_mail(commit_mails[0]))
-    assert_equal(read_file('fixtures/test_push_with_merge.2'), black_out_mail(commit_mails[1]))
-    assert_equal(read_file('fixtures/test_push_with_merge.3'), black_out_mail(commit_mails[2]))
+    assert_equal(read_file('fixtures/test_push_with_merge.push_mail'), black_out_mail(pushes[0][0]))
+    assert_equal(4, pushes[0][1].length)
+    assert_equal(read_file('fixtures/test_push_with_merge.1'), black_out_mail(pushes[0][1][0]))
+    assert_equal(read_file('fixtures/test_push_with_merge.2'), black_out_mail(pushes[0][1][1]))
+    assert_equal(read_file('fixtures/test_push_with_merge.3'), black_out_mail(pushes[0][1][2]))
   end
 end
