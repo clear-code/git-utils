@@ -1039,20 +1039,21 @@ EOF
 
     merge_commit.other_parents.each do |revision|
       base_revision = `git merge-base #{first_grand_parent} #{revision}`.strip
-      reference = find_branch_name_from_its_descendant_revision(revision)
+      branch_name = find_branch_name_from_its_descendant_revision(revision)
       descendant_revision = merge_commit.revision
 
       while revision != base_revision
         unless commit_info = @commit_info_map[revision]
-          commit_info = CommitInfo.new(repository, reference, revision)
+          commit_info = CommitInfo.new(repository, @reference, revision)
           i = @commit_infos.index(@commit_info_map[descendant_revision])
           @commit_infos.insert(i, commit_info)
           @commit_info_map[revision] = commit_info
+        else
+          commit_info.reference = @reference
         end
-        commit_info.reference = @reference
 
         commit_info.merge_status <<
-          "Merged from '#{reference}' at #{merge_commit.short_revision}"
+          "Merged from '#{branch_name}' at #{merge_commit.short_revision}"
         #puts "@@@@DEBUG: " + `git name-rev #{revision}`
         #puts "@@@@DEBUG: " + `git describe --no-abbrev --all #{revision}`
         #puts "@@@@DEBUG: " + `git name-rev --refs refs/heads/* #{revision}`
