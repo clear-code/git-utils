@@ -310,8 +310,17 @@ class GitCommitMailer
 
       def header
          unless @is_binary
-           "--- #{@from_file}    #{format_time(@old_date)} (#{short_old_revision})\n" +
-           "+++ #{@to_file}    #{format_time(@new_date)} (#{short_new_revision})\n"
+           case @type
+           when :added
+             "--- /dev/null\n" +
+             "+++ #{@to_file}    #{format_time(@new_date)} (#{short_new_revision})\n"
+           when :deleted
+             "--- #{@from_file}    #{format_time(@old_date)} (#{short_old_revision})\n" +
+             "+++ /dev/null\n"
+           else
+             "--- #{@from_file}    #{format_time(@old_date)} (#{short_old_revision})\n" +
+             "+++ #{@to_file}    #{format_time(@new_date)} (#{short_new_revision})\n"
+           end
          else
            "(Binary files differ)\n"
          end
