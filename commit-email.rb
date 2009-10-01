@@ -218,6 +218,7 @@ class GitCommitMailer
         end
         @new_revision = revision
         @old_revision = `git log -n 1 --pretty=format:%H #{revision}~`.strip
+        #@old_revision = `git rev-parse #{revision}~`.strip
 
         @new_date = Time.at(Info.get_record(@new_revision, "%at").to_i)
         @old_date = Time.at(Info.get_record(@old_revision, "%at").to_i)
@@ -334,11 +335,11 @@ class GitCommitMailer
       end
     end
 
-    attr_reader :repository, :reference, :revision
+    attr_reader :repository, :revision
     attr_reader :author, :date, :subject, :log, :commit_id
     attr_reader :author_email, :diffs, :added_files, :copied_files
     attr_reader :deleted_files, :updated_files, :renamed_files
-    attr_accessor :merge_status
+    attr_accessor :reference, :merge_status
     def initialize(repository, reference, revision)
       @repository = repository
       @reference = reference
@@ -1025,22 +1026,48 @@ EOF
     msg
   end
 
-  def traverse_merge_commit(commit_info)
-    commit_info.other_parents.each do |parent_revision|
-      parent_commit_info = @commit_info_map[parent_revision]
+  def find_branch_name_from_its_descendant_revision(revision)
+    begin
+      name = `git name-rev --name-only --refs refs/heads/* #{revision}`.strip
+      revision = `git rev-parse #{revision}~`.strip
+    end until name.sub(/([~^][0-9]+)*\z/,'') == name
+    name
+  end
 
-      while parent_commit_info
-        parent_commit_info.merge_status <<
-          "Merged in: '#{commit_info.short_reference}' at #{commit_info.short_revision}"
-        #traverse_merge_commit(parent_commit_info) if parent_commit_info.merge? #XXX is this needed???
-        parent_commit_info = @commit_info_map[parent_commit_info.first_parent]
+  def traverse_merge_commit(merge_commit)
+    first_grand_parent = `git rev-parse #{merge_commit.first_parent}~`.strip
+
+    merge_commit.other_parents.each do |revision|
+      base_revision = `git merge-base #{first_grand_parent} #{revision}`.strip
+      reference = find_branch_name_from_its_descendant_revision(revision)
+      descendant_revision = merge_commit.revision
+
+      while revision != base_revision
+        unless commit_info = @commit_info_map[revision]
+          commit_info = CommitInfo.new(repository, reference, revision)
+          i = @commit_infos.index(@commit_info_map[descendant_revision])
+          @commit_infos.insert(i, commit_info)
+          @commit_info_map[revision] = commit_info
+        end
+        commit_info.reference = @reference
+
+        commit_info.merge_status <<
+          "Merged from '#{reference}' at #{merge_commit.short_revision}"
+        #puts "@@@@DEBUG: " + `git name-rev #{revision}`
+        #puts "@@@@DEBUG: " + `git describe --no-abbrev --all #{revision}`
+        #puts "@@@@DEBUG: " + `git name-rev --refs refs/heads/* #{revision}`
+        #traverse_merge_commit(commit_info) if commit_info.merge_commit? #XXX is this needed???
+        descendant_revision, revision = revision, commit_info.first_parent
       end
     end
   end
 
   def post_process_infos
     #@push_info.author = determine_prominent_author
-    @commit_infos.reverse_each do |commit_info|
+    commit_infos = @commit_infos.dup
+    #@comit_infos may be altered and I don't know any sensible behavior of ruby
+    #in such cases. Take the safety measure at the moment...
+    commit_infos.reverse_each do |commit_info|
       traverse_merge_commit(commit_info) if commit_info.merge?
     end
   end

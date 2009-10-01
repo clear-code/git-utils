@@ -72,6 +72,7 @@ EOF
     File.open(@post_receive_stdout, 'r') do |file|
       while line = file.gets
         old_revision, new_revision, reference = line.split
+        puts "@@@@DEBUG" + old_revision + "  " + new_revision + "  " + reference
         yield old_revision, new_revision, reference
       end
     end
@@ -176,6 +177,7 @@ EOF
 
   def test_push_with_merge
     create_default_mailer
+    puts "@@@@DEBUG @origin_repository_dir" + @origin_repository_dir
     sample_file = 'sample_file'
     sample_branch = 'sample_branch'
 
@@ -195,6 +197,7 @@ EOF
     git "checkout #{sample_branch}"
     execute "echo \"This line is appended in '#{sample_branch}' branch (1)\" >> #{sample_file}"
     git "commit -a -m \"a sample commit in '#{sample_branch}' branch (1)\""
+    git "tag -a -m 'This is a sample tag' sample_tag"
 
     git "checkout master"
     execute "sed -i -e '1 s/^/This line is appended in 'master' branch. (1)\\n/' #{sample_file}"
@@ -202,7 +205,7 @@ EOF
     execute "sed -i -e '5 s/^/This line is inserted in 'master' branch. (2)\\n/' #{sample_file}"
     git "commit -a -m \"a sample commit in 'master' branch (2)\""
 
-    git "push origin #{sample_branch} master"
+    git "push --tags origin #{sample_branch} master"
 
     git "checkout #{sample_branch}"
     execute "echo \"This line is appended in '#{sample_branch}' branch (2)\" >> #{sample_file}"
@@ -221,7 +224,7 @@ EOF
     end
 
     assert_equal(read_file('fixtures/test_push_with_merge.push_mail'), black_out_mail(push_mail))
-    assert_equal(3, commit_mails.length)
+    assert_equal(4, commit_mails.length)
     assert_equal(read_file('fixtures/test_push_with_merge.1'), black_out_mail(commit_mails[0]))
     assert_equal(read_file('fixtures/test_push_with_merge.2'), black_out_mail(commit_mails[1]))
     assert_equal(read_file('fixtures/test_push_with_merge.3'), black_out_mail(commit_mails[2]))
