@@ -7,7 +7,7 @@ Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: 8bit
 From: User Name <user@example.com>
 To: to@example
-Subject: sample-repo [push] branch (master) is updated.
+Subject: sample-repo (push) branch (master) is updated.
 Date: ***, ** *** **** **:**:** +****
 User Name	****-**-** **:**:** +**** (***, ** *** ****)
 

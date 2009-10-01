@@ -1395,7 +1395,7 @@ CONTENT
       subject << "[#{@info.short_reference}#{affected_path_info}] "
       subject << @info.subject
     elsif @info.class == PushInfo
-      subject << "[push] "
+      subject << "(push) "
       subject << "#{@info.reference_type} (#{@info.short_reference}) is" +
                  " #{PushInfo::CHANGE_TYPE[@info.change_type]}."
     else
