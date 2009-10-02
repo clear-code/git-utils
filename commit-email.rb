@@ -407,9 +407,9 @@ class GitCommitMailer
       lines = []
 
       line = f.gets
-      lines << line.rstrip if line #take out the very first 'diff --git' header
+      lines << line.chomp if line #take out the very first 'diff --git' header
       while line = f.gets
-        line.rstrip!
+        line.chomp!
         if line =~ /\Adiff --git/
           @diffs << DiffPerFile.new(lines, @revision)
           lines = [line]

@@ -235,4 +235,33 @@ EOF
     assert_mail('test_push_with_merge.2', master_commit_mails[1])
     assert_mail('test_push_with_merge.3', master_commit_mails[2])
   end
+
+  def test_diffs_with_trailing_spaces
+    create_default_mailer
+    sample_file = 'sample_file'
+
+    File.open(@git_dir + sample_file, 'w') do |file|
+      file.puts <<EOF
+This is a sample text file.
+This file will be modified to make commits.
+    
+In the above line, I intentionally left some spaces.
+EOF
+    end
+    git "add ."
+    git 'commit -m "added a sample file"'
+    git 'push'
+
+    execute "sed -r -i -e 's/ +$//' #{sample_file}"
+    git 'commit -a -m "removed trailing spaces"'
+
+    git 'push'
+
+    push_mail, commit_mails = nil, []
+    each_post_receive_output do |old_revision, new_revision, reference|
+      push_mail, commit_mails = process_single_ref_change(old_revision, new_revision, reference)
+    end
+
+    assert_mail('test_diffs_with_trailing_spaces', commit_mails[0])
+  end
 end
