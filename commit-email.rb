@@ -1054,9 +1054,6 @@ EOF
 
         commit_info.merge_status <<
           "Merged at: #{merge_commit.short_revision} #{merge_commit.subject}"
-        #puts "@@@@DEBUG: " + `git name-rev #{revision}`
-        #puts "@@@@DEBUG: " + `git describe --no-abbrev --all #{revision}`
-        #puts "@@@@DEBUG: " + `git name-rev --refs refs/heads/* #{revision}`
         #traverse_merge_commit(commit_info) if commit_info.merge_commit? #XXX is this needed???
         descendant_revision, revision = revision, commit_info.first_parent
       end

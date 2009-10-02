@@ -72,7 +72,6 @@ EOF
     File.open(@post_receive_stdout, 'r') do |file|
       while line = file.gets
         old_revision, new_revision, reference = line.split
-        puts "@@@@DEBUG" + old_revision + "  " + new_revision + "  " + reference
         yield old_revision, new_revision, reference
       end
     end
@@ -177,7 +176,6 @@ EOF
 
   def test_push_with_merge
     create_default_mailer
-    puts "@@@@DEBUG @origin_repository_dir" + @origin_repository_dir
     sample_file = 'sample_file'
     sample_branch = 'sample_branch'
 
