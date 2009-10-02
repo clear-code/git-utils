@@ -532,6 +532,7 @@ class GitCommitMailer
       mailer.rss_path = options.rss_path
       mailer.rss_uri = options.rss_uri
       mailer.show_path = options.show_path
+      mailer.send_push_mail = options.send_push_mail
       mailer.name = options.name
       mailer.use_utf7 = options.use_utf7
       mailer.server = options.server
@@ -567,6 +568,7 @@ class GitCommitMailer
       options.rss_path = nil
       options.rss_uri = nil
       options.show_path = false
+      options.send_push_mail = false
       options.name = nil
       options.use_utf7 = false
       options.server = "localhost"
@@ -662,6 +664,11 @@ class GitCommitMailer
         options.show_path = bool
       end
 
+      opts.on("--[no-]send-push-mail",
+              "Send push mail") do |bool|
+        options.send_push_mail = bool
+      end
+
       opts.on("--repository-uri=URI",
               "Use URI as URI of repository") do |uri|
         options.repository_uri = uri
@@ -720,7 +727,7 @@ class GitCommitMailer
   end
 
   attr_reader :reference, :old_revision, :new_revision, :to
-  attr_writer :from, :add_diff, :show_path, :use_utf7
+  attr_writer :from, :add_diff, :show_path, :send_push_mail, :use_utf7
   attr_writer :repository
   attr_accessor :from_domain, :max_size, :repository_uri
   attr_accessor :rss_path, :rss_uri, :name, :server, :port
@@ -1131,7 +1138,7 @@ EOF
   end
 
   def send_all_mails
-    send_mail @push_mail
+    send_mail @push_mail if send_push_mail?
 
     @commit_mails.each do |mail|
       send_mail mail
@@ -1148,6 +1155,10 @@ EOF
 
   def show_path?
     @show_path
+  end
+
+  def send_push_mail?
+    @send_push_mail
   end
 
   private
