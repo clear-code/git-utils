@@ -1073,7 +1073,7 @@ EOF
         end
 
         commit_info.merge_status <<
-          "Merged #{merge_commit.short_revision} #{merge_commit.subject}"
+          "Merged #{merge_commit.short_revision}: #{merge_commit.subject}"
         #traverse_merge_commit(commit_info) if commit_info.merge_commit? #XXX is this needed???
         descendant_revision, revision = revision, commit_info.first_parent
       end
