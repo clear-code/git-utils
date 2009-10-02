@@ -313,13 +313,13 @@ class GitCommitMailer
            case @type
            when :added
              "--- /dev/null\n" +
-             "+++ #{@to_file}    #{format_time(@new_date)} (#{short_new_revision})\n"
+             "+++ #{@to_file}    #{format_time(@new_date)} (#{@new_blob})\n"
            when :deleted
-             "--- #{@from_file}    #{format_time(@old_date)} (#{short_old_revision})\n" +
+             "--- #{@from_file}    #{format_time(@old_date)} (#{@old_blob})\n" +
              "+++ /dev/null\n"
            else
-             "--- #{@from_file}    #{format_time(@old_date)} (#{short_old_revision})\n" +
-             "+++ #{@to_file}    #{format_time(@new_date)} (#{short_new_revision})\n"
+             "--- #{@from_file}    #{format_time(@old_date)} (#{@old_blob})\n" +
+             "+++ #{@to_file}    #{format_time(@new_date)} (#{@new_blob})\n"
            end
          else
            "(Binary files differ)\n"
