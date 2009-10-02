@@ -145,6 +145,20 @@ EOF
     end
   end
 
+  def create_file(filename, content)
+    File.open(@git_dir + filename, 'w') do |file|
+      file.puts(content)
+    end
+  end
+
+  def commit_new_file(filename, content, message=nil)
+    create_file(filename, content)
+
+    message ||= "This is a auto-generated commit message: added #{filename}"
+    git "add #{filename}"
+    git "commit -m \"#{message}\""
+  end
+
   def assert_mail(expected_mail_filename, tested_mail)
     assert_equal(read_file('fixtures/'+expected_mail_filename), black_out_mail(tested_mail))
   end
@@ -153,20 +167,15 @@ EOF
     create_default_mailer
     sample_filename = 'sample_file'
 
-    File.open(@git_dir + sample_filename, 'w') do |file|
-      file.puts <<EOF
+    file_content = <<EOF 
 This is a sample text file.
 This file will be modified to make commits.
 EOF
-    end
-    git "add ."
-    git 'commit -m "an initial commit"'
-
+    commit_new_file(sample_filename, file_content, "an initial commit")
     git 'push'
 
     execute "echo \"This line is appended to commit\" >> #{sample_filename}"
     git 'commit -a -m "a sample commit"'
-
     git 'push'
 
     push_mail, commit_mails = nil, []
@@ -183,17 +192,14 @@ EOF
     sample_file = 'sample_file'
     sample_branch = 'sample_branch'
 
-    File.open(@git_dir + sample_file, 'w') do |file|
-      file.puts <<EOF
+    file_content = <<EOF
 This is a sample text file.
 This file will be modified to make commits.
 Firstly, it'll be appended with some lines in a non-master branch.
 Secondly, it'll be prepended and inserted with some lines in the master branch.
 Finally, it'll get merged.
 EOF
-    end
-    git "add ."
-    git 'commit -m "added an sample text file"'
+    commit_new_file(sample_file, file_content, "added an sample text file")
 
     git "branch #{sample_branch}"
     git "checkout #{sample_branch}"
@@ -240,16 +246,13 @@ EOF
     create_default_mailer
     sample_file = 'sample_file'
 
-    File.open(@git_dir + sample_file, 'w') do |file|
-      file.puts <<EOF
+    file_content = <<EOF
 This is a sample text file.
 This file will be modified to make commits.
     
 In the above line, I intentionally left some spaces.
 EOF
-    end
-    git "add ."
-    git 'commit -m "added a sample file"'
+    commit_new_file(sample_file, file_content, "added a sample file")
     git 'push'
 
     execute "sed -r -i -e 's/ +$//' #{sample_file}"
