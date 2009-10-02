@@ -263,8 +263,8 @@ class GitCommitMailer
             @type = :renamed
           when /\Acopy (from|to) (.*)\z/
             @type = :copied
-          when /\Asimilarity index (.*)\z/
-            @similarity_index = $1
+          when /\Asimilarity index (.*)%\z/
+            @similarity_index = $1.to_i
           when /\Aold mode (.*)\z/
             @old_mode = $1
             @is_mode_changed = true
@@ -310,6 +310,10 @@ class GitCommitMailer
 
       def header
          unless @is_binary
+           if @similarity_index == 100 && (@type == :renamed || @type == :copied)
+             return ""
+           end
+
            case @type
            when :added
              "--- /dev/null\n" +
@@ -1276,13 +1280,13 @@ INFO
         args.concat(["-C","--diff-filter=R",
                      "-r", diff.short_old_revision, diff.short_new_revision, "--",
                      diff.from_file, diff.to_file])
-        similarity_index = " #{diff.similarity_index}"
+        similarity_index = " #{diff.similarity_index}%"
       when :copied
         command = "diff"
         args.concat(["-C","--diff-filter=C",
                      "-r", diff.short_old_revision, diff.short_new_revision, "--",
                      diff.from_file, diff.to_file])
-        similarity_index = " #{diff.similarity_index}"
+        similarity_index = " #{diff.similarity_index}%"
       else
         raise "unknown diff type: #{diff.type}"
       end
