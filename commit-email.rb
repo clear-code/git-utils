@@ -1039,7 +1039,7 @@ EOF
 
     merge_commit.other_parents.each do |revision|
       base_revision = `git merge-base #{first_grand_parent} #{revision}`.strip
-      branch_name = find_branch_name_from_its_descendant_revision(revision)
+      #branch_name = find_branch_name_from_its_descendant_revision(revision)
       descendant_revision = merge_commit.revision
 
       while revision != base_revision
@@ -1053,7 +1053,7 @@ EOF
         end
 
         commit_info.merge_status <<
-          "Merged from '#{branch_name}' at #{merge_commit.short_revision}"
+          "Merged at: #{merge_commit.short_revision} #{merge_commit.subject}"
         #puts "@@@@DEBUG: " + `git name-rev #{revision}`
         #puts "@@@@DEBUG: " + `git describe --no-abbrev --all #{revision}`
         #puts "@@@@DEBUG: " + `git name-rev --refs refs/heads/* #{revision}`
@@ -1150,7 +1150,7 @@ EOF
   end
 
   def send_mail(mail)
-    sleep 0.1
+    sleep 1.1
     _from = extract_email_address(from)
     to = @to.collect {|address| extract_email_address(address)}
     Net::SMTP.start(@server || "localhost", @port) do |smtp|
@@ -1192,6 +1192,7 @@ EOF
   end
 
   def make_mail
+    sleep 1.1
     utf8_body = make_body
     utf7_body = nil
     utf7_body = utf8_to_utf7(utf8_body) if use_utf7?
