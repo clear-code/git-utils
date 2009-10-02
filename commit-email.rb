@@ -218,6 +218,7 @@ class GitCommitMailer
         end
         @new_revision = revision
         @old_revision = `git log -n 1 --pretty=format:%H #{revision}~`.strip
+        #@old_revision = `git rev-parse #{revision}~`.strip
 
         @new_date = Time.at(Info.get_record(@new_revision, "%at").to_i)
         @old_date = Time.at(Info.get_record(@old_revision, "%at").to_i)
@@ -341,15 +342,17 @@ class GitCommitMailer
       def link
         file
       end
-      
+
       def file_path
         file
       end
     end
 
-    attr_reader :revision, :author, :date, :subject, :log, :commit_id
+    attr_reader :repository, :revision
+    attr_reader :author, :date, :subject, :log, :commit_id
     attr_reader :author_email, :diffs, :added_files, :copied_files
     attr_reader :deleted_files, :updated_files, :renamed_files
+    attr_accessor :reference, :merge_status
     def initialize(repository, reference, revision)
       @repository = repository
       @reference = reference
@@ -365,7 +368,11 @@ class GitCommitMailer
       parse_diff
       parse_file_status
 
-      sub_paths('driver')
+      @merge_status = []
+    end
+
+    def short_revision
+      GitCommitMailer.short_revision(@revision)
     end
 
     def sub_paths(prefix)
@@ -387,6 +394,7 @@ class GitCommitMailer
       @subject = get_record("%s")
       @log = `git log -n 1 --pretty=format:%s%n%n%b #{@revision}`
       @commit_id = get_record("%H")
+      @parent_revisions = get_record("%P").split
     end
 
     def parse_diff
@@ -409,7 +417,7 @@ class GitCommitMailer
           lines << line
         end
       end
-      
+
       #create the last diff terminated by the EOF
       @diffs << DiffPerFile.new(lines, @revision) if lines.length > 0
     end
@@ -421,7 +429,7 @@ class GitCommitMailer
         if line =~ /\A([^\t]*?)\t([^\t]*?)\z/
           status = $1
           file = $2
-          
+
           case status
           when /^A/ # Added
             @added_files << file
@@ -445,6 +453,22 @@ class GitCommitMailer
       end
     end
 
+    def first_parent
+      return nil if @parent_revisions.length.zero?
+
+      @parent_revisions[0]
+    end
+
+    def other_parents
+      return [] if @parent_revisions.length.zero?
+
+      @parent_revisions[1..-1]
+    end
+
+    def merge?
+      @parent_revisions.length >= 2
+    end
+
     def headers
       [ "X-Git-Author: #{author}",
         "X-Git-Revision: #{revision}",
@@ -463,20 +487,13 @@ class GitCommitMailer
       revision[0,7]
     end
 
-    def run(argv=nil)
+    def parse_options_and_create(argv=nil)
       argv ||= ARGV
       to, options = parse(argv)
       to = [to, *options.to].compact
       mailer = new(to)
       apply_options(mailer, options)
-
-      while line = STDIN.gets
-        old_revision, new_revision, reference = line.split
-        #puts "######Got: old_rev:#{old_revision} new_rev:#{new_revision} #{reference}"
-        catch (:no_email) do
-          mailer.process_single_ref_change(old_revision, new_revision, reference)
-        end
-      end
+      mailer
     end
 
     def parse(argv)
@@ -883,7 +900,7 @@ EOF
       revision_list << "discards  #{short_revision} #{subject}\n"
     end
     unless revision
-      fast_forward = true 
+      fast_forward = true
       subject = GitCommitMailer.get_record(old_revision,'%s')
       revision_list << "    from  #{short_old_revision} #{subject}\n"
     end
@@ -1022,13 +1039,53 @@ EOF
     msg
   end
 
+  def find_branch_name_from_its_descendant_revision(revision)
+    begin
+      name = `git name-rev --name-only --refs refs/heads/* #{revision}`.strip
+      revision = `git rev-parse #{revision}~`.strip
+    end until name.sub(/([~^][0-9]+)*\z/,'') == name
+    name
+  end
+
+  def traverse_merge_commit(merge_commit)
+    first_grand_parent = `git rev-parse #{merge_commit.first_parent}~`.strip
+
+    merge_commit.other_parents.each do |revision|
+      base_revision = `git merge-base #{first_grand_parent} #{revision}`.strip
+      #branch_name = find_branch_name_from_its_descendant_revision(revision)
+      descendant_revision = merge_commit.revision
+
+      while revision != base_revision
+        unless commit_info = @commit_info_map[revision]
+          commit_info = CommitInfo.new(repository, @reference, revision)
+          i = @commit_infos.index(@commit_info_map[descendant_revision])
+          @commit_infos.insert(i, commit_info)
+          @commit_info_map[revision] = commit_info
+        else
+          commit_info.reference = @reference
+        end
+
+        commit_info.merge_status <<
+          "Merged at: #{merge_commit.short_revision} #{merge_commit.subject}"
+        #traverse_merge_commit(commit_info) if commit_info.merge_commit? #XXX is this needed???
+        descendant_revision, revision = revision, commit_info.first_parent
+      end
+    end
+  end
+
   def post_process_infos
     #@push_info.author = determine_prominent_author
+    commit_infos = @commit_infos.dup
+    #@comit_infos may be altered and I don't know any sensible behavior of ruby
+    #in such cases. Take the safety measure at the moment...
+    commit_infos.reverse_each do |commit_info|
+      traverse_merge_commit(commit_info) if commit_info.merge?
+    end
   end
 
   def determine_prominent_author
     #if @commit_infos.length > 0
-    #  
+    #
     #else
     #   @push_info
   end
@@ -1040,29 +1097,45 @@ EOF
 
     @push_info = nil
     @commit_infos = []
+    @commit_info_map = {}
 
-    push_info_args = each_revision do |revision|
-      @commit_infos << CommitInfo.new(repository, reference, revision)
-    end
+    catch (:no_email) do
+      push_info_args = each_revision do |revision|
+        commit_info = CommitInfo.new(repository, reference, revision)
+        @commit_infos << commit_info
+        @commit_info_map[revision] = commit_info
+      end
 
-    if push_info_args
-      @push_info = PushInfo.new(old_revision, new_revision, reference,
-                                *push_info_args)
-    else
-      return
+      if push_info_args
+        @push_info = PushInfo.new(old_revision, new_revision, reference,
+                                  *push_info_args)
+      else
+        return
+      end
     end
 
     post_process_infos
 
-    #@info = @push_info
-    #send_mail make_mail
+    @info = @push_info
+    @push_mail = make_mail
 
+    @commit_mails = []
     @commit_infos.each do |info|
       @info = info
-      send_mail make_mail
+      @commit_mails << make_mail
     end
 
-    output_rss
+    #output_rss #XXX eneble this in the future
+
+    [@push_mail, @commit_mails]
+  end
+
+  def send_all_mails
+    send_mail @push_mail
+
+    @commit_mails.each do |mail|
+      send_mail mail
+    end
   end
 
   def use_utf7?
@@ -1087,7 +1160,7 @@ EOF
   end
 
   def send_mail(mail)
-    sleep 0.1
+    sleep 1.1
     _from = extract_email_address(from)
     to = @to.collect {|address| extract_email_address(address)}
     Net::SMTP.start(@server || "localhost", @port) do |smtp|
@@ -1129,6 +1202,7 @@ EOF
   end
 
   def make_mail
+    sleep 1.1
     utf8_body = make_body
     utf7_body = nil
     utf7_body = utf8_to_utf7(utf8_body) if use_utf7?
@@ -1156,6 +1230,9 @@ EOF
       body << "\n"
       body << "  New Revision: #{@info.revision}\n"
       body << "\n"
+      unless @info.merge_status.length.zero?
+        body << "  #{@info.merge_status.join('\n')}\n\n"
+      end
       body << "  Log:\n"
       @info.log.rstrip.each_line do |line|
         body << "    #{line}"
@@ -1357,7 +1434,7 @@ CONTENT
       subject << "[#{@info.short_reference}#{affected_path_info}] "
       subject << @info.subject
     elsif @info.class == PushInfo
-      subject << "[push] "
+      subject << "(push) "
       subject << "#{@info.reference_type} (#{@info.short_reference}) is" +
                  " #{PushInfo::CHANGE_TYPE[@info.change_type]}."
     else
@@ -1447,54 +1524,61 @@ CONTENT
   end
 end
 
-
-begin
-  GitCommitMailer.run(argv)
-rescue Exception => error
-  require 'net/smtp'
-  require 'socket'
-
-  to = []
-  subject = "Error"
-  from = "#{ENV['USER']}@#{Socket.gethostname}"
-  server = nil
-  port = nil
+if __FILE__ == $0
   begin
-    _to, options = GitCommitMailer.parse(argv)
-    to = [_to]
-    to = options.error_to unless options.error_to.empty?
-    from = options.from || from
-    subject = "#{options.name}: #{subject}" if options.name
-    server = options.server
-    port = options.port
-  rescue OptionParser::MissingArgument
-    argv.delete_if {|arg| $!.args.include?(arg)}
-    retry
-  rescue OptionParser::ParseError
-    if to.empty?
-      _to, *_ = ARGV.reject {|arg| /^-/.match(arg)}
-      to = [_to]
+    mailer = GitCommitMailer.parse_options_and_create(argv)
+
+    while line = STDIN.gets
+      old_revision, new_revision, reference = line.split
+      mailer.process_single_ref_change(old_revision, new_revision, reference)
+      mailer.send_all_mails
     end
-  end
+  rescue Exception => error
+    require 'net/smtp'
+    require 'socket'
 
-  detail = <<-EOM
-#{error.class}: #{error.message}
-#{error.backtrace.join("\n")}
-EOM
-  to = to.compact
-  if to.empty?
-    STDERR.puts detail
-  else
-    sendmail(to, from, <<-MAIL, server, port)
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-From: #{from}
-To: #{to.join(', ')}
-Subject: #{subject}
-Date: #{Time.now.rfc2822}
+    to = []
+    subject = "Error"
+    from = "#{ENV['USER']}@#{Socket.gethostname}"
+    server = nil
+    port = nil
+    begin
+      _to, options = GitCommitMailer.parse(argv)
+      to = [_to]
+      to = options.error_to unless options.error_to.empty?
+      from = options.from || from
+      subject = "#{options.name}: #{subject}" if options.name
+      server = options.server
+      port = options.port
+    rescue OptionParser::MissingArgument
+      argv.delete_if {|arg| $!.args.include?(arg)}
+      retry
+    rescue OptionParser::ParseError
+      if to.empty?
+        _to, *_ = ARGV.reject {|arg| /^-/.match(arg)}
+        to = [_to]
+      end
+    end
 
-#{detail}
-MAIL
+    detail = <<-EOM
+  #{error.class}: #{error.message}
+  #{error.backtrace.join("\n")}
+  EOM
+    to = to.compact
+    if to.empty?
+      STDERR.puts detail
+    else
+      sendmail(to, from, <<-MAIL, server, port)
+  MIME-Version: 1.0
+  Content-Type: text/plain; charset=us-ascii
+  Content-Transfer-Encoding: 7bit
+  From: #{from}
+  To: #{to.join(', ')}
+  Subject: #{subject}
+  Date: #{Time.now.rfc2822}
+
+  #{detail}
+  MAIL
+    end
   end
 end
