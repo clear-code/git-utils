@@ -145,6 +145,10 @@ EOF
     end
   end
 
+  def assert_mail(expected_mail_filename, tested_mail)
+    assert_equal(read_file('fixtures/'+expected_mail_filename), black_out_mail(tested_mail))
+  end
+
   def test_single_commit
     create_default_mailer
     sample_filename = 'sample_file'
@@ -170,8 +174,8 @@ EOF
       push_mail, commit_mails = process_single_ref_change(old_revision, new_revision, reference)
     end
 
-    assert_equal(read_file('fixtures/test_single_commit'), black_out_mail(commit_mails.shift))
-    assert_equal(read_file('fixtures/test_single_commit.push_mail'), black_out_mail(push_mail))
+    assert_mail('test_single_commit.push_mail', push_mail)
+    assert_mail('test_single_commit', commit_mails[0])
   end
 
   def test_push_with_merge
@@ -221,10 +225,14 @@ EOF
       pushes << process_single_ref_change(old_revision, new_revision, reference)
     end
 
-    assert_equal(read_file('fixtures/test_push_with_merge.push_mail'), black_out_mail(pushes[0][0]))
-    assert_equal(4, pushes[0][1].length)
-    assert_equal(read_file('fixtures/test_push_with_merge.1'), black_out_mail(pushes[0][1][0]))
-    assert_equal(read_file('fixtures/test_push_with_merge.2'), black_out_mail(pushes[0][1][1]))
-    assert_equal(read_file('fixtures/test_push_with_merge.3'), black_out_mail(pushes[0][1][2]))
+    master_ref_change = pushes[0]
+    master_push_mail = master_ref_change[0]
+    master_commit_mails = master_ref_change[1]
+
+    assert_mail('test_push_with_merge.push_mail', master_push_mail)
+    assert_equal(4, master_commit_mails.length)
+    assert_mail('test_push_with_merge.1', master_commit_mails[0])
+    assert_mail('test_push_with_merge.2', master_commit_mails[1])
+    assert_mail('test_push_with_merge.3', master_commit_mails[2])
   end
 end
