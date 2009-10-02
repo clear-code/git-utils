@@ -199,7 +199,7 @@ Firstly, it'll be appended with some lines in a non-master branch.
 Secondly, it'll be prepended and inserted with some lines in the master branch.
 Finally, it'll get merged.
 EOF
-    commit_new_file(sample_file, file_content, "added an sample text file")
+    commit_new_file(sample_file, file_content, "added a sample text file")
 
     git "branch #{sample_branch}"
     git "checkout #{sample_branch}"
