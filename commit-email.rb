@@ -1057,12 +1057,13 @@ EOF
   def traverse_merge_commit(merge_commit)
     first_grand_parent = `git rev-parse #{merge_commit.first_parent}~`.strip
 
-    merge_commit.other_parents.each do |revision|
+    [merge_commit.first_parent, *merge_commit.other_parents].each do |revision|
       base_revision = `git merge-base #{first_grand_parent} #{revision}`.strip
+      base_revisions = [@old_revision, base_revision]
       #branch_name = find_branch_name_from_its_descendant_revision(revision)
       descendant_revision = merge_commit.revision
 
-      while revision != base_revision
+      until base_revisions.index(revision)
         unless commit_info = @commit_info_map[revision]
           commit_info = CommitInfo.new(repository, @reference, revision)
           i = @commit_infos.index(@commit_info_map[descendant_revision])
@@ -1072,9 +1073,16 @@ EOF
           commit_info.reference = @reference
         end
 
-        commit_info.merge_status <<
-          "Merged #{merge_commit.short_revision}: #{merge_commit.subject}"
-        #traverse_merge_commit(commit_info) if commit_info.merge_commit? #XXX is this needed???
+        merge_message = "Merged #{merge_commit.short_revision}: #{merge_commit.subject}"
+        unless commit_info.merge_status.index(merge_message)
+          commit_info.merge_status << merge_message
+        end
+
+        if commit_info.merge?
+          traverse_merge_commit(commit_info)
+          base_revision = `git merge-base #{first_grand_parent} #{commit_info.first_parent}`.strip
+          base_revisions << base_revision unless base_revisions.index(base_revision)
+        end
         descendant_revision, revision = revision, commit_info.first_parent
       end
     end
@@ -1242,7 +1250,7 @@ EOF
       body << "  New Revision: #{@info.revision}\n"
       body << "\n"
       unless @info.merge_status.length.zero?
-        body << "  #{@info.merge_status.join('\n')}\n\n"
+        body << "  #{@info.merge_status.join("\n  ")}\n\n"
       end
       body << "  Log:\n"
       @info.log.rstrip.each_line do |line|

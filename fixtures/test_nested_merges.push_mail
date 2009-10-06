@@ -1,0 +1,24 @@
+X-Git-OldRev: ****************************************
+X-Git-NewRev: ****************************************
+X-Git-Refname: refs/heads/master
+X-Git-Reftype: branch
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+From: User Name <user@example.com>
+To: to@example
+Subject: sample-repo (push) branch (master) is updated.
+Date: ***, ** *** **** **:**:** +****
+User Name	****-**-** **:**:** +**** (***, ** *** ****)
+
+New Push:
+
+  Log:
+    Branch (refs/heads/master) is updated.
+    
+        from  ******* a sample commit in master branch: file => FILE
+         via  ******* a sample commit in 'first_branch' branch
+         via  ******* a sample commit in 'second_branch' branch
+         via  ******* Merge branch 'second_branch' into first_branch
+         via  ******* Merge branch 'first_branch'
+

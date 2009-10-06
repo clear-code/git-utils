@@ -20,7 +20,7 @@ class GitCommitMailerTest < Test::Unit::TestCase
 
   def git(command, is_debug_mode = false)
     sleep 1.1 if command =~ /\A(commit|merge) / #wait for the timestamp to tick
-    empty_post_receive_output if command =~ /\Apush /
+    empty_post_receive_output if command =~ /\Apush/
 
     execute "git #{command}", is_debug_mode
   end
@@ -266,5 +266,65 @@ EOF
     end
 
     assert_mail('test_diffs_with_trailing_spaces', commit_mails[0])
+  end
+
+  def test_nested_merges
+    create_default_mailer
+    sample_file = 'sample_file'
+    first_branch = 'first_branch'
+    second_branch = 'second_branch'
+
+    file_content = <<EOF
+This is a sample text file.
+This file will be modified to make commits.
+This line is needed to assist the auto-merge algorithm.
+EOF
+    commit_new_file(sample_file, file_content, "added a sample file")
+    git 'push origin master'
+
+    git "branch #{first_branch}"
+    git "checkout #{first_branch}"
+    execute "echo \"This line is appended in '#{first_branch}' branch.\" >> #{sample_file}"
+    git "commit -a -m \"a sample commit in '#{first_branch}' branch\""
+    git "push"
+
+    git "checkout master"
+    execute "sed -i -e '1 s/This/THIS/' #{sample_file}"
+    git "commit -a -m \"a sample commit in master branch: This => THIS\""
+    git "push"
+
+    git "branch #{second_branch}"
+    git "checkout #{second_branch}"
+    execute "sed -i -e \"1 s/^/This line is prepnded in '#{second_branch}' branch.\\n/\" #{sample_file}"
+    git "commit -a -m \"a sample commit in '#{second_branch}' branch\""
+    git "push"
+
+    git "checkout master"
+    execute "sed -i -e '2 s/file/FILE/' #{sample_file}"
+    git "commit -a -m \"a sample commit in master branch: file => FILE\""
+    git "push"
+    
+
+    git "checkout #{first_branch}"
+    git "merge #{second_branch}"
+
+    git "checkout master"
+    git "merge #{first_branch}"
+    git "push"
+
+    n = 0
+    push_mail, commit_mails = nil, []
+    each_post_receive_output do |old_revision, new_revision, reference|
+      n += 1
+      push_mail, commit_mails = process_single_ref_change(old_revision, new_revision, reference)
+    end
+
+    assert_equal(1, n)
+    assert_mail('test_nested_merges.push_mail', push_mail)
+    assert_mail('test_nested_merges.1', commit_mails[0])
+    assert_mail('test_nested_merges.2', commit_mails[1])
+    assert_mail('test_nested_merges.3', commit_mails[2])
+    assert_mail('test_nested_merges.4', commit_mails[3])
+    assert_mail('test_nested_merges.5', commit_mails[4])
   end
 end
