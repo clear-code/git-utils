@@ -1179,7 +1179,6 @@ EOF
   end
 
   def send_mail(mail)
-    sleep 1.1
     _from = extract_email_address(from)
     to = @to.collect {|address| extract_email_address(address)}
     Net::SMTP.start(@server || "localhost", @port) do |smtp|
@@ -1221,7 +1220,6 @@ EOF
   end
 
   def make_mail
-    sleep 1.1
     utf8_body = make_body
     utf7_body = nil
     utf7_body = utf8_to_utf7(utf8_body) if use_utf7?
