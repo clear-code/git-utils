@@ -1419,7 +1419,7 @@ CONTENT
     headers << "From: #{from}"
     headers << "To: #{to.join(', ')}"
     headers << "Subject: #{(@name+' ') if @name}#{make_subject}"
-    headers << "Date: #{Time.now.rfc2822}"
+    headers << "Date: #{@info.date.rfc2822}"
     headers.find_all do |header|
       /\A\s*\z/ !~ header
     end.join("\n")
