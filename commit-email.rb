@@ -1058,6 +1058,7 @@ EOF
     first_grand_parent = `git rev-parse #{merge_commit.first_parent}~`.strip
 
     [merge_commit.first_parent, *merge_commit.other_parents].each do |revision|
+      is_traversing_first_parent = (revision == merge_commit.first_parent)
       base_revision = `git merge-base #{first_grand_parent} #{revision}`.strip
       base_revisions = [@old_revision, base_revision]
       #branch_name = find_branch_name_from_its_descendant_revision(revision)
@@ -1074,7 +1075,7 @@ EOF
         end
 
         merge_message = "Merged #{merge_commit.short_revision}: #{merge_commit.subject}"
-        unless commit_info.merge_status.index(merge_message)
+        if not is_traversing_first_parent and not commit_info.merge_status.index(merge_message)
           commit_info.merge_status << merge_message
         end
 
