@@ -67,6 +67,10 @@ def sendmail(to, from, mail, server=nil, port=nil)
   end
 end
 
+def git(command)
+  GitCommitMailer.git(command)
+end
+
 class GitCommitMailer
   KILO_SIZE = 1000
   DEFAULT_MAX_SIZE = "100M"
@@ -143,8 +147,8 @@ class GitCommitMailer
           raise "Corrupted diff header"
         end
         @new_revision = revision
-        @old_revision = `git log -n 1 --pretty=format:%H #{revision}~`.strip
-        #@old_revision = `git rev-parse #{revision}~`.strip
+        @old_revision = git("log -n 1 --pretty=format:%H #{revision}~").strip
+        #@old_revision = git("rev-parse #{revision}~").strip
 
         @new_date = Time.at(Info.get_record(@new_revision, "%at").to_i)
         @old_date = Time.at(Info.get_record(@old_revision, "%at").to_i)
@@ -318,7 +322,7 @@ class GitCommitMailer
       @author_email = get_record("%an <%ae>")
       @date = Time.at(get_record("%at").to_i)
       @subject = get_record("%s")
-      @log = `git log -n 1 --pretty=format:%s%n%n%b #{@revision}`
+      @log = git("log -n 1 --pretty=format:%s%n%n%b #{@revision}")
       @commit_id = get_record("%H")
       @parent_revisions = get_record("%P").split
     end
@@ -349,7 +353,7 @@ class GitCommitMailer
     end
 
     def parse_file_status
-      `git log -n 1 --pretty=format:'' -C --name-status #{@revision}`.
+      git("log -n 1 --pretty=format:'' -C --name-status #{@revision}").
       lines.each do |line|
         line.rstrip!
         if line =~ /\A([^\t]*?)\t([^\t]*?)\z/
@@ -405,8 +409,18 @@ class GitCommitMailer
   end
 
   class << self
+    def execute(command)
+      result = `(cd #{@git_dir} && #{command}) < /dev/null 2> /dev/null`
+      raise "execute failed." unless $?.exitstatus.zero?
+      result
+    end
+
+    def git(command)
+      execute "git #{command}"
+    end
+
     def get_record(revision, record)
-      `git log -n 1 --pretty=format:'#{record}' #{revision}`.strip
+      git("log -n 1 --pretty=format:'#{record}' #{revision}").strip
     end
 
     def short_revision(revision)
@@ -696,9 +710,9 @@ class GitCommitMailer
   def detect_revision_type(change_type)
     case change_type
     when :create, :update
-      `git cat-file -t #@new_revision`.strip
+      git("cat-file -t #@new_revision").strip
     when :delete
-      `git cat-file -t #@old_revision`.strip
+      git("cat-file -t #@old_revision").strip
     end
   end
 
@@ -757,8 +771,8 @@ class GitCommitMailer
   def excluded_revisions
      # refer to the long comment located at the top of this file for the
      # explanation of this command.
-     current_reference_rev = `git rev-parse #@reference`.strip
-     `git rev-parse --not --branches`.lines.find_all do |line|
+     current_reference_rev = git("rev-parse #@reference").strip
+     git("rev-parse --not --branches").lines.find_all do |line|
        line.strip!
        not line.index(current_reference_rev)
      end.join(' ')
@@ -768,7 +782,7 @@ class GitCommitMailer
     msg = "Branch (#@reference) is created.\n"
 
     commit_list = []
-    `git rev-list #@new_revision #{excluded_revisions}`.lines.
+    git("rev-list #@new_revision #{excluded_revisions}").lines.
     reverse_each do |revision|
       revision.strip!
       short_revision = GitCommitMailer.short_revision(revision)
@@ -826,7 +840,7 @@ EOF
     revision = nil
     short_revision = nil
     revision_list = []
-    `git rev-list #@new_revision..#@old_revision`.lines.each do |revision|
+    git("rev-list #@new_revision..#@old_revision").lines.each do |revision|
       revision.strip!
       short_revision = GitCommitMailer.short_revision(revision)
       subject = GitCommitMailer.get_record(revision, '%s')
@@ -844,7 +858,7 @@ EOF
     # full detail of the change from rolling back the old revision to
     # the base revision and then forward to the new revision
     tmp = []
-    `git rev-list #@old_revision..#@new_revision`.lines.each do |revision|
+    git("rev-list #@old_revision..#@new_revision").lines.each do |revision|
       revision.strip!
       short_revision = GitCommitMailer.short_revision(revision)
 
@@ -866,7 +880,7 @@ EOF
 
       # Find the common ancestor of the old and new revisions and
       # compare it with new_revision
-      baserev = `git merge-base #@old_revision #@new_revision`.strip
+      baserev = git("merge-base #@old_revision #@new_revision").strip
       rewind_only = false
       if baserev == new_revision
         msg << explain_rewind
@@ -881,7 +895,7 @@ EOF
 
     no_actual_output = true
     unless rewind_only
-      `git rev-list #@old_revision..#@new_revision #{excluded_revisions}`.lines.
+      git("rev-list #@old_revision..#@new_revision #{excluded_revisions}").lines.
       reverse_each do |revision|
         block.call(revision.strip)
         no_actual_output = false
@@ -898,7 +912,7 @@ EOF
   def process_delete_branch(block)
     "Branch (#@reference) is deleted.\n" +
     "       was  #@old_revision\n\n" +
-    `git show -s --pretty=oneline #@old_revision`
+    git("show -s --pretty=oneline #@old_revision")
   end
 
   def process_create_atag
@@ -917,17 +931,17 @@ EOF
   def process_delete_atag
     "Annotated tag (#@reference) is deleted.\n" +
     "       was  #@old_revision\n\n" +
-    `git show -s --pretty=oneline #@old_revision`
+    git("show -s --pretty=oneline #@old_revision")
   end
 
   def process_atag
     msg = ''
     # Use git for-each-ref to pull out the individual fields from the
     # tag
-    tag_object = `git for-each-ref --format='%(*objectname)' #@reference`.strip
-    tag_type = `git for-each-ref --format='%(*objecttype)' #@reference`.strip
-    tagger = `git for-each-ref --format='%(taggername)' #@reference`.strip
-    tagged = `git for-each-ref --format='%(taggerdate)' #@reference`.strip
+    tag_object = git("for-each-ref --format='%(*objectname)' #@reference").strip
+    tag_type = git("for-each-ref --format='%(*objecttype)' #@reference").strip
+    tagger = git("for-each-ref --format='%(taggername)' #@reference").strip
+    tagged = git("for-each-ref --format='%(taggerdate)' #@reference").strip
     prev_tag = nil
 
     msg << "   tagging  #{tag_object} (#{tag_type})\n"
@@ -936,18 +950,18 @@ EOF
       # If the tagged object is a commit, then we assume this is a
       # release, and so we calculate which tag this tag is
       # replacing
-      prev_tag = `git describe --abbrev=0 #@new_revision^`.strip
+      prev_tag = git("describe --abbrev=0 #@new_revision^").strip
 
       msg << "  replaces  #{prev_tag}\n" if prev_tag
     else
-      msg << "    length  #{`git cat-file -s #{tag_object}`.strip} bytes\n"
+      msg << "    length  #{git("cat-file -s #{tag_object}").strip} bytes\n"
     end
     msg << " tagged by  #{tagger}\n"
     msg << "        on  #{tagged}\n\n"
 
     # Show the content of the tag message; this might contain a change
     # log or release notes so is worth displaying.
-    tag_content = `git cat-file tag #@new_revision`.split("\n")
+    tag_content = git("cat-file tag #@new_revision").split("\n")
     tag_content.shift while not tag_content[0].empty?
     tag_content.shift
     msg << tag_content.join("\n")
@@ -958,12 +972,12 @@ EOF
       # performed on them
       if prev_tag
         # Show changes since the previous release
-        msg << `git rev-list --pretty=short \"#{prev_tag}..#@new_revision\" |
-                git shortlog`
+        msg << git("rev-list --pretty=short \"#{prev_tag}..#@new_revision\" |
+                    git shortlog")
       else
         # No previous tag, show all the changes since time
         # began
-        msg << `git rev-list --pretty=short #@new_revision | git shortlog`
+        msg << git("rev-list --pretty=short #@new_revision | git shortlog")
       end
     else
       # XXX: Is there anything useful we can do for non-commit
@@ -974,18 +988,18 @@ EOF
 
   def find_branch_name_from_its_descendant_revision(revision)
     begin
-      name = `git name-rev --name-only --refs refs/heads/* #{revision}`.strip
-      revision = `git rev-parse #{revision}~`.strip
+      name = git("name-rev --name-only --refs refs/heads/* #{revision}").strip
+      revision = git("rev-parse #{revision}~").strip
     end until name.sub(/([~^][0-9]+)*\z/,'') == name
     name
   end
 
   def traverse_merge_commit(merge_commit)
-    first_grand_parent = `git rev-parse #{merge_commit.first_parent}~`.strip
+    first_grand_parent = git("rev-parse #{merge_commit.first_parent}~").strip
 
     [merge_commit.first_parent, *merge_commit.other_parents].each do |revision|
       is_traversing_first_parent = (revision == merge_commit.first_parent)
-      base_revision = `git merge-base #{first_grand_parent} #{revision}`.strip
+      base_revision = git("merge-base #{first_grand_parent} #{revision}").strip
       base_revisions = [@old_revision, base_revision]
       #branch_name = find_branch_name_from_its_descendant_revision(revision)
       descendant_revision = merge_commit.revision
@@ -1007,7 +1021,7 @@ EOF
 
         if commit_info.merge?
           traverse_merge_commit(commit_info)
-          base_revision = `git merge-base #{first_grand_parent} #{commit_info.first_parent}`.strip
+          base_revision = git("merge-base #{first_grand_parent} #{commit_info.first_parent}").strip
           base_revisions << base_revision unless base_revisions.index(base_revision)
         end
         descendant_revision, revision = revision, commit_info.first_parent
