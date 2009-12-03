@@ -147,11 +147,16 @@ class GitCommitMailer
           raise "Corrupted diff header"
         end
         @new_revision = revision
-        @old_revision = git("log -n 1 --pretty=format:%H #{revision}~").strip
-        #@old_revision = git("rev-parse #{revision}~").strip
-
         @new_date = Time.at(Info.get_record(@new_revision, "%at").to_i)
-        @old_date = Time.at(Info.get_record(@old_revision, "%at").to_i)
+
+        begin
+          @old_revision = git("log -n 1 --pretty=format:%H #{revision}~").strip
+          @old_date = Time.at(Info.get_record(@old_revision, "%at").to_i)
+        rescue
+          @old_revision = '0' * 40
+          @old_date = nil
+        end
+        #@old_revision = git("rev-parse #{revision}~").strip
       end
 
       def mode_changed?
@@ -410,8 +415,8 @@ class GitCommitMailer
 
   class << self
     def execute(command)
-      result = `(cd #{@git_dir} && #{command}) < /dev/null 2> /dev/null`
-      raise "execute failed." unless $?.exitstatus.zero?
+      result = `#{command} < /dev/null 2> /dev/null`
+      raise "execute failed:#{command}" unless $?.exitstatus.zero?
       result
     end
 
