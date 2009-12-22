@@ -345,7 +345,7 @@ class GitCommitMailer
       while line = output.shift
         line.chomp!
         if line =~ /\Adiff --git/
-          @diffs << DiffPerFile.new(lines, @revision)
+          @diffs << DiffPerFile.new(@mailer, lines, @revision)
           lines = [line]
         else
           lines << line
