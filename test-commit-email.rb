@@ -71,14 +71,12 @@ class GitCommitMailerTest < Test::Unit::TestCase
   end
 
   def each_post_receive_output
-    ENV['GIT_DIR'] = @origin_repository_dir
     File.open(@post_receive_stdout, 'r') do |file|
       while line = file.gets
         old_revision, new_revision, reference = line.split
         yield old_revision, new_revision, reference
       end
     end
-    ENV['GIT_DIR'] = nil
   end
 
   def process_single_ref_change(*args)
@@ -95,7 +93,6 @@ class GitCommitMailerTest < Test::Unit::TestCase
   end
 
   def setup
-    ENV['GIT_DIR'] = nil #XXX without this, git init would segfault.... why??
     @is_debug_mode = true if ENV['DEBUG'] == 'yes'
 
     create_repository
@@ -111,7 +108,6 @@ class GitCommitMailerTest < Test::Unit::TestCase
 
   def create_mailer(argv)
     @mailer = GitCommitMailer.parse_options_and_create(argv.split)
-    ENV['GIT_DIR'] = nil
   end
 
   def create_default_mailer

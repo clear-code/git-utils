@@ -67,21 +67,17 @@ def sendmail(to, from, mail, server=nil, port=nil)
   end
 end
 
-def git(command)
-  GitCommitMailer.git(command)
-end
-
 class GitCommitMailer
   KILO_SIZE = 1000
   DEFAULT_MAX_SIZE = "100M"
 
   class Info
-    def Info.get_record(revision, record)
-      GitCommitMailer.get_record(revision, record)
+    def git(command)
+      @mailer.git(command)
     end
 
     def get_record(record)
-      Info.get_record(@revision, record)
+      @mailer.get_record(@revision, record)
     end
 
     def short_reference
@@ -92,8 +88,9 @@ class GitCommitMailer
   class PushInfo < Info
     attr_reader :old_revision, :new_revision, :reference, :reference_type, :log
     attr_reader :author, :author_email, :date, :subject, :change_type
-    def initialize(old_revision, new_revision, reference,
+    def initialize(mailer, old_revision, new_revision, reference,
                    reference_type, change_type, log)
+      @mailer = mailer
       @old_revision = old_revision
       @new_revision = new_revision
       @reference = reference
@@ -129,7 +126,8 @@ class GitCommitMailer
       attr_reader :added_line, :deleted_line, :body, :type
       attr_reader :deleted_file_mode, :new_file_mode, :old_mode, :new_mode
       attr_reader :similarity_index
-      def initialize(lines, revision)
+      def initialize(mailer, lines, revision)
+        @mailer = mailer
         @metadata = []
         @body = ''
 
@@ -147,11 +145,11 @@ class GitCommitMailer
           raise "Corrupted diff header"
         end
         @new_revision = revision
-        @new_date = Time.at(Info.get_record(@new_revision, "%at").to_i)
+        @new_date = Time.at(@mailer.get_record(@new_revision, "%at").to_i)
 
         begin
-          @old_revision = git("log -n 1 --pretty=format:%H #{revision}~").strip
-          @old_date = Time.at(Info.get_record(@old_revision, "%at").to_i)
+          @old_revision = @mailer.git("log -n 1 --pretty=format:%H #{revision}~").strip
+          @old_date = Time.at(@mailer.get_record(@old_revision, "%at").to_i)
         rescue
           @old_revision = '0' * 40
           @old_date = nil
@@ -283,13 +281,13 @@ class GitCommitMailer
       end
     end
 
-    attr_reader :repository, :revision
+    attr_reader :revision
     attr_reader :author, :date, :subject, :log, :commit_id
     attr_reader :author_email, :diffs, :added_files, :copied_files
     attr_reader :deleted_files, :updated_files, :renamed_files
     attr_accessor :reference, :merge_status
-    def initialize(repository, reference, revision)
-      @repository = repository
+    def initialize(mailer, reference, revision)
+      @mailer = mailer
       @reference = reference
       @revision = revision
 
@@ -333,17 +331,18 @@ class GitCommitMailer
     end
 
     def parse_diff
-      f = IO.popen("git log -n 1 --pretty=format:'' -C -p #{@revision}")
-      f.gets #removes the first empty line
+      output = git("log -n 1 --pretty=format:'' -C -p #{@revision}")
+      output = output.lines.to_a
+      output.shift #removes the first empty line
 
       #f = IO.popen("git diff #{revision}~ #{revision}")
 
       @diffs = []
       lines = []
 
-      line = f.gets
+      line = output.shift
       lines << line.chomp if line #take out the very first 'diff --git' header
-      while line = f.gets
+      while line = output.shift
         line.chomp!
         if line =~ /\Adiff --git/
           @diffs << DiffPerFile.new(lines, @revision)
@@ -354,7 +353,7 @@ class GitCommitMailer
       end
 
       #create the last diff terminated by the EOF
-      @diffs << DiffPerFile.new(lines, @revision) if lines.length > 0
+      @diffs << DiffPerFile.new(@mailer, lines, @revision) if lines.length > 0
     end
 
     def parse_file_status
@@ -420,12 +419,12 @@ class GitCommitMailer
       result
     end
 
-    def git(command)
-      execute "git #{command}"
+    def git(repository, command)
+      execute "git --git-dir=#{repository} #{command}"
     end
 
-    def get_record(revision, record)
-      git("log -n 1 --pretty=format:'#{record}' #{revision}").strip
+    def get_record(repository, revision, record)
+      git(repository, "log -n 1 --pretty=format:'#{record}' #{revision}").strip
     end
 
     def short_revision(revision)
@@ -466,8 +465,6 @@ class GitCommitMailer
     private
     def apply_options(mailer, options)
       mailer.repository = options.repository
-      ENV['GIT_DIR'] = options.repository
-      #puts "@@@@@@@setting GIT_DIR to #{options.repository}"
       #mailer.reference = options.reference
       mailer.from = options.from
       mailer.from_domain = options.from_domain
@@ -681,6 +678,22 @@ class GitCommitMailer
     @to = to
   end
 
+  def create_push_info(*args)
+    PushInfo.new(self, *args)
+  end
+
+  def create_commit_info(*args)
+    CommitInfo.new(self, *args)
+  end
+
+  def git(command)
+    GitCommitMailer.git(@repository, command)
+  end
+
+  def get_record(revision, record)
+    GitCommitMailer.get_record(@repository, revision, record)
+  end
+
   def from
     #@from || "#{@info.author}@#{@from_domain}".sub(/@\z/, '')
     @info.author_email
@@ -792,7 +805,7 @@ class GitCommitMailer
       revision.strip!
       short_revision = GitCommitMailer.short_revision(revision)
       block.call(revision)
-      subject = GitCommitMailer.get_record(revision,'%s')
+      subject = get_record(revision,'%s')
       commit_list << "     via  #{short_revision} #{subject}\n"
     end
     if commit_list.length > 0
@@ -848,12 +861,12 @@ EOF
     git("rev-list #@new_revision..#@old_revision").lines.each do |revision|
       revision.strip!
       short_revision = GitCommitMailer.short_revision(revision)
-      subject = GitCommitMailer.get_record(revision, '%s')
+      subject = get_record(revision, '%s')
       revision_list << "discards  #{short_revision} #{subject}\n"
     end
     unless revision
       fast_forward = true
-      subject = GitCommitMailer.get_record(old_revision,'%s')
+      subject = get_record(old_revision,'%s')
       revision_list << "    from  #{short_old_revision} #{subject}\n"
     end
 
@@ -867,7 +880,7 @@ EOF
       revision.strip!
       short_revision = GitCommitMailer.short_revision(revision)
 
-      subject = GitCommitMailer.get_record(revision, '%s')
+      subject = get_record(revision, '%s')
       tmp << "     via  #{short_revision} #{subject}\n"
     end
     revision_list.concat(tmp.reverse)
@@ -1011,7 +1024,7 @@ EOF
 
       until base_revisions.index(revision)
         unless commit_info = @commit_info_map[revision]
-          commit_info = CommitInfo.new(repository, @reference, revision)
+          commit_info = create_commit_info(@reference, revision)
           i = @commit_infos.index(@commit_info_map[descendant_revision])
           @commit_infos.insert(i, commit_info)
           @commit_info_map[revision] = commit_info
@@ -1062,14 +1075,14 @@ EOF
 
     catch (:no_email) do
       push_info_args = each_revision do |revision|
-        commit_info = CommitInfo.new(repository, reference, revision)
+        commit_info = create_commit_info(reference, revision)
         @commit_infos << commit_info
         @commit_info_map[revision] = commit_info
       end
 
       if push_info_args
-        @push_info = PushInfo.new(old_revision, new_revision, reference,
-                                  *push_info_args)
+        @push_info = create_push_info(old_revision, new_revision, reference,
+                                      *push_info_args)
       else
         return
       end
