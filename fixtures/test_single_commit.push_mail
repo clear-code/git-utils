@@ -7,15 +7,13 @@ Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: 8bit
 From: User Name <user@example.com>
 To: to@example
-Subject: sample-repo (push) branch (master) is updated.
+Subject: sample-repo (push) branch (master) is created.
 Date: ***, ** *** **** **:**:** +****
 User Name	****-**-** **:**:** +**** (***, ** *** ****)
 
 New Push:
 
   Log:
-    Branch (refs/heads/master) is updated.
-    
-        from  ******* an initial commit
-         via  ******* a sample commit
+    Branch (refs/heads/master) is created.
+         at   ******* an initial commit
 

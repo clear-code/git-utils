@@ -39,6 +39,15 @@ class GitCommitMailerTest < Test::Unit::TestCase
     git 'config user.email "user@example.com"'
   end
 
+  def register_hook
+    if File.exist?(@git_dir + ".git/hooks/post-receive.sample")
+      FileUtils.mv(@git_dir + ".git/hooks/post-receive.sample",
+                   @git_dir + ".git/hooks/post-receive")
+    end
+    execute "chmod +x .git/hooks/post-receive"
+    execute "echo \"cat >> #{@post_receive_stdout}\" >> .git/hooks/post-receive"
+  end
+
   def create_repository
     while File.exist?(@test_dir = Dir.tmpdir + "/" + make_tmpname + "/")
     end
@@ -49,25 +58,16 @@ class GitCommitMailerTest < Test::Unit::TestCase
     git 'init'
     config_user_info
     @post_receive_stdout = @repository_dir + 'post-receive.stdout'
-    execute "chmod +x .git/hooks/post-receive"
-    execute "echo \"cat >> #{@post_receive_stdout}\" >> .git/hooks/post-receive"
-
-    place_holder_file = 'PLACE_HOLDER'
-    File.open(@git_dir + place_holder_file, 'w') do |file|
-      file.puts <<EOF
-This is a place holder file to make the initial commit.
-EOF
-    end
-    git 'add .'
-    git 'commit -m "the initial commit"'
-
-    git 'clone . ../repo'
+    register_hook
 
     @origin_git_dir = @git_dir
     @origin_repository_dir = @repository_dir
     @git_dir = @test_dir + 'repo/'
-    @repository_dir = @git_dir + '.git/'
+    FileUtils.mkdir @git_dir
+    git 'init'
     config_user_info
+    @repository_dir = @git_dir + '.git/'
+    git "remote add origin #{@origin_repository_dir}"
   end
 
   def each_post_receive_output
@@ -176,11 +176,8 @@ This is a sample text file.
 This file will be modified to make commits.
 EOF
     commit_new_file(sample_filename, file_content, "an initial commit")
-    git 'push'
 
-    execute "echo \"This line is appended to commit\" >> #{sample_filename}"
-    git 'commit -a -m "a sample commit"'
-    git 'push'
+    git 'push origin master'
 
     push_mail, commit_mails = nil, []
     each_post_receive_output do |old_revision, new_revision, reference|
@@ -257,7 +254,7 @@ This file will be modified to make commits.
 In the above line, I intentionally left some spaces.
 EOF
     commit_new_file(sample_file, file_content, "added a sample file")
-    git 'push'
+    git 'push origin master'
 
     execute "sed -r -i -e 's/ +$//' #{sample_file}"
     git 'commit -a -m "removed trailing spaces"'
