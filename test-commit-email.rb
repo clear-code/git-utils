@@ -1,6 +1,9 @@
 #!/usr/bin/env ruby
 
+require 'rubygems'
+gem 'test-unit'
 require 'test/unit'
+
 require 'tempfile'
 
 require 'commit-email'
@@ -8,12 +11,12 @@ require 'commit-email'
 class GitCommitMailerTest < Test::Unit::TestCase
   def execute(command, is_debug_mode = false)
     unless is_debug_mode || @is_debug_mode
-      result = `(cd #{@git_dir} && #{command}) < /dev/null 2> /dev/null`
-      raise "execute failed." unless $?.exitstatus.zero?
+      result = `(unset GIT_AUTHOR_EMAIL && cd #{@git_dir} && #{command}) < /dev/null 2> /dev/null`
+      raise "execute failed: #{command}" unless $?.exitstatus.zero?
     else
       puts "$ cd #{@git_dir} && #{command}"
-      result = `(cd #{@git_dir} && #{command})`
-      raise "execute failed." unless $?.exitstatus.zero?
+      result = `(unset GIT_AUTHOR_EMAIL && cd #{@git_dir} && #{command})`
+      raise "execute failed: #{comamnd}" unless $?.exitstatus.zero?
     end
     result
   end
@@ -87,18 +90,19 @@ EOF
   end
 
   def delete_repository
+    return if ENV['DEBUG'] == 'yes'
     FileUtils.rm_r @test_dir
   end
 
   def setup
     ENV['GIT_DIR'] = nil #XXX without this, git init would segfault.... why??
-    @is_debug_mode = false
+    @is_debug_mode = true if ENV['DEBUG'] == 'yes'
 
     create_repository
   end
 
   def teardown
-    #delete_repository
+    delete_repository
   end
 
   def zero_revision
