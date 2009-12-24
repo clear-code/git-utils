@@ -265,6 +265,40 @@ EOF
     assert_mail('test_diffs_with_trailing_spaces', commit_mails[0])
   end
 
+  def test_diffs_with_multiple_hunks
+    create_default_mailer
+    sample_file = 'sample_file'
+
+    file_content = <<EOF
+This is a sample text file.
+This file will be modified to make commits.
+
+In the above line, I intentionally left some spaces.
+some filler text to make two hunks with diff
+some filler text to make two hunks with diff
+some filler text to make two hunks with diff
+some filler text to make two hunks with diff
+some filler text to make two hunks with diff
+some filler text to make two hunks with diff
+some filler text to make two hunks with diff
+EOF
+    commit_new_file(sample_file, file_content, "added a sample file")
+    git 'push origin master'
+
+    execute "sed -i -e \"1 s/^/a prepended line\\n/\" #{sample_file}"
+    execute "echo 'an appended line' >> #{sample_file}"
+    git 'commit -a -m "edited to happen multiple hunks"'
+
+    git 'push'
+
+    push_mail, commit_mails = nil, []
+    each_post_receive_output do |old_revision, new_revision, reference|
+      push_mail, commit_mails = process_single_ref_change(old_revision, new_revision, reference)
+    end
+
+    assert_mail('test_diffs_with_multiple_hunks', commit_mails[0])
+  end
+
   def test_nested_merges
     create_default_mailer
     sample_file = 'sample_file'
