@@ -16,7 +16,7 @@ class GitCommitMailerTest < Test::Unit::TestCase
     else
       puts "$ cd #{@git_dir} && #{command}"
       result = `(unset GIT_AUTHOR_EMAIL && cd #{@git_dir} && #{command})`
-      raise "execute failed: #{comamnd}" unless $?.exitstatus.zero?
+      raise "execute failed: #{command}" unless $?.exitstatus.zero?
     end
     result
   end
@@ -297,6 +297,27 @@ EOF
     end
 
     assert_mail('test_diffs_with_multiple_hunks', commit_mails[0])
+  end
+
+  def test_diffs_with_multiple_files
+    create_default_mailer
+
+    2.times do |i|
+      file_name = "file_#{i.to_s}"
+      file_content = "text in #{file_name}"
+      commit_log = "added #{file_name}"
+      create_file(file_name, file_content)
+      git "add #{file_name}"
+    end
+    git "commit -a -m 'added multiple files'"
+    git 'push origin master'
+
+    push_mail, commit_mails = nil, []
+    each_post_receive_output do |old_revision, new_revision, reference|
+      push_mail, commit_mails = process_single_ref_change(old_revision, new_revision, reference)
+    end
+
+    assert_mail('test_diffs_with_multiple_files', commit_mails[0])
   end
 
   def test_nested_merges
