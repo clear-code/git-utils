@@ -392,4 +392,24 @@ EOF
 
     assert_mail('test_non_ascii_file_name', commit_mails[0])
   end
+
+  def test_long_word_in_commit_subject
+    create_default_mailer
+    sample_filename = 'sample_file'
+
+    file_content = <<EOF 
+This is a sample text file.
+This file will be modified to make commits.
+EOF
+    commit_new_file(sample_filename, file_content, "x" * 60)
+
+    git 'push origin master'
+
+    push_mail, commit_mails = nil, []
+    each_post_receive_output do |old_revision, new_revision, reference|
+      push_mail, commit_mails = process_single_ref_change(old_revision, new_revision, reference)
+    end
+
+    assert_mail('test_long_word_in_commit_subject', commit_mails[0])
+  end
 end

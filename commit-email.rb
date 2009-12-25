@@ -1413,6 +1413,19 @@ CONTENT
     project
   end
 
+  def mime_encoded_word(subject)
+    encoded = NKF.nkf("-WM", subject)
+
+    #XXX work around NKF's bug of gratuitously wrapping long ascii words with
+    #    MIME encoded-word syntax's header and footer, while not actually
+    #    encoding the payload as base64: just strip the header and footer out.
+    if encoded.index(/=\?EUC-JP\?B\?.*\?=\n /)
+      encoded.gsub!(/=\?EUC-JP\?B\?(.*)\?=\n /) {$1}
+    end
+
+    encoded
+  end
+
   def make_subject
     subject = ""
     affected_path_info = ""
@@ -1435,7 +1448,7 @@ CONTENT
       raise "a new Info class?"
     end
 
-    NKF.nkf("-WM", subject)
+    mime_encoded_word(subject)
   end
 
   def affected_paths
