@@ -1,0 +1,28 @@
+X-Git-Author: User Name
+X-Git-Revision: ****************************************
+X-Git-Repository: XXX
+X-Git-Commit-Id: ****************************************
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+From: User Name <user@example.com>
+To: to@example
+Subject: sample-repo [master] added a file with japanese file name
+Date: ***, ** *** **** **:**:** +****
+User Name	****-**-** **:**:** +**** (***, ** *** ****)
+
+  New Revision: ****************************************
+
+  Log:
+    added a file with japanese file name
+
+  Added files:
+    日本語.txt
+
+  Added: 日本語.txt (+1 -0) 100644
+===================================================================
+--- /dev/null
++++ 日本語.txt    ****-**-** **:**:** +**** (*******)
+@@ -0,0 +1 @@
++日本語の文章です。
+

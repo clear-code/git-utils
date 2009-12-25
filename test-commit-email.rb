@@ -379,4 +379,17 @@ EOF
     assert_mail('test_nested_merges.4', commit_mails[3])
     assert_mail('test_nested_merges.5', commit_mails[4])
   end
+
+  def test_non_ascii_filename
+    create_default_mailer
+    commit_new_file("日本語.txt", "日本語の文章です。", "added a file with japanese file name")
+    git "push origin master"
+
+    commit_mails = []
+    each_post_receive_output do |old_revision, new_revision, reference|
+      push_mail, commit_mails = process_single_ref_change(old_revision, new_revision, reference)
+    end
+
+    assert_mail('test_non_ascii_file_name', commit_mails[0])
+  end
 end

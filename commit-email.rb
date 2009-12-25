@@ -121,6 +121,15 @@ class GitCommitMailer
   end
 
   class CommitInfo < Info
+    def self.unescape_file_path(file_path)
+      if file_path =~ /\A"(.*)"\z/
+        $1.gsub(/\\\\/,'\\').gsub(/\\\"/,'"').
+           gsub(/\\([0-9]{1,3})/) {$1.to_i(8).chr}
+      else
+        file_path
+      end
+    end
+
     class DiffPerFile
       attr_reader :old_revision, :new_revision, :from_file, :to_file
       attr_reader :added_line, :deleted_line, :body, :type
@@ -136,13 +145,22 @@ class GitCommitMailer
         parse_body(lines)
       end
 
+      def extract_file_path(file_path)
+        case CommitInfo.unescape_file_path(file_path)
+        when /\A[ab]\/(.*)\z/
+          $1
+        else
+          raise 'unknown file path format'
+        end
+      end
+
       def parse_header(lines, revision)
         line = lines.shift
-        if line =~ /\Adiff --git a\/(.*) b\/(.*)/
-          @from_file = $1
-          @to_file = $2
+        if line =~ /\Adiff --git (.*) (.*)/
+          @from_file = extract_file_path($1)
+          @to_file = extract_file_path($2)
         else
-          raise "Corrupted diff header"
+          raise "Unexpected diff header format: #{line}"
         end
         @new_revision = revision
         @new_date = Time.at(@mailer.get_record(@new_revision, "%at").to_i)
@@ -169,11 +187,11 @@ class GitCommitMailer
         line = lines.shift
         while line != nil and not line =~ /\A@@/
           case line
-          when /\A--- (a\/.*|\/dev\/null)\z/
-            @minus_file = $1
+          when /\A--- (a\/.*|"a\/.*"|\/dev\/null)\z/
+            @minus_file = CommitInfo.unescape_file_path($1)
             @type = :added if $1 == '/dev/null'
-          when /\A\+\+\+ (b\/.*|\/dev\/null)\z/
-            @plus_file = $1
+          when /\A\+\+\+ (b\/.*|"b\/.*"|\/dev\/null)\z/
+            @plus_file = CommitInfo.unescape_file_path($1)
             @type = :deleted if $1 == '/dev/null'
           when /\Anew file mode (.*)\z/
             @type = :added
@@ -362,7 +380,7 @@ class GitCommitMailer
         line.rstrip!
         if line =~ /\A([^\t]*?)\t([^\t]*?)\z/
           status = $1
-          file = $2
+          file = CommitInfo.unescape_file_path($2)
 
           case status
           when /^A/ # Added
