@@ -88,9 +88,9 @@ class GitCommitMailer
 
   class PushInfo < Info
     attr_reader :old_revision, :new_revision, :reference, :reference_type, :log
-    attr_reader :author, :author_email, :date, :subject, :change_type
+    attr_reader :author, :author_email, :date, :subject, :change_type, :commits
     def initialize(mailer, old_revision, new_revision, reference,
-                   reference_type, change_type, log)
+                   reference_type, change_type, log, commits=[])
       @mailer = mailer
       @old_revision = old_revision
       @new_revision = new_revision
@@ -101,6 +101,7 @@ class GitCommitMailer
       @author_email = get_record("%an <%ae>")
       @date = Time.at(get_record("%at").to_i)
       @change_type = change_type
+      @commits = commits || []
     end
 
     def revision
@@ -112,6 +113,10 @@ class GitCommitMailer
         "X-Git-NewRev: #{new_revision}",
         "X-Git-Refname: #{reference}",
         "X-Git-Reftype: #{REFERENCE_TYPE[reference_type]}" ]
+    end
+
+    def branch_changed?
+      !@commits.empty?
     end
 
     REFERENCE_TYPE = {
@@ -796,13 +801,13 @@ class GitCommitMailer
     end
   end
 
-  def return_push_message_and_yield(reference_type, change_type, block)
+  def make_push_message(reference_type, change_type)
     if reference_type == :branch and change_type == :update
-      process_update_branch(block)
+      process_update_branch
     elsif reference_type == :branch and change_type == :create
-      process_create_branch(block)
+      process_create_branch
     elsif reference_type == :branch and change_type == :delete
-      process_delete_branch(block)
+      process_delete_branch
     elsif reference_type == :annotated_tag and change_type == :update
       process_update_annotated_tag
     elsif reference_type == :annotated_tag and change_type == :create
@@ -812,15 +817,13 @@ class GitCommitMailer
     end
   end
 
-  def each_revision(&block)
+  def collect_push_information
     change_type = detect_change_type
     revision_type = detect_revision_type(change_type)
     reference_type = detect_reference_type(revision_type)
+    messsage, commits = make_push_message(reference_type, change_type)
 
-    push_messsage = return_push_message_and_yield(reference_type, change_type,
-                                                  block)
-
-    [reference_type, change_type, push_messsage]
+    [reference_type, change_type, messsage, commits]
   end
 
   def excluded_revisions
@@ -833,15 +836,16 @@ class GitCommitMailer
      end.join(' ')
   end
 
-  def process_create_branch(block)
+  def process_create_branch
     msg = "Branch (#@reference) is created.\n"
+    commits = []
 
     commit_list = []
     git("rev-list #@new_revision #{excluded_revisions}").lines.
     reverse_each do |revision|
       revision.strip!
       short_revision = GitCommitMailer.short_revision(revision)
-      block.call(revision)
+      commits << revision
       subject = get_record(revision,'%s')
       commit_list << "     via  #{short_revision} #{subject}\n"
     end
@@ -850,7 +854,7 @@ class GitCommitMailer
       msg << commit_list.join
     end
 
-    msg
+    [msg, commits]
   end
 
   def explain_rewind
@@ -884,8 +888,9 @@ branch from the common base, B.
 EOF
   end
 
-  def process_update_branch(block)
+  def process_update_branch
     msg = "Branch (#@reference) is updated.\n"
+    commits = []
 
     # List all of the revisions that were removed by this update, in a
     # fast forward update, this list will be empty, because rev-list O
@@ -952,7 +957,7 @@ EOF
     unless rewind_only
       git("rev-list #@old_revision..#@new_revision #{excluded_revisions}").lines.
       reverse_each do |revision|
-        block.call(revision.strip)
+        commits << revision.strip
         no_actual_output = false
       end
     end
@@ -961,10 +966,10 @@ EOF
       msg << "No new revisions were added by this update.\n"
     end
 
-    msg
+    [msg, commits]
   end
 
-  def process_delete_branch(block)
+  def process_delete_branch
     "Branch (#@reference) is deleted.\n" +
     "       was  #@old_revision\n\n" +
     git("show -s --pretty=oneline #@old_revision")
@@ -1117,17 +1122,14 @@ EOF
     @commit_info_map = {}
 
     catch (:no_email) do
-      push_info_args = each_revision do |revision|
-        commit_info = create_commit_info(reference, revision)
-        @commit_infos << commit_info
-        @commit_info_map[revision] = commit_info
-      end
-
-      if push_info_args
-        @push_info = create_push_info(old_revision, new_revision, reference,
-                                      *push_info_args)
-      else
-        return
+      @push_info = create_push_info(old_revision, new_revision, reference,
+                                    *collect_push_information)
+      if @push_info.branch_changed?
+        @push_info.commits.each do |revision|
+          commit_info = create_commit_info(reference, revision)
+          @commit_infos << commit_info
+          @commit_info_map[revision] = commit_info
+        end
       end
     end
 
