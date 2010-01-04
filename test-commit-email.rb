@@ -203,7 +203,7 @@ class GitCommitMailerTest < Test::Unit::TestCase
     create_default_mailer
     sample_filename = 'sample_file'
 
-    file_content = <<EOF 
+    file_content = <<EOF
 This is a sample text file.
 This file will be modified to make commits.
 EOF
@@ -379,7 +379,7 @@ EOF
     execute "sed -i -e '2 s/file/FILE/' #{sample_file}"
     git "commit -a -m \"a sample commit in master branch: file => FILE\""
     git "push"
-    
+
 
     git "checkout #{first_branch}"
     git "merge #{second_branch}"
@@ -412,7 +412,7 @@ EOF
     create_default_mailer
     sample_filename = 'sample_file'
 
-    file_content = <<EOF 
+    file_content = <<EOF
 This is a sample text file.
 This file will be modified to make commits.
 EOF
@@ -429,7 +429,7 @@ EOF
     create_default_mailer
     sample_filename = 'sample_file'
 
-    file_content = <<EOF 
+    file_content = <<EOF
 This is a sample text file.
 This file will be modified to make commits.
 EOF
@@ -447,7 +447,7 @@ EOF
     create_default_mailer
     sample_filename = 'sample_file'
 
-    file_content = <<EOF 
+    file_content = <<EOF
 This is a sample text file.
 This file will be modified to make commits.
 EOF
