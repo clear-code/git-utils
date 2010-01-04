@@ -15,7 +15,7 @@ class GitCommitMailerTest < Test::Unit::TestCase
 
   def git(command)
     sleep 1.1 if command =~ /\A(commit|merge) / #wait for the timestamp to tick
-    empty_post_receive_output if command =~ /\Apush/
+    trash_post_receive_output if command =~ /\Apush/
     if command =~ /\Ainit/
       repository_dir_option = ""
     else
@@ -25,7 +25,7 @@ class GitCommitMailerTest < Test::Unit::TestCase
     execute "git #{repository_dir_option} #{command}"
   end
 
-  def make_tmpname
+  def temporary_name
     prefix = 'git-'
     t = Time.now.strftime("%Y%m%d")
     path = "#{prefix}#{t}-#{$$}-#{rand(0x100000000).to_s(36)}"
@@ -46,7 +46,7 @@ class GitCommitMailerTest < Test::Unit::TestCase
   end
 
   def create_repository
-    while File.exist?(@test_dir = Dir.tmpdir + "/" + make_tmpname + "/")
+    while File.exist?(@test_dir = Dir.tmpdir + "/" + temporary_name + "/")
     end
     FileUtils.mkdir @test_dir
     @git_dir = @test_dir + 'origin/'
@@ -79,7 +79,7 @@ class GitCommitMailerTest < Test::Unit::TestCase
     @push_mail, @commit_mails = @mailer.process_single_ref_change(*args)
   end
 
-  def empty_post_receive_output
+  def trash_post_receive_output
     FileUtils.rm(@post_receive_stdout) if File.exist?(@post_receive_stdout)
   end
 
