@@ -991,7 +991,7 @@ EOF
     tag_object = git("for-each-ref --format='%(*objectname)' #@reference").strip
     tag_type = git("for-each-ref --format='%(*objecttype)' #@reference").strip
     tagger = git("for-each-ref --format='%(taggername)' #@reference").strip
-    tagged = git("for-each-ref --format='%(taggerdate)' #@reference").strip
+    tagged = git("for-each-ref --format='%(taggerdate:rfc2822)' #@reference").strip
     prev_tag = nil
 
     msg << "   tagging  #{tag_object} (#{tag_type})\n"
@@ -1000,21 +1000,27 @@ EOF
       # If the tagged object is a commit, then we assume this is a
       # release, and so we calculate which tag this tag is
       # replacing
-      prev_tag = git("describe --abbrev=0 #@new_revision^").strip
+      begin
+        prev_tag = git("describe --abbrev=0 #@new_revision^").strip
+      rescue
+      end
 
       msg << "  replaces  #{prev_tag}\n" if prev_tag
     else
       msg << "    length  #{git("cat-file -s #{tag_object}").strip} bytes\n"
     end
     msg << " tagged by  #{tagger}\n"
-    msg << "        on  #{tagged}\n\n"
+    msg << "        on  #{format_time(Time.rfc2822(tagged))}\n\n"
 
     # Show the content of the tag message; this might contain a change
     # log or release notes so is worth displaying.
     tag_content = git("cat-file tag #@new_revision").split("\n")
+    #skips header section
     tag_content.shift while not tag_content[0].empty?
+    #skips the empty line indicating the end of header section
     tag_content.shift
-    msg << tag_content.join("\n")
+
+    msg << tag_content.join("\n") + "\n"
 
     case tag_type
     when "commit"

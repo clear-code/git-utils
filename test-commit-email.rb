@@ -67,6 +67,7 @@ class GitCommitMailerTest < Test::Unit::TestCase
     File.open(@post_receive_stdout, 'r') do |file|
       while line = file.gets
         old_revision, new_revision, reference = line.split
+        puts "#{old_revision} #{new_revision} #{reference}" if ENV['DEBUG']
         yield old_revision, new_revision, reference
       end
     end
@@ -419,5 +420,23 @@ EOF
     push_mail, commit_mails = last_mails
 
     assert_mail('test_long_word_in_commit_subject', commit_mails[0])
+  end
+
+  def test_annotated_tag
+    create_default_mailer
+    sample_filename = 'sample_file'
+
+    file_content = <<EOF 
+This is a sample text file.
+This file will be modified to make commits.
+EOF
+    commit_new_file(sample_filename, file_content, "sample commit")
+    git "push"
+    git "tag -a -m \'sample tag\' v0.0.1"
+    git "push --tags"
+
+    push_mail, commit_mails = last_mails
+
+    assert_mail('test_annotated_tag.push_mail', push_mail)
   end
 end
