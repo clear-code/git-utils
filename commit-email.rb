@@ -1245,7 +1245,7 @@ EOF
   end
 
   def make_body
-    if @info.class == CommitInfo
+    if @info.is_a?(CommitInfo)
       body = ""
       body << "#{@info.author}\t#{format_time(@info.date)}\n"
       body << "\n"
@@ -1267,7 +1267,7 @@ EOF
 
       body << "\n"
       body << change_info
-    elsif @info.class == PushInfo
+    elsif @info.is_a?(PushInfo)
       body = ""
       body << "#{@info.author}\t#{format_time(@info.date)}\n"
       body << "\n"
@@ -1457,7 +1457,7 @@ CONTENT
     subject = ""
     affected_path_info = ""
 
-    if @info.class == CommitInfo
+    if @info.is_a?(CommitInfo)
       if show_path?
         _affected_paths = affected_paths
         unless _affected_paths.empty?
@@ -1467,7 +1467,7 @@ CONTENT
 
       subject << "[#{@info.short_reference}#{affected_path_info}] "
       subject << @info.subject
-    elsif @info.class == PushInfo
+    elsif @info.is_a?(PushInfo)
       subject << "(push) "
       subject << "#{PushInfo::REFERENCE_TYPE[@info.reference_type]} "+
                  "(#{@info.short_reference}) is " +
