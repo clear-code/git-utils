@@ -9,20 +9,19 @@ require 'tempfile'
 require 'commit-email'
 
 class GitCommitMailerTest < Test::Unit::TestCase
-  def execute(command)
-    GitCommitMailer.execute(command, @git_dir)
+  def execute(command, directory=@git_dir)
+    GitCommitMailer.execute(command, directory)
   end
 
-  def git(command)
+  def git(command, repository_dir=@repository_dir)
     sleep 1.1 if command =~ /\A(commit|merge) / #wait for the timestamp to tick
     trash_post_receive_output if command =~ /\Apush/
-    if command =~ /\Ainit/
-      repository_dir_option = ""
-    else
-      repository_dir_option = "--git-dir=#{@repository_dir}"
-    end
 
-    execute "git #{repository_dir_option} #{command}"
+    if command =~ /\Ainit/
+      execute("git #{command}", repository_dir)
+    else
+      execute "git --git-dir=#{repository_dir} #{command}"
+    end
   end
 
   def temporary_name
@@ -36,32 +35,29 @@ class GitCommitMailerTest < Test::Unit::TestCase
     git 'config user.email "user@example.com"'
   end
 
-  def register_hook
-    if File.exist?(@git_dir + ".git/hooks/post-receive.sample")
-      FileUtils.mv(@git_dir + ".git/hooks/post-receive.sample",
-                   @git_dir + ".git/hooks/post-receive")
+  def register_hook_to_origin
+    @post_receive_stdout = @origin_repository_dir + 'post-receive.stdout'
+    if File.exist?(@origin_repository_dir + "hooks/post-receive.sample")
+      FileUtils.mv(@origin_repository_dir + "hooks/post-receive.sample",
+                   @origin_repository_dir + "hooks/post-receive")
     end
-    execute "chmod +x .git/hooks/post-receive"
-    execute "echo \"cat >> #{@post_receive_stdout}\" >> .git/hooks/post-receive"
+    execute "chmod +x hooks/post-receive", @origin_repository_dir
+    execute "echo \"cat >> #{@post_receive_stdout}\" >> hooks/post-receive", @origin_repository_dir
   end
 
   def create_repository
     while File.exist?(@test_dir = Dir.tmpdir + "/" + temporary_name + "/")
     end
     FileUtils.mkdir @test_dir
-    @git_dir = @test_dir + 'origin/'
-    @repository_dir = @git_dir + '.git/'
-    FileUtils.mkdir @git_dir
-    git 'init'
-    @post_receive_stdout = @repository_dir + 'post-receive.stdout'
-    register_hook
+    @origin_repository_dir = @test_dir + 'origin/'
+    FileUtils.mkdir @origin_repository_dir
+    git 'init --bare', @origin_repository_dir
+    register_hook_to_origin
 
-    @origin_git_dir = @git_dir
-    @origin_repository_dir = @repository_dir
     @git_dir = @test_dir + 'repo/'
     @repository_dir = @git_dir + '.git/'
     FileUtils.mkdir @git_dir
-    git 'init'
+    git 'init', @git_dir
     config_user_info
     git "remote add origin #{@origin_repository_dir}"
   end
