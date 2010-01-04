@@ -186,6 +186,18 @@ class GitCommitMailerTest < Test::Unit::TestCase
     [push_mail, commit_mails]
   end
 
+  def prepend_line(file_name, line)
+    execute "sed -i -e '1 s/^/'#{Shellwords.escape(line)}'\\n/' #{Shellwords.escape(file_name)}"
+  end
+
+  def append_line(file_name, line)
+    execute "echo #{Shellwords.escape(line)} >> #{Shellwords.escape(file_name)}"
+  end
+
+  def insert_line(file_name, line, offset)
+    execute "sed -i -e '#{offset} s/^/'#{Shellwords.escape(line)}'\\n/' #{Shellwords.escape(file_name)}"
+  end
+
   def test_single_commit
     create_default_mailer
     sample_filename = 'sample_file'
@@ -220,22 +232,22 @@ EOF
 
     git "branch #{sample_branch}"
     git "checkout #{sample_branch}"
-    execute "echo \"This line is appended in '#{sample_branch}' branch (1)\" >> #{sample_file}"
+    append_line(sample_file, "This line is appended in '#{sample_branch}' branch (1)")
     git "commit -a -m \"a sample commit in '#{sample_branch}' branch (1)\""
     git "tag -a -m 'This is a sample tag' sample_tag"
 
     git "checkout master"
-    execute "sed -i -e '1 s/^/This line is appended in 'master' branch. (1)\\n/' #{sample_file}"
+    prepend_line(sample_file, "This line is appended in 'master' branch. (1)")
     git "commit -a -m \"a sample commit in 'master' branch (1)\""
-    execute "sed -i -e '5 s/^/This line is inserted in 'master' branch. (2)\\n/' #{sample_file}"
+    insert_line(sample_file, "This line is inserted in 'master' branch. (2)", 5)
     git "commit -a -m \"a sample commit in 'master' branch (2)\""
 
     git "push --tags origin #{sample_branch} master"
 
     git "checkout #{sample_branch}"
-    execute "echo \"This line is appended in '#{sample_branch}' branch (2)\" >> #{sample_file}"
+    append_line(sample_file, "This line is appended in '#{sample_branch}' branch (2)")
     git "commit -a -m \"a sample commit in '#{sample_branch}' branch (2)\""
-    execute "echo \"This line is appended in '#{sample_branch}' branch (3)\" >> #{sample_file}"
+    append_line(sample_file, "This line is appended in '#{sample_branch}' branch (3)")
     git "commit -a -m \"a sample commit in '#{sample_branch}' branch (3)\""
 
     git "checkout master"
@@ -302,8 +314,8 @@ EOF
     commit_new_file(sample_file, file_content, "added a sample file")
     git 'push origin master'
 
-    execute "sed -i -e \"1 s/^/a prepended line\\n/\" #{sample_file}"
-    execute "echo 'an appended line' >> #{sample_file}"
+    prepend_line(sample_file, 'a prepended line')
+    append_line(sample_file, 'an appended line')
     git 'commit -a -m "edited to happen multiple hunks"'
 
     git 'push'
@@ -347,7 +359,7 @@ EOF
 
     git "branch #{first_branch}"
     git "checkout #{first_branch}"
-    execute "echo \"This line is appended in '#{first_branch}' branch.\" >> #{sample_file}"
+    append_line(sample_file, "This line is appended in '#{first_branch}' branch.")
     git "commit -a -m \"a sample commit in '#{first_branch}' branch\""
     git "push"
 
@@ -358,7 +370,7 @@ EOF
 
     git "branch #{second_branch}"
     git "checkout #{second_branch}"
-    execute "sed -i -e \"1 s/^/This line is prepnded in '#{second_branch}' branch.\\n/\" #{sample_file}"
+    prepend_line(sample_file, "This line is prepnded in '#{second_branch}' branch.")
     git "commit -a -m \"a sample commit in '#{second_branch}' branch\""
     git "push"
 
