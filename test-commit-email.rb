@@ -42,7 +42,7 @@ class GitCommitMailerTest < Test::Unit::TestCase
                    @origin_repository_dir + "hooks/post-receive")
     end
     execute "chmod +x hooks/post-receive", @origin_repository_dir
-    execute "echo \"cat >> #{@post_receive_stdout}\" >> hooks/post-receive", @origin_repository_dir
+    append_line(@origin_repository_dir + "hooks/post-receive", "cat >> #{@post_receive_stdout}")
   end
 
   def create_repository
