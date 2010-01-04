@@ -111,9 +111,14 @@ class GitCommitMailer
       [ "X-Git-OldRev: #{old_revision}",
         "X-Git-NewRev: #{new_revision}",
         "X-Git-Refname: #{reference}",
-        "X-Git-Reftype: #{reference_type}" ]
+        "X-Git-Reftype: #{REFERENCE_TYPE[reference_type]}" ]
     end
 
+    REFERENCE_TYPE = {
+      :branch => "branch",
+      :annotated_tag => "annotated tag",
+      :tag => "tag"
+    }
     CHANGE_TYPE = {
       :create => "created",
       :update => "updated",
@@ -769,17 +774,17 @@ class GitCommitMailer
   def detect_reference_type(revision_type)
     if reference =~ /refs\/tags\/.*/ and revision_type == "commit"
       # un-annotated tag
-      "tag"
+      :tag
     elsif reference =~ /refs\/tags\/.*/ and revision_type == "tag"
       # annotated tag
       # change recipients
       #if [ -n "$announcerecipients" ]; then
       #  recipients="$announcerecipients"
       #fi
-      "annotated tag"
+      :annotated_tag
     elsif reference =~ /refs\/heads\/.*/ and revision_type == "commit"
       # branch
-      "branch"
+      :branch
     elsif reference =~ /refs\/remotes\/.*/ and revision_type == "commit"
       # tracking branch
       # Push-update of tracking branch.
@@ -792,18 +797,18 @@ class GitCommitMailer
   end
 
   def return_push_message_and_yield(reference_type, change_type, block)
-    if reference_type == "branch" and change_type == :update
+    if reference_type == :branch and change_type == :update
       process_update_branch(block)
-    elsif reference_type == "branch" and change_type == :create
+    elsif reference_type == :branch and change_type == :create
       process_create_branch(block)
-    elsif reference_type == "branch" and change_type == :delete
+    elsif reference_type == :branch and change_type == :delete
       process_delete_branch(block)
-    elsif reference_type == "annotated tag" and change_type == :update
-      process_update_atag
-    elsif reference_type == "annotated tag" and change_type == :create
-      process_create_atag
-    elsif reference_type == "annotated tag" and change_type == :delete
-      process_delete_atag
+    elsif reference_type == :annotated_tag and change_type == :update
+      process_update_annotated_tag
+    elsif reference_type == :annotated_tag and change_type == :create
+      process_create_annotated_tag
+    elsif reference_type == :annotated_tag and change_type == :delete
+      process_delete_annotated_tag
     end
   end
 
@@ -965,26 +970,26 @@ EOF
     git("show -s --pretty=oneline #@old_revision")
   end
 
-  def process_create_atag
+  def process_create_annotated_tag
     "Annotated tag (#@reference) is created.\n" +
     "        at  #@new_revision (tag)\n" +
-    process_atag
+    process_annotated_tag
   end
 
-  def process_update_atag
+  def process_update_annotated_tag
     "Annotated tag (#@reference) is updated.\n" +
     "        to  #@new_revision (tag)\n" +
     "      from  #@old_revision (which is now obsolete)\n" +
-    process_atag
+    process_annotated_tag
   end
 
-  def process_delete_atag
+  def process_delete_annotated_tag
     "Annotated tag (#@reference) is deleted.\n" +
     "       was  #@old_revision\n\n" +
     git("show -s --pretty=oneline #@old_revision")
   end
 
-  def process_atag
+  def process_annotated_tag
     msg = ''
     # Use git for-each-ref to pull out the individual fields from the
     # tag
@@ -1462,8 +1467,9 @@ CONTENT
       subject << @info.subject
     elsif @info.class == PushInfo
       subject << "(push) "
-      subject << "#{@info.reference_type} (#{@info.short_reference}) is" +
-                 " #{PushInfo::CHANGE_TYPE[@info.change_type]}."
+      subject << "#{PushInfo::REFERENCE_TYPE[@info.reference_type]} "+
+                 "(#{@info.short_reference}) is " +
+                 "#{PushInfo::CHANGE_TYPE[@info.change_type]}."
     else
       raise "a new Info class?"
     end
