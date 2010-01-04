@@ -163,6 +163,14 @@ class GitCommitMailerTest < Test::Unit::TestCase
     assert_equal(read_file('fixtures/'+expected_mail_filename), black_out_mail(tested_mail))
   end
 
+  def last_mails
+    push_mail, commit_mails = nil, []
+    each_post_receive_output do |old_revision, new_revision, reference|
+      push_mail, commit_mails = process_single_ref_change(old_revision, new_revision, reference)
+    end
+    [push_mail, commit_mails]
+  end
+
   def test_single_commit
     create_default_mailer
     sample_filename = 'sample_file'
@@ -175,10 +183,7 @@ EOF
 
     git 'push origin master'
 
-    push_mail, commit_mails = nil, []
-    each_post_receive_output do |old_revision, new_revision, reference|
-      push_mail, commit_mails = process_single_ref_change(old_revision, new_revision, reference)
-    end
+    push_mail, commit_mails = last_mails
 
     assert_mail('test_single_commit.push_mail', push_mail)
     assert_mail('test_single_commit', commit_mails[0])
@@ -257,10 +262,7 @@ EOF
 
     git 'push'
 
-    push_mail, commit_mails = nil, []
-    each_post_receive_output do |old_revision, new_revision, reference|
-      push_mail, commit_mails = process_single_ref_change(old_revision, new_revision, reference)
-    end
+    push_mail, commit_mails = last_mails
 
     assert_mail('test_diffs_with_trailing_spaces', commit_mails[0])
   end
@@ -291,10 +293,7 @@ EOF
 
     git 'push'
 
-    push_mail, commit_mails = nil, []
-    each_post_receive_output do |old_revision, new_revision, reference|
-      push_mail, commit_mails = process_single_ref_change(old_revision, new_revision, reference)
-    end
+    push_mail, commit_mails = last_mails
 
     assert_mail('test_diffs_with_multiple_hunks', commit_mails[0])
   end
@@ -312,10 +311,7 @@ EOF
     git "commit -a -m 'added multiple files'"
     git 'push origin master'
 
-    push_mail, commit_mails = nil, []
-    each_post_receive_output do |old_revision, new_revision, reference|
-      push_mail, commit_mails = process_single_ref_change(old_revision, new_revision, reference)
-    end
+    push_mail, commit_mails = last_mails
 
     assert_mail('test_diffs_with_multiple_files', commit_mails[0])
   end
@@ -364,14 +360,8 @@ EOF
     git "merge #{first_branch}"
     git "push"
 
-    n = 0
-    push_mail, commit_mails = nil, []
-    each_post_receive_output do |old_revision, new_revision, reference|
-      n += 1
-      push_mail, commit_mails = process_single_ref_change(old_revision, new_revision, reference)
-    end
+    push_mail, commit_mails = last_mails
 
-    assert_equal(1, n)
     assert_mail('test_nested_merges.push_mail', push_mail)
     assert_mail('test_nested_merges.1', commit_mails[0])
     assert_mail('test_nested_merges.2', commit_mails[1])
@@ -385,10 +375,7 @@ EOF
     commit_new_file("日本語.txt", "日本語の文章です。", "added a file with japanese file name")
     git "push origin master"
 
-    commit_mails = []
-    each_post_receive_output do |old_revision, new_revision, reference|
-      push_mail, commit_mails = process_single_ref_change(old_revision, new_revision, reference)
-    end
+    push_mail, commit_mails = last_mails
 
     assert_mail('test_non_ascii_file_name', commit_mails[0])
   end
@@ -405,10 +392,7 @@ EOF
 
     git 'push origin master'
 
-    push_mail, commit_mails = nil, []
-    each_post_receive_output do |old_revision, new_revision, reference|
-      push_mail, commit_mails = process_single_ref_change(old_revision, new_revision, reference)
-    end
+    push_mail, commit_mails = last_mails
 
     assert_mail('test_long_word_in_commit_subject', commit_mails[0])
   end
