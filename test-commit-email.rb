@@ -11,11 +11,11 @@ require 'commit-email'
 class GitCommitMailerTest < Test::Unit::TestCase
   def execute(command, is_debug_mode = false)
     unless is_debug_mode || @is_debug_mode
-      result = `(unset GIT_AUTHOR_EMAIL && cd #{@git_dir} && #{command}) < /dev/null 2> /dev/null`
+      result = `(cd #{@git_dir} && #{command}) < /dev/null 2> /dev/null`
       raise "execute failed: #{command}" unless $?.exitstatus.zero?
     else
       puts "$ cd #{@git_dir} && #{command}"
-      result = `(unset GIT_AUTHOR_EMAIL && cd #{@git_dir} && #{command})`
+      result = `(cd #{@git_dir} && #{command})`
       raise "execute failed: #{command}" unless $?.exitstatus.zero?
     end
     result
@@ -24,8 +24,13 @@ class GitCommitMailerTest < Test::Unit::TestCase
   def git(command, is_debug_mode = false)
     sleep 1.1 if command =~ /\A(commit|merge) / #wait for the timestamp to tick
     empty_post_receive_output if command =~ /\Apush/
+    if command =~ /\Ainit/
+      repository_dir_option = ""
+    else
+      repository_dir_option = "--git-dir=#{@repository_dir}"
+    end
 
-    execute "git #{command}", is_debug_mode
+    execute "git #{repository_dir_option} #{command}", is_debug_mode
   end
 
   def make_tmpname
@@ -56,17 +61,16 @@ class GitCommitMailerTest < Test::Unit::TestCase
     @repository_dir = @git_dir + '.git/'
     FileUtils.mkdir @git_dir
     git 'init'
-    config_user_info
     @post_receive_stdout = @repository_dir + 'post-receive.stdout'
     register_hook
 
     @origin_git_dir = @git_dir
     @origin_repository_dir = @repository_dir
     @git_dir = @test_dir + 'repo/'
+    @repository_dir = @git_dir + '.git/'
     FileUtils.mkdir @git_dir
     git 'init'
     config_user_info
-    @repository_dir = @git_dir + '.git/'
     git "remote add origin #{@origin_repository_dir}"
   end
 
@@ -92,14 +96,33 @@ class GitCommitMailerTest < Test::Unit::TestCase
     FileUtils.rm_r @test_dir
   end
 
+  def save_environment_variables(names)
+    @saved_environment_variables = {}
+    names.each do |name|
+      @saved_environment_variables[name] = ENV[name]
+      ENV[name] = nil
+    end
+  end
+
+  def restore_environment_variables
+    @saved_environment_variables.each do |name, value|
+      ENV[name] = value
+    end
+  end
+
   def setup
     @is_debug_mode = true if ENV['DEBUG'] == 'yes'
-
+    save_environment_variables(['GIT_AUTHOR_NAME',
+                                'GIT_AUTHOR_EMAIL',
+                                'GIT_COMMITTER_NAME',
+                                'GIT_COMMITTER_EMAIL',
+                                'EMAIL'])
     create_repository
   end
 
   def teardown
     delete_repository
+    restore_environment_variables
   end
 
   def zero_revision
