@@ -60,6 +60,7 @@ class GitCommitMailerTest < Test::Unit::TestCase
     git 'init', @git_dir
     config_user_info
     git "remote add origin #{@origin_repository_dir}"
+    git "config --add push.default current"
   end
 
   def each_post_receive_output
