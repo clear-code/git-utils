@@ -26,6 +26,7 @@ require "time"
 require "net/smtp"
 require "socket"
 require "nkf"
+require "shellwords"
 
 original_argv = ARGV.dup
 argv = []
@@ -451,7 +452,7 @@ class GitCommitMailer
     end
 
     def git(repository, command)
-      execute "git --git-dir=#{repository} #{command}"
+      execute "git --git-dir=#{Shellwords.escape(repository)} #{command}"
     end
 
     def get_record(repository, revision, record)
