@@ -431,9 +431,22 @@ class GitCommitMailer
   end
 
   class << self
-    def execute(command)
-      result = `#{command} < /dev/null 2> /dev/null`
-      raise "execute failed:#{command}" unless $?.exitstatus.zero?
+    def execute(command, working_directory=nil)
+      if working_directory
+        cd_command = "cd #{working_directory} && "
+      else
+        cd_command = ""
+      end
+      if ENV['DEBUG']
+        suppress_stderr = ''
+      else
+        suppress_stderr = ' 2> /dev/null'
+      end
+
+      script = "(#{cd_command}#{command})#{suppress_stderr}"
+      puts script if ENV['DEBUG']
+      result = `#{script}`
+      raise "execute failed: #{command}" unless $?.exitstatus.zero?
       result
     end
 

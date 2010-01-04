@@ -9,19 +9,11 @@ require 'tempfile'
 require 'commit-email'
 
 class GitCommitMailerTest < Test::Unit::TestCase
-  def execute(command, is_debug_mode = false)
-    unless is_debug_mode || @is_debug_mode
-      result = `(cd #{@git_dir} && #{command}) < /dev/null 2> /dev/null`
-      raise "execute failed: #{command}" unless $?.exitstatus.zero?
-    else
-      puts "$ cd #{@git_dir} && #{command}"
-      result = `(cd #{@git_dir} && #{command})`
-      raise "execute failed: #{command}" unless $?.exitstatus.zero?
-    end
-    result
+  def execute(command)
+    GitCommitMailer.execute(command, @git_dir)
   end
 
-  def git(command, is_debug_mode = false)
+  def git(command)
     sleep 1.1 if command =~ /\A(commit|merge) / #wait for the timestamp to tick
     empty_post_receive_output if command =~ /\Apush/
     if command =~ /\Ainit/
@@ -30,7 +22,7 @@ class GitCommitMailerTest < Test::Unit::TestCase
       repository_dir_option = "--git-dir=#{@repository_dir}"
     end
 
-    execute "git #{repository_dir_option} #{command}", is_debug_mode
+    execute "git #{repository_dir_option} #{command}"
   end
 
   def make_tmpname
