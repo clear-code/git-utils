@@ -755,9 +755,9 @@ class GitCommitMailer
     GitCommitMailer.get_records(@repository, revision, records)
   end
 
-  def from
-    #@from || "#{@info.author}@#{@from_domain}".sub(/@\z/, '')
-    @info.author_email
+  def from(info)
+    #@from || "#{info.author}@#{@from_domain}".sub(/@\z/, '')
+    info.author_email
   end
 
   def repository
@@ -1216,13 +1216,11 @@ EOF
   end
 
   def make_mails
-    @info = @push_info
-    @push_mail = make_mail
+    @push_mail = make_mail(@push_info)
 
     @commit_mails = []
     @commit_infos.each do |info|
-      @info = info
-      @commit_mails << make_mail
+      @commit_mails << make_mail(info)
     end
   end
 
@@ -1310,8 +1308,8 @@ EOF
     end
   end
 
-  def make_mail
-    utf8_body = make_body
+  def make_mail(info)
+    utf8_body = make_body(info)
     utf7_body = nil
     utf7_body = utf8_to_utf7(utf8_body) if use_utf7?
     if utf7_body
@@ -1328,40 +1326,40 @@ EOF
       body = truncate_body(body, !utf7_body.nil?)
     end
 
-    make_header(encoding, bit) + "\n" + body
+    make_header(encoding, bit, info) + "\n" + body
   end
 
-  def make_body
-    if @info.is_a?(CommitInfo)
+  def make_body(info)
+    if info.is_a?(CommitInfo)
       body = ""
-      body << "#{@info.author}\t#{format_time(@info.date)}\n"
+      body << "#{info.author}\t#{format_time(info.date)}\n"
       body << "\n"
-      body << "  New Revision: #{@info.revision}\n"
+      body << "  New Revision: #{info.revision}\n"
       body << "\n"
-      unless @info.merge_status.length.zero?
-        body << "  #{@info.merge_status.join("\n  ")}\n\n"
+      unless info.merge_status.length.zero?
+        body << "  #{info.merge_status.join("\n  ")}\n\n"
       end
       body << "  Log:\n"
-      @info.log.rstrip.each_line do |line|
+      info.log.rstrip.each_line do |line|
         body << "    #{line}"
       end
       body << "\n\n"
-      body << added_files
-      body << copied_files
-      body << deleted_files
-      body << modified_files
-      body << renamed_files
+      body << added_files(info)
+      body << copied_files(info)
+      body << deleted_files(info)
+      body << modified_files(info)
+      body << renamed_files(info)
 
       body << "\n"
-      body << change_info
-    elsif @info.is_a?(PushInfo)
+      body << change_info(info)
+    elsif info.is_a?(PushInfo)
       body = ""
-      body << "#{@info.author}\t#{format_time(@info.date)}\n"
+      body << "#{info.author}\t#{format_time(info.date)}\n"
       body << "\n"
       body << "New Push:\n"
       body << "\n"
       body << "  Log:\n"
-      @info.log.rstrip.each_line do |line|
+      info.log.rstrip.each_line do |line|
         body << "    #{line}"
       end
       body << "\n\n"
@@ -1392,20 +1390,20 @@ EOF
     changed_items(title, "files", files, &block)
   end
 
-  def added_files
-    changed_files("Added", @info.added_files)
+  def added_files(info)
+    changed_files("Added", info.added_files)
   end
 
-  def deleted_files
-    changed_files("Removed", @info.deleted_files)
+  def deleted_files(info)
+    changed_files("Removed", info.deleted_files)
   end
 
-  def modified_files
-    changed_files("Modified", @info.updated_files)
+  def modified_files(info)
+    changed_files("Modified", info.updated_files)
   end
 
-  def copied_files
-    changed_files("Copied", @info.copied_files) do |rv, files|
+  def copied_files(info)
+    changed_files("Copied", info.copied_files) do |rv, files|
       rv << files.collect do |from_file, to_file|
         <<-INFO
     #{to_file}
@@ -1415,8 +1413,8 @@ INFO
     end
   end
 
-  def renamed_files
-    changed_files("Renamed", @info.renamed_files) do |rv, files|
+  def renamed_files(info)
+    changed_files("Renamed", info.renamed_files) do |rv, files|
       rv << files.collect do |from_file, to_file|
         <<-INFO
     #{to_file}
@@ -1434,16 +1432,16 @@ INFO
     :renamed => "Renamed",
   }
 
-  def change_info
+  def change_info(info)
     result = ""
-    diff_info.each do |desc|
+    diff_info(info).each do |desc|
       result << "#{desc}\n"
     end
     result
   end
 
-  def diff_info
-    @info.diffs.collect do |diff|
+  def diff_info(info)
+    info.diffs.collect do |diff|
       args = []
       short_revision = diff.short_new_revision
       similarity_index = ""
@@ -1501,16 +1499,16 @@ CONTENT
     end
   end
 
-  def make_header(body_encoding, body_encoding_bit)
+  def make_header(body_encoding, body_encoding_bit, info)
     headers = []
-    headers += @info.headers
+    headers += info.headers
     headers << "MIME-Version: 1.0"
     headers << "Content-Type: text/plain; charset=#{body_encoding}"
     headers << "Content-Transfer-Encoding: #{body_encoding_bit}"
-    headers << "From: #{from}"
+    headers << "From: #{from(info)}"
     headers << "To: #{to.join(', ')}"
-    headers << "Subject: #{(@name+' ') if @name}#{make_subject}"
-    headers << "Date: #{@info.date.rfc2822}"
+    headers << "Subject: #{(@name+' ') if @name}#{make_subject(info)}"
+    headers << "Date: #{info.date.rfc2822}"
     headers.find_all do |header|
       /\A\s*\z/ !~ header
     end.join("\n")
@@ -1540,25 +1538,25 @@ CONTENT
     encoded
   end
 
-  def make_subject
+  def make_subject(info)
     subject = ""
     affected_path_info = ""
 
-    if @info.is_a?(CommitInfo)
+    if info.is_a?(CommitInfo)
       if show_path?
-        _affected_paths = affected_paths
+        _affected_paths = affected_paths(info)
         unless _affected_paths.empty?
           affected_path_info = " (#{_affected_paths.join(',')})"
         end
       end
 
-      subject << "[#{@info.short_reference}#{affected_path_info}] "
-      subject << @info.subject
-    elsif @info.is_a?(PushInfo)
+      subject << "[#{info.short_reference}#{affected_path_info}] "
+      subject << info.subject
+    elsif info.is_a?(PushInfo)
       subject << "(push) "
-      subject << "#{PushInfo::REFERENCE_TYPE[@info.reference_type]} "+
-                 "(#{@info.short_reference}) is " +
-                 "#{PushInfo::CHANGE_TYPE[@info.change_type]}."
+      subject << "#{PushInfo::REFERENCE_TYPE[info.reference_type]} "+
+                 "(#{info.short_reference}) is " +
+                 "#{PushInfo::CHANGE_TYPE[info.change_type]}."
     else
       raise "a new Info class?"
     end
@@ -1566,9 +1564,9 @@ CONTENT
     mime_encoded_word(subject)
   end
 
-  def affected_paths
+  def affected_paths(info)
     paths = []
-    sub_paths = @info.sub_paths('')
+    sub_paths = info.sub_paths('')
     paths.concat(sub_paths)
     paths.uniq
   end
@@ -1616,7 +1614,7 @@ CONTENT
       maker.channel.title = rss_title(@name || @repository_uri)
       maker.channel.link = @repository_uri
       maker.channel.description = rss_title(@name || @repository_uri)
-      maker.channel.dc_date = @info.date
+      maker.channel.dc_date = info.date
 
       if base_rss
         base_rss.items.each do |item|
@@ -1628,11 +1626,11 @@ CONTENT
         infos.each do |desc, link|
           item = maker.items.new_item
           item.title = name
-          item.description = @info.log
+          item.description = info.log
           item.content_encoded = "<pre>#{RSS::Utils.html_escape(desc)}</pre>"
           item.link = link
-          item.dc_date = @info.date
-          item.dc_creator = @info.author
+          item.dc_date = info.date
+          item.dc_creator = info.author
         end
       end
 
