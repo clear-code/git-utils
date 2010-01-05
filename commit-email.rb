@@ -81,6 +81,10 @@ class GitCommitMailer
       @mailer.get_record(@revision, record)
     end
 
+    def get_records(records)
+      @mailer.get_records(@revision, records)
+    end
+
     def short_reference
        @reference.sub(/\A.*\/.*\//,'');
     end
@@ -97,9 +101,10 @@ class GitCommitMailer
       @reference = reference
       @reference_type = reference_type
       @log = log
-      @author = get_record("%an")
-      @author_email = get_record("%an <%ae>")
-      @date = Time.at(get_record("%at").to_i)
+      author, author_email, date = get_records(["%an", "%an <%ae>", "%at"])
+      @author = author
+      @author_email = author_email
+      @date = Time.at(date.to_i)
       @change_type = change_type
       @commits = commits || []
     end
@@ -350,13 +355,15 @@ class GitCommitMailer
     end
 
     def initialize_by_getting_records
-      @author = get_record("%an")
-      @author_email = get_record("%an <%ae>")
-      @date = Time.at(get_record("%at").to_i)
-      @subject = get_record("%s")
+      author, author_email, date, subject, commit_id, parent_revisions = 
+        get_records(["%an", "%an <%ae>", "%at", "%s", "%H", "%P"])
+      @author = author
+      @author_email = author_email
+      @date = Time.at(date.to_i)
+      @subject = subject
+      @commit_id = commit_id
+      @parent_revisions = parent_revisions.split
       @log = git("log -n 1 --pretty=format:%s%n%n%b #{@revision}")
-      @commit_id = get_record("%H")
-      @parent_revisions = get_record("%P").split
     end
 
     def parse_diff
@@ -467,6 +474,14 @@ class GitCommitMailer
 
     def get_record(repository, revision, record)
       git(repository, "log -n 1 --pretty=format:'#{record}' #{revision}").strip
+    end
+
+    def get_records(repository, revision, records)
+      git(repository,
+          "log -n 1 --pretty=format:'#{records.join('%n')}%n' #{revision}").
+            lines.collect do |line|
+        line.strip
+      end
     end
 
     def short_revision(revision)
@@ -734,6 +749,10 @@ class GitCommitMailer
 
   def get_record(revision, record)
     GitCommitMailer.get_record(@repository, revision, record)
+  end
+
+  def get_records(revision, records)
+    GitCommitMailer.get_records(@repository, revision, records)
   end
 
   def from
@@ -1604,7 +1623,7 @@ if __FILE__ == $0
     while line = STDIN.gets
       old_revision, new_revision, reference = line.split
       mailer.process_single_ref_change(old_revision, new_revision, reference)
-      mailer.send_all_mails
+      mailer.send_all_mails unless ENV['DEBUG']
     end
   rescue Exception => error
     require 'net/smtp'
