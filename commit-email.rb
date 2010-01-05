@@ -840,6 +840,8 @@ class GitCommitMailer
       process_create_unannotated_tag
     elsif reference_type == :unannotated_tag and change_type == :delete
       process_delete_unannotated_tag
+    else
+      raise 'unexpected'
     end
   end
 
