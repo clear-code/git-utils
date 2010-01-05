@@ -1189,7 +1189,7 @@ EOF
     #   @push_info
   end
 
-  def process_single_ref_change(old_revision, new_revision, reference)
+  def reset(old_revision, new_revision, reference)
     @old_revision = old_revision
     @new_revision = new_revision
     @reference = reference
@@ -1197,7 +1197,9 @@ EOF
     @push_info = nil
     @commit_infos = []
     @commit_info_map = {}
+  end
 
+  def make_infos
     catch (:no_email) do
       @push_info = create_push_info(old_revision, new_revision, reference,
                                     *collect_push_information)
@@ -1211,7 +1213,9 @@ EOF
     end
 
     post_process_infos
+  end
 
+  def make_mails
     @info = @push_info
     @push_mail = make_mail
 
@@ -1220,7 +1224,13 @@ EOF
       @info = info
       @commit_mails << make_mail
     end
+  end
 
+  def process_reference_change(old_revision, new_revision, reference)
+    reset(old_revision, new_revision, reference)
+
+    make_infos
+    make_mails
     #output_rss #XXX eneble this in the future
 
     [@push_mail, @commit_mails]
@@ -1642,7 +1652,7 @@ if __FILE__ == $0
 
     while line = STDIN.gets
       old_revision, new_revision, reference = line.split
-      mailer.process_single_ref_change(old_revision, new_revision, reference)
+      mailer.process_reference_change(old_revision, new_revision, reference)
       mailer.send_all_mails unless ENV['DEBUG']
     end
   rescue Exception => error

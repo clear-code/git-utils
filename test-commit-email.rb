@@ -82,8 +82,8 @@ END_OF_CONTENT
     end
   end
 
-  def process_single_ref_change(*args)
-    @push_mail, @commit_mails = @mailer.process_single_ref_change(*args)
+  def process_reference_change(*args)
+    @push_mail, @commit_mails = @mailer.process_reference_change(*args)
   end
 
   def trash_post_receive_output
@@ -188,7 +188,7 @@ END_OF_CONTENT
   def last_mails
     push_mail, commit_mails = nil, []
     each_post_receive_output do |old_revision, new_revision, reference|
-      push_mail, commit_mails = process_single_ref_change(old_revision, new_revision, reference)
+      push_mail, commit_mails = process_reference_change(old_revision, new_revision, reference)
     end
     [push_mail, commit_mails]
   end
@@ -257,7 +257,7 @@ EOF
 
     pushes = []
     each_post_receive_output do |old_revision, new_revision, reference|
-      pushes << process_single_ref_change(old_revision, new_revision, reference)
+      pushes << process_reference_change(old_revision, new_revision, reference)
     end
 
     master_ref_change = pushes[0]
