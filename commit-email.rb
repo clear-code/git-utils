@@ -1028,7 +1028,7 @@ EOF
     tag_type = git("for-each-ref --format='%(*objecttype)' #@reference").strip
     tagger = git("for-each-ref --format='%(taggername)' #@reference").strip
     tagged = git("for-each-ref --format='%(taggerdate:rfc2822)' #@reference").strip
-    prev_tag = nil
+    previous_tag = nil
 
     msg << "   tagging  #{tag_object} (#{tag_type})\n"
     case tag_type
@@ -1037,11 +1037,11 @@ EOF
       # release, and so we calculate which tag this tag is
       # replacing
       begin
-        prev_tag = git("describe --abbrev=0 #@new_revision^").strip
+        previous_tag = git("describe --abbrev=0 #@new_revision^").strip
       rescue
       end
 
-      msg << "  replaces  #{prev_tag}\n" if prev_tag
+      msg << "  replaces  #{previous_tag}\n" if previous_tag
     else
       msg << "    length  #{git("cat-file -s #{tag_object}").strip} bytes\n"
     end
@@ -1062,9 +1062,9 @@ EOF
     when "commit"
       # Only commit tags make sense to have rev-list operations
       # performed on them
-      if prev_tag
+      if previous_tag
         # Show changes since the previous release
-        msg << git("rev-list --pretty=short \"#{prev_tag}..#@new_revision\" |
+        msg << git("rev-list --pretty=short \"#{previous_tag}..#@new_revision\" |
                     git shortlog")
       else
         # No previous tag, show all the changes since time
