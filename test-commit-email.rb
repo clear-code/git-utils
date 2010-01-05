@@ -9,6 +9,12 @@ require 'tempfile'
 require 'commit-email'
 
 class GitCommitMailerTest < Test::Unit::TestCase
+  DEFAULT_FILE = 'sample_file'
+  DEFAULT_FILE_CONTENT = <<END_OF_CONTENT
+This is a sample text file.
+This file will be modified to make commits.
+END_OF_CONTENT
+
   def execute(command, directory=@git_dir)
     GitCommitMailer.execute(command, directory)
   end
@@ -201,13 +207,7 @@ class GitCommitMailerTest < Test::Unit::TestCase
 
   def test_single_commit
     create_default_mailer
-    sample_filename = 'sample_file'
-
-    file_content = <<EOF
-This is a sample text file.
-This file will be modified to make commits.
-EOF
-    commit_new_file(sample_filename, file_content, "an initial commit")
+    commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
 
     git 'push origin master'
 
@@ -219,7 +219,6 @@ EOF
 
   def test_push_with_merge
     create_default_mailer
-    sample_file = 'sample_file'
     sample_branch = 'sample_branch'
 
     file_content = <<EOF
@@ -229,26 +228,26 @@ Firstly, it'll be appended with some lines in a non-master branch.
 Secondly, it'll be prepended and inserted with some lines in the master branch.
 Finally, it'll get merged.
 EOF
-    commit_new_file(sample_file, file_content, "added a sample text file")
+    commit_new_file(DEFAULT_FILE, file_content, "added a sample text file")
 
     git "branch #{sample_branch}"
     git "checkout #{sample_branch}"
-    append_line(sample_file, "This line is appended in '#{sample_branch}' branch (1)")
+    append_line(DEFAULT_FILE, "This line is appended in '#{sample_branch}' branch (1)")
     git "commit -a -m \"a sample commit in '#{sample_branch}' branch (1)\""
     git "tag -a -m 'This is a sample tag' sample_tag"
 
     git "checkout master"
-    prepend_line(sample_file, "This line is appended in 'master' branch. (1)")
+    prepend_line(DEFAULT_FILE, "This line is appended in 'master' branch. (1)")
     git "commit -a -m \"a sample commit in 'master' branch (1)\""
-    insert_line(sample_file, "This line is inserted in 'master' branch. (2)", 5)
+    insert_line(DEFAULT_FILE, "This line is inserted in 'master' branch. (2)", 5)
     git "commit -a -m \"a sample commit in 'master' branch (2)\""
 
     git "push --tags origin #{sample_branch} master"
 
     git "checkout #{sample_branch}"
-    append_line(sample_file, "This line is appended in '#{sample_branch}' branch (2)")
+    append_line(DEFAULT_FILE, "This line is appended in '#{sample_branch}' branch (2)")
     git "commit -a -m \"a sample commit in '#{sample_branch}' branch (2)\""
-    append_line(sample_file, "This line is appended in '#{sample_branch}' branch (3)")
+    append_line(DEFAULT_FILE, "This line is appended in '#{sample_branch}' branch (3)")
     git "commit -a -m \"a sample commit in '#{sample_branch}' branch (3)\""
 
     git "checkout master"
@@ -274,7 +273,6 @@ EOF
 
   def test_diffs_with_trailing_spaces
     create_default_mailer
-    sample_file = 'sample_file'
 
     file_content = <<EOF
 This is a sample text file.
@@ -282,10 +280,10 @@ This file will be modified to make commits.
     
 In the above line, I intentionally left some spaces.
 EOF
-    commit_new_file(sample_file, file_content, "added a sample file")
+    commit_new_file(DEFAULT_FILE, file_content, "added a sample file")
     git 'push origin master'
 
-    execute "sed -r -i -e 's/ +$//' #{sample_file}"
+    execute "sed -r -i -e 's/ +$//' #{DEFAULT_FILE}"
     git 'commit -a -m "removed trailing spaces"'
 
     git 'push'
@@ -297,7 +295,6 @@ EOF
 
   def test_diffs_with_multiple_hunks
     create_default_mailer
-    sample_file = 'sample_file'
 
     file_content = <<EOF
 This is a sample text file.
@@ -312,11 +309,11 @@ some filler text to make two hunks with diff
 some filler text to make two hunks with diff
 some filler text to make two hunks with diff
 EOF
-    commit_new_file(sample_file, file_content, "added a sample file")
+    commit_new_file(DEFAULT_FILE, file_content, "added a sample file")
     git 'push origin master'
 
-    prepend_line(sample_file, 'a prepended line')
-    append_line(sample_file, 'an appended line')
+    prepend_line(DEFAULT_FILE, 'a prepended line')
+    append_line(DEFAULT_FILE, 'an appended line')
     git 'commit -a -m "edited to happen multiple hunks"'
 
     git 'push'
@@ -346,7 +343,6 @@ EOF
 
   def test_nested_merges
     create_default_mailer
-    sample_file = 'sample_file'
     first_branch = 'first_branch'
     second_branch = 'second_branch'
 
@@ -355,28 +351,28 @@ This is a sample text file.
 This file will be modified to make commits.
 This line is needed to assist the auto-merge algorithm.
 EOF
-    commit_new_file(sample_file, file_content, "added a sample file")
+    commit_new_file(DEFAULT_FILE, file_content, "added a sample file")
     git 'push origin master'
 
     git "branch #{first_branch}"
     git "checkout #{first_branch}"
-    append_line(sample_file, "This line is appended in '#{first_branch}' branch.")
+    append_line(DEFAULT_FILE, "This line is appended in '#{first_branch}' branch.")
     git "commit -a -m \"a sample commit in '#{first_branch}' branch\""
     git "push"
 
     git "checkout master"
-    execute "sed -i -e '1 s/This/THIS/' #{sample_file}"
+    execute "sed -i -e '1 s/This/THIS/' #{DEFAULT_FILE}"
     git "commit -a -m \"a sample commit in master branch: This => THIS\""
     git "push"
 
     git "branch #{second_branch}"
     git "checkout #{second_branch}"
-    prepend_line(sample_file, "This line is prepnded in '#{second_branch}' branch.")
+    prepend_line(DEFAULT_FILE, "This line is prepnded in '#{second_branch}' branch.")
     git "commit -a -m \"a sample commit in '#{second_branch}' branch\""
     git "push"
 
     git "checkout master"
-    execute "sed -i -e '2 s/file/FILE/' #{sample_file}"
+    execute "sed -i -e '2 s/file/FILE/' #{DEFAULT_FILE}"
     git "commit -a -m \"a sample commit in master branch: file => FILE\""
     git "push"
 
@@ -410,13 +406,7 @@ EOF
 
   def test_long_word_in_commit_subject
     create_default_mailer
-    sample_filename = 'sample_file'
-
-    file_content = <<EOF
-This is a sample text file.
-This file will be modified to make commits.
-EOF
-    commit_new_file(sample_filename, file_content, "x" * 60)
+    commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "x" * 60)
 
     git 'push origin master'
 
@@ -425,16 +415,15 @@ EOF
     assert_mail('test_long_word_in_commit_subject', commit_mails[0])
   end
 
-  def test_create_annotated_tag
+  def prepare_to_tag
     create_default_mailer
-    sample_filename = 'sample_file'
-
-    file_content = <<EOF
-This is a sample text file.
-This file will be modified to make commits.
-EOF
-    commit_new_file(sample_filename, file_content, "sample commit")
+    commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "sample commit")
     git "push"
+  end
+
+  def test_create_annotated_tag
+    prepare_to_tag
+
     git "tag -a -m \'sample tag\' v0.0.1"
     git "push --tags"
 
@@ -444,15 +433,8 @@ EOF
   end
 
   def test_update_annotated_tag
-    create_default_mailer
-    sample_filename = 'sample_file'
+    prepare_to_tag
 
-    file_content = <<EOF
-This is a sample text file.
-This file will be modified to make commits.
-EOF
-    commit_new_file(sample_filename, file_content, "sample commit")
-    git "push"
     git "tag -a -m \'sample tag\' v0.0.1"
     git "push --tags"
     git "tag -a -f -m \'sample tag\' v0.0.1"
@@ -465,15 +447,8 @@ EOF
   end
 
   def test_delete_annotated_tag
-    create_default_mailer
-    sample_filename = 'sample_file'
+    prepare_to_tag
 
-    file_content = <<EOF
-This is a sample text file.
-This file will be modified to make commits.
-EOF
-    commit_new_file(sample_filename, file_content, "sample commit")
-    git "push"
     git "tag -a -m \'sample tag\' v0.0.1"
     git "push --tags"
     git "tag -d v0.0.1"
@@ -486,15 +461,8 @@ EOF
   end
 
   def test_create_unannotated_tag
-    create_default_mailer
-    sample_filename = 'sample_file'
+    prepare_to_tag
 
-    file_content = <<EOF 
-This is a sample text file.
-This file will be modified to make commits.
-EOF
-    commit_new_file(sample_filename, file_content, "sample commit")
-    git "push"
     git "tag v0.0.1"
     git "push --tags"
 
@@ -504,18 +472,11 @@ EOF
   end
 
   def test_update_unannotated_tag
-    create_default_mailer
-    sample_filename = 'sample_file'
+    prepare_to_tag
 
-    file_content = <<EOF 
-This is a sample text file.
-This file will be modified to make commits.
-EOF
-    commit_new_file(sample_filename, file_content, "sample commit")
-    git "push"
     git "tag v0.0.1"
     git "push --tags"
-    append_line(sample_filename, 'a line')
+    append_line(DEFAULT_FILE, 'a line')
     git "commit -m 'new commit' -a"
     git "tag -f v0.0.1"
     git "push --tags"
@@ -526,15 +487,8 @@ EOF
   end
 
   def test_delete_unannotated_tag
-    create_default_mailer
-    sample_filename = 'sample_file'
+    prepare_to_tag
 
-    file_content = <<EOF
-This is a sample text file.
-This file will be modified to make commits.
-EOF
-    commit_new_file(sample_filename, file_content, "sample commit")
-    git "push"
     git "tag v0.0.1"
     git "push --tags"
     git "tag -d v0.0.1"
