@@ -1,0 +1,25 @@
+X-Git-OldRev: ****************************************
+X-Git-NewRev: ****************************************
+X-Git-Refname: refs/tags/v0.0.1
+X-Git-Reftype: unannotated tag
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+From: User Name <user@example.com>
+To: to@example
+Subject: sample-repo (push) unannotated tag (v0.0.1) is updated.
+Date: ***, ** *** **** **:**:** +****
+User Name	****-**-** **:**:** +**** (***, ** *** ****)
+
+New Push:
+
+  Log:
+    Unannotated tag (refs/tags/v0.0.1) is updated.
+            to  **************************************** (commit)
+          from  ****************************************
+    
+    commit ****************************************
+    Author: User Name <user@example.com>
+    
+        a commit
+

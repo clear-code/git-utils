@@ -502,4 +502,26 @@ EOF
 
     assert_mail('test_create_unannotated_tag.push_mail', push_mail)
   end
+
+  def test_update_unannotated_tag
+    create_default_mailer
+    sample_filename = 'sample_file'
+
+    file_content = <<EOF 
+This is a sample text file.
+This file will be modified to make commits.
+EOF
+    commit_new_file(sample_filename, file_content, "sample commit")
+    git "push"
+    git "tag v0.0.1"
+    git "push --tags"
+    append_line(sample_filename, 'a line')
+    git "commit -m 'a commit' -a"
+    git "tag -f v0.0.1"
+    git "push --tags"
+
+    push_mail, commit_mails = last_mails
+
+    assert_mail('test_update_unannotated_tag.push_mail', push_mail)
+  end
 end

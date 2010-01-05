@@ -1062,6 +1062,13 @@ EOF
     process_unannotated_tag
   end
 
+  def process_update_unannotated_tag
+    "Unannotated tag (#@reference) is updated.\n" +
+    "        to  #@new_revision (commit)\n" +
+    "      from  #@old_revision\n\n" +
+    process_unannotated_tag
+  end
+
   def process_unannotated_tag
     git("show --no-color --root -s --pretty=short #{@new_revision}")
   end
