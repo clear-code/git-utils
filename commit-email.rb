@@ -865,7 +865,7 @@ class GitCommitMailer
   end
 
   def process_create_branch
-    msg = "Branch (#@reference) is created.\n"
+    message = "Branch (#@reference) is created.\n"
     commits = []
 
     commit_list = []
@@ -879,10 +879,10 @@ class GitCommitMailer
     end
     if commit_list.length > 0
       commit_list[-1].sub!(/\A     via  /,'     at   ')
-      msg << commit_list.join
+      message << commit_list.join
     end
 
-    [msg, commits]
+    [message, commits]
   end
 
   def explain_rewind
@@ -917,7 +917,7 @@ EOF
   end
 
   def process_update_branch
-    msg = "Branch (#@reference) is updated.\n"
+    message = "Branch (#@reference) is updated.\n"
     commits = []
 
     # List all of the revisions that were removed by this update, in a
@@ -971,15 +971,15 @@ EOF
       baserev = git("merge-base #@old_revision #@new_revision").strip
       rewind_only = false
       if baserev == new_revision
-        msg << explain_rewind
+        message << explain_rewind
         rewind_only = true
       else
-        msg << explain_rewind_and_new_commits
+        message << explain_rewind_and_new_commits
       end
     end
 
-    msg << "\n"
-    msg << revision_list.join
+    message << "\n"
+    message << revision_list.join
 
     no_actual_output = true
     unless rewind_only
@@ -990,11 +990,11 @@ EOF
       end
     end
     if rewind_only or no_actual_output
-      msg << "\n"
-      msg << "No new revisions were added by this update.\n"
+      message << "\n"
+      message << "No new revisions were added by this update.\n"
     end
 
-    [msg, commits]
+    [message, commits]
   end
 
   def process_delete_branch
@@ -1023,7 +1023,7 @@ EOF
   end
 
   def process_annotated_tag
-    msg = ''
+    message = ''
     # Use git for-each-ref to pull out the individual fields from the
     # tag
     tag_object = git("for-each-ref --format='%(*objectname)' #@reference").strip
@@ -1032,7 +1032,7 @@ EOF
     tagged = git("for-each-ref --format='%(taggerdate:rfc2822)' #@reference").strip
     previous_tag = nil
 
-    msg << "   tagging  #{tag_object} (#{tag_type})\n"
+    message << "   tagging  #{tag_object} (#{tag_type})\n"
     case tag_type
     when "commit"
       # If the tagged object is a commit, then we assume this is a
@@ -1043,12 +1043,12 @@ EOF
       rescue
       end
 
-      msg << "  replaces  #{previous_tag}\n" if previous_tag
+      message << "  replaces  #{previous_tag}\n" if previous_tag
     else
-      msg << "    length  #{git("cat-file -s #{tag_object}").strip} bytes\n"
+      message << "    length  #{git("cat-file -s #{tag_object}").strip} bytes\n"
     end
-    msg << " tagged by  #{tagger}\n"
-    msg << "        on  #{format_time(Time.rfc2822(tagged))}\n\n"
+    message << " tagged by  #{tagger}\n"
+    message << "        on  #{format_time(Time.rfc2822(tagged))}\n\n"
 
     # Show the content of the tag message; this might contain a change
     # log or release notes so is worth displaying.
@@ -1058,7 +1058,7 @@ EOF
     #skips the empty line indicating the end of header section
     tag_content.shift
 
-    msg << tag_content.join("\n") + "\n"
+    message << tag_content.join("\n") + "\n"
 
     case tag_type
     when "commit"
@@ -1066,19 +1066,19 @@ EOF
       # performed on them
       if previous_tag
         # Show changes since the previous release
-        msg << git("rev-list --pretty=short \"#{previous_tag}..#@new_revision\" |
+        message << git("rev-list --pretty=short \"#{previous_tag}..#@new_revision\" |
                     git shortlog")
       else
         # No previous tag, show all the changes since time
         # began
-        msg << git("rev-list --pretty=short #@new_revision | git shortlog")
+        message << git("rev-list --pretty=short #@new_revision | git shortlog")
       end
     else
       # XXX: Is there anything useful we can do for non-commit
       # objects?
       raise 'unexpected'
     end
-    msg
+    message
   end
 
   def process_create_unannotated_tag
