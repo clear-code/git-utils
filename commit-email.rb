@@ -916,85 +916,103 @@ branch from the common base, B.
 EOF
   end
 
-  def process_update_branch
-    message = "Branch (#@reference) is updated.\n"
-    commits = []
-
+  def process_backward_update
     # List all of the revisions that were removed by this update, in a
     # fast forward update, this list will be empty, because rev-list O
     # ^N is empty.  For a non fast forward, O ^N is the list of removed
     # revisions
     fast_forward = false
     revision = nil
-    short_revision = nil
-    revision_list = []
+    commits_summary = []
     git("rev-list #@new_revision..#@old_revision").lines.each do |revision|
       revision.strip!
       short_revision = GitCommitMailer.short_revision(revision)
       subject = get_record(revision, '%s')
-      revision_list << "discards  #{short_revision} #{subject}\n"
+      commits_summary << "discards  #{short_revision} #{subject}\n"
     end
     unless revision
       fast_forward = true
       subject = get_record(old_revision,'%s')
-      revision_list << "    from  #{short_old_revision} #{subject}\n"
+      commits_summary << "    from  #{short_old_revision} #{subject}\n"
     end
+    [fast_forward, commits_summary]
+  end
 
+  def process_forward_update
     # List all the revisions from baserev to new_revision in a kind of
     # "table-of-contents"; note this list can include revisions that
     # have already had notification emails and is present to show the
     # full detail of the change from rolling back the old revision to
     # the base revision and then forward to the new revision
-    tmp = []
+    commits_summary = []
     git("rev-list #@old_revision..#@new_revision").lines.each do |revision|
       revision.strip!
       short_revision = GitCommitMailer.short_revision(revision)
 
       subject = get_record(revision, '%s')
-      tmp << "     via  #{short_revision} #{subject}\n"
+      commits_summary << "     via  #{short_revision} #{subject}\n"
     end
-    revision_list.concat(tmp.reverse)
+    commits_summary
+  end
+
+  def explain_special_case
+    #  1. Existing revisions were removed.  In this case new_revision
+    #     is a subset of old_revision - this is the reverse of a
+    #     fast-forward, a rewind
+    #  2. New revisions were added on top of an old revision,
+    #     this is a rewind and addition.
+
+    # (1) certainly happened, (2) possibly.  When (2) hasn't
+    # happened, we set a flag to indicate that no log printout
+    # is required.
+
+    # Find the common ancestor of the old and new revisions and
+    # compare it with new_revision
+    baserev = git("merge-base #@old_revision #@new_revision").strip
+    rewind_only = false
+    if baserev == new_revision
+      explanation = explain_rewind
+      rewind_only = true
+    else
+      explanation = explain_rewind_and_new_commits
+    end
+    [rewind_only, explanation]
+  end
+
+  def collect_new_commits
+    commits = []
+    git("rev-list #@old_revision..#@new_revision #{excluded_revisions}").lines.
+    reverse_each do |revision|
+      commits << revision.strip
+    end
+    commits
+  end
+
+  def process_update_branch
+    message = "Branch (#@reference) is updated.\n"
+
+    fast_forward, backward_commits_summary = process_backward_update
+    forward_commits_summary = process_forward_update
+
+    commits_summary = backward_commits_summary + forward_commits_summary.reverse
 
     unless fast_forward
-      #  1. Existing revisions were removed.  In this case new_revision
-      #     is a subset of old_revision - this is the reverse of a
-      #     fast-forward, a rewind
-      #  2. New revisions were added on top of an old revision,
-      #     this is a rewind and addition.
-
-      # (1) certainly happened, (2) possibly.  When (2) hasn't
-      # happened, we set a flag to indicate that no log printout
-      # is required.
-
-      # Find the common ancestor of the old and new revisions and
-      # compare it with new_revision
-      baserev = git("merge-base #@old_revision #@new_revision").strip
-      rewind_only = false
-      if baserev == new_revision
-        message << explain_rewind
-        rewind_only = true
-      else
-        message << explain_rewind_and_new_commits
-      end
+      rewind_only, explanation = explain_special_case
+      message << explanation
     end
 
     message << "\n"
-    message << revision_list.join
+    message << commits_summary.join
 
-    no_actual_output = true
     unless rewind_only
-      git("rev-list #@old_revision..#@new_revision #{excluded_revisions}").lines.
-      reverse_each do |revision|
-        commits << revision.strip
-        no_actual_output = false
-      end
+      new_commits = collect_new_commits
     end
-    if rewind_only or no_actual_output
+    if rewind_only or new_commits.empty?
       message << "\n"
       message << "No new revisions were added by this update.\n"
     end
 
-    [message, commits]
+    [message, new_commits]
   end
 
   def process_delete_branch
