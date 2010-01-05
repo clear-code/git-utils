@@ -767,12 +767,16 @@ class GitCommitMailer
     end
   end
 
+  def detect_object_type(object_name)
+    git("cat-file -t #{object_name}").strip
+  end
+
   def detect_revision_type(change_type)
     case change_type
     when :create, :update
-      git("cat-file -t #@new_revision").strip
+      detect_object_type(new_revision)
     when :delete
-      git("cat-file -t #@old_revision").strip
+      detect_object_type(old_revision)
     end
   end
 
@@ -1057,20 +1061,25 @@ EOF
   end
 
   def process_create_unannotated_tag
+    raise 'unexpected' if detect_object_type(@new_revision) != "commit"
+
     "Unannotated tag (#@reference) is created.\n" +
     "        at  #@new_revision (commit)\n\n" +
-    process_unannotated_tag
+    process_unannotated_tag(@new_revision)
   end
 
   def process_update_unannotated_tag
+    raise 'unexpected' if detect_object_type(@new_revision) != "commit" or
+                          detect_object_type(@old_revision) != "commit"
+
     "Unannotated tag (#@reference) is updated.\n" +
     "        to  #@new_revision (commit)\n" +
-    "      from  #@old_revision\n\n" +
-    process_unannotated_tag
+    "      from  #@old_revision (commit)\n\n" +
+    process_unannotated_tag(@new_revision)
   end
 
-  def process_unannotated_tag
-    git("show --no-color --root -s --pretty=short #{@new_revision}")
+  def process_unannotated_tag(revision)
+    git("show --no-color --root -s --pretty=short #{revision}")
   end
 
   def find_branch_name_from_its_descendant_revision(revision)

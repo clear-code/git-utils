@@ -516,7 +516,7 @@ EOF
     git "tag v0.0.1"
     git "push --tags"
     append_line(sample_filename, 'a line')
-    git "commit -m 'a commit' -a"
+    git "commit -m 'new commit' -a"
     git "tag -f v0.0.1"
     git "push --tags"
 
