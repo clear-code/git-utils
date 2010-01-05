@@ -122,7 +122,7 @@ class GitCommitMailer
     REFERENCE_TYPE = {
       :branch => "branch",
       :annotated_tag => "annotated tag",
-      :tag => "tag"
+      :unannotated_tag => "unannotated tag"
     }
     CHANGE_TYPE = {
       :create => "created",
@@ -778,17 +778,14 @@ class GitCommitMailer
 
   def detect_reference_type(revision_type)
     if reference =~ /refs\/tags\/.*/ and revision_type == "commit"
-      # un-annotated tag
-      :tag
+      :unannotated_tag
     elsif reference =~ /refs\/tags\/.*/ and revision_type == "tag"
-      # annotated tag
       # change recipients
       #if [ -n "$announcerecipients" ]; then
       #  recipients="$announcerecipients"
       #fi
       :annotated_tag
     elsif reference =~ /refs\/heads\/.*/ and revision_type == "commit"
-      # branch
       :branch
     elsif reference =~ /refs\/remotes\/.*/ and revision_type == "commit"
       # tracking branch
@@ -814,6 +811,12 @@ class GitCommitMailer
       process_create_annotated_tag
     elsif reference_type == :annotated_tag and change_type == :delete
       process_delete_annotated_tag
+    elsif reference_type == :unannotated_tag and change_type == :update
+      process_update_unannotated_tag
+    elsif reference_type == :unannotated_tag and change_type == :create
+      process_create_unannotated_tag
+    elsif reference_type == :unannotated_tag and change_type == :delete
+      process_delete_unannotated_tag
     end
   end
 
@@ -1048,8 +1051,19 @@ EOF
     else
       # XXX: Is there anything useful we can do for non-commit
       # objects?
+      raise 'unexpected'
     end
     msg
+  end
+
+  def process_create_unannotated_tag
+    "Unannotated tag (#@reference) is created.\n" +
+    "        at  #@new_revision (commit)\n\n" +
+    process_unannotated_tag
+  end
+
+  def process_unannotated_tag
+    git("show --no-color --root -s --pretty=short #{@new_revision}")
   end
 
   def find_branch_name_from_its_descendant_revision(revision)
