@@ -1259,8 +1259,7 @@ EOF
   end
 
   private
-  def extract_email_address(mail)
-    address = mail.lines.grep(/\AFrom: .*\Z/)[0].rstrip.sub(/From: /, "")
+  def extract_email_address(address)
     if /<(.+?)>/ =~ address
       $1
     else
@@ -1268,8 +1267,17 @@ EOF
     end
   end
 
+  def extract_email_address_from_mail(mail)
+    begin
+      from_header = mail.lines.grep(/\AFrom: .*\Z/)[0]
+      extract_email_address(from_header.rstrip.sub(/From: /, ""))
+    rescue
+      raise '"From:" header is not found in mail.'
+    end
+  end
+
   def send_mail(mail)
-    _from = extract_email_address(mail)
+    _from = extract_email_address_from_mail(mail)
     to = @to.collect {|address| extract_email_address(address)}
     Net::SMTP.start(@server || "localhost", @port) do |smtp|
       smtp.open_message_stream(_from, to) do |f|
