@@ -1259,7 +1259,8 @@ EOF
   end
 
   private
-  def extract_email_address(address)
+  def extract_email_address(mail)
+    address = mail.lines.grep(/\AFrom: .*\Z/)[0].rstrip.sub(/From: /, "")
     if /<(.+?)>/ =~ address
       $1
     else
@@ -1268,7 +1269,7 @@ EOF
   end
 
   def send_mail(mail)
-    _from = extract_email_address(from)
+    _from = extract_email_address(mail)
     to = @to.collect {|address| extract_email_address(address)}
     Net::SMTP.start(@server || "localhost", @port) do |smtp|
       smtp.open_message_stream(_from, to) do |f|
