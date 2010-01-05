@@ -1078,6 +1078,14 @@ EOF
     process_unannotated_tag(@new_revision)
   end
 
+  def process_delete_unannotated_tag
+    raise 'unexpected' unless detect_object_type(@old_revision) == "commit"
+
+    "Unannotated tag (#@reference) is deleted.\n" +
+    "       was  #@old_revision (commit)\n\n" +
+    process_unannotated_tag(@old_revision)
+  end
+
   def process_unannotated_tag(revision)
     git("show --no-color --root -s --pretty=short #{revision}")
   end
