@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2009  Ryo Onodera <onodera@clear-code.com>
 #
@@ -120,8 +121,19 @@ class GitCommitMailer
   class CommitInfo < Info
     def self.unescape_file_path(file_path)
       if file_path =~ /\A"(.*)"\z/
-        $1.gsub(/\\\\/,'\\').gsub(/\\\"/,'"').
-           gsub(/\\([0-9]{1,3})/) {$1.to_i(8).chr}
+        escaped_file_path = $1
+        if escaped_file_path.respond_to?(:encoding)
+          encoding = escaped_file_path.encoding
+        else
+          encoding = nil
+        end
+        unescaped_file_path = escaped_file_path.gsub(/\\\\/,'\\').
+                                                gsub(/\\\"/,'"').
+                                                gsub(/\\([0-9]{1,3})/) do
+          $1.to_i(8).chr
+        end
+        unescaped_file_path.force_encoding(encoding) if encoding
+        unescaped_file_path
       else
         file_path
       end
@@ -1538,14 +1550,13 @@ CONTENT
   end
 
   def mime_encoded_word(subject)
-    encoded = NKF.nkf("-WM", subject)
+    encoded = NKF.nkf("-wWM", subject)
 
     #XXX work around NKF's bug of gratuitously wrapping long ascii words with
     #    MIME encoded-word syntax's header and footer, while not actually
     #    encoding the payload as base64: just strip the header and footer out.
-    if encoded.index(/=\?EUC-JP\?B\?.*\?=\n /)
-      encoded.gsub!(/=\?EUC-JP\?B\?(.*)\?=\n /) {$1}
-    end
+    encoded.gsub!(/=\?EUC-JP\?B\?(.*)\?=\n /) {$1}
+    encoded.gsub!(/(\n )*=\?US-ASCII\?Q\?(.*)\?=(\n )*/) {$2}
 
     encoded
   end
