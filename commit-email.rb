@@ -1508,6 +1508,22 @@ CONTENT
     end
   end
 
+  def name
+    if @name
+      @name
+    else
+      repository = File.expand_path(@repository)
+      loop do
+        basename = File.basename(repository, ".git")
+        if basename != ".git"
+          return basename
+        else
+          repository = File.dirname(repository)
+        end
+      end
+    end
+  end
+
   def make_header(body_encoding, body_encoding_bit, info)
     headers = []
     headers += info.headers
@@ -1516,7 +1532,7 @@ CONTENT
     headers << "Content-Transfer-Encoding: #{body_encoding_bit}"
     headers << "From: #{from(info)}"
     headers << "To: #{to.join(', ')}"
-    headers << "Subject: #{(@name+' ') if @name}#{make_subject(info)}"
+    headers << "Subject: #{(name + ' ') if name}#{make_subject(info)}"
     headers << "Date: #{info.date.rfc2822}"
     headers.find_all do |header|
       /\A\s*\z/ !~ header
