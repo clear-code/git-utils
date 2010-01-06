@@ -49,25 +49,6 @@ while (arg = original_argv.shift)
   end
 end
 
-def extract_email_address(address)
-  if /<(.+?)>/ =~ address
-    $1
-  else
-    address
-  end
-end
-
-def sendmail(to, from, mail, server=nil, port=nil)
-  server ||= "localhost"
-  from = extract_email_address(from)
-  to = to.collect {|address| extract_email_address(address)}
-  Net::SMTP.start(server, port) do |smtp|
-    smtp.open_message_stream(from, to) do |f|
-      f.print(mail)
-    end
-  end
-end
-
 class GitCommitMailer
   KILO_SIZE = 1000
   DEFAULT_MAX_SIZE = "100M"
@@ -486,6 +467,31 @@ class GitCommitMailer
 
     def short_revision(revision)
       revision[0,7]
+    end
+
+    def extract_email_address(address)
+      if /<(.+?)>/ =~ address
+        $1
+      else
+        address
+      end
+    end
+
+    def extract_email_address_from_mail(mail)
+      begin
+        from_header = mail.lines.grep(/\AFrom: .*\Z/)[0]
+        extract_email_address(from_header.rstrip.sub(/From: /, ""))
+      rescue
+        raise '"From:" header is not found in mail.'
+      end
+    end
+
+    def send_mail(server, port, from, to, mail)
+      Net::SMTP.start(server, port) do |smtp|
+        smtp.open_message_stream(from, to) do |f|
+          f.print(mail)
+        end
+      end
     end
 
     def parse_options_and_create(argv=nil)
@@ -1235,10 +1241,12 @@ EOF
   end
 
   def send_all_mails
-    send_mail @push_mail if send_push_mail?
+    if send_push_mail?
+      GitCommitMailer.send_mail(*(server_and_addresses(@push_mail) + [@push_mail]))
+    end
 
     @commit_mails.each do |mail|
-      send_mail mail
+      GitCommitMailer.send_mail(*(server_and_addresses(mail) + [mail]))
     end
   end
 
@@ -1259,31 +1267,10 @@ EOF
   end
 
   private
-  def extract_email_address(address)
-    if /<(.+?)>/ =~ address
-      $1
-    else
-      address
-    end
-  end
-
-  def extract_email_address_from_mail(mail)
-    begin
-      from_header = mail.lines.grep(/\AFrom: .*\Z/)[0]
-      extract_email_address(from_header.rstrip.sub(/From: /, ""))
-    rescue
-      raise '"From:" header is not found in mail.'
-    end
-  end
-
-  def send_mail(mail)
-    _from = extract_email_address_from_mail(mail)
-    to = @to.collect {|address| extract_email_address(address)}
-    Net::SMTP.start(@server || "localhost", @port) do |smtp|
-      smtp.open_message_stream(_from, to) do |f|
-        f.print(mail)
-      end
-    end
+  def server_and_addresses(mail)
+    _from = GitCommitMailer.extract_email_address_from_mail(mail)
+    to = @to.collect {|address| GitCommitMailer.extract_email_address(address)}
+    [@server || "localhost", @port, _from, to]
   end
 
   def output_rss
@@ -1713,7 +1700,9 @@ if __FILE__ == $0
     if to.empty?
       STDERR.puts detail
     else
-      sendmail(to, from, <<-MAIL, server, port)
+      from = GitCommitMailer.extract_email_address(from)
+      to = to.collect {|address| GitCommitMailer.extract_email_address(address)}
+      GitCommitMailer.send_mail(server || "localhost", port, from, to, <<-MAIL)
   MIME-Version: 1.0
   Content-Type: text/plain; charset=us-ascii
   Content-Transfer-Encoding: 7bit
