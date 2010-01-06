@@ -1693,8 +1693,8 @@ if __FILE__ == $0
     end
 
     detail = <<-EOM
-  #{error.class}: #{error.message}
-  #{error.backtrace.join("\n")}
+#{error.class}: #{error.message}
+#{error.backtrace.join("\n")}
   EOM
     to = to.compact
     if to.empty?
@@ -1703,15 +1703,15 @@ if __FILE__ == $0
       from = GitCommitMailer.extract_email_address(from)
       to = to.collect {|address| GitCommitMailer.extract_email_address(address)}
       GitCommitMailer.send_mail(server || "localhost", port, from, to, <<-MAIL)
-  MIME-Version: 1.0
-  Content-Type: text/plain; charset=us-ascii
-  Content-Transfer-Encoding: 7bit
-  From: #{from}
-  To: #{to.join(', ')}
-  Subject: #{subject}
-  Date: #{Time.now.rfc2822}
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+From: #{from}
+To: #{to.join(', ')}
+Subject: #{subject}
+Date: #{Time.now.rfc2822}
 
-  #{detail}
+#{detail}
   MAIL
     end
   end
