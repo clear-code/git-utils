@@ -55,8 +55,8 @@ class GitCommitMailer
   DEFAULT_MAX_SIZE = "100M"
 
   class Info
-    def git(command)
-      @mailer.git(command)
+    def git(command, &block)
+      @mailer.git(command, &block)
     end
 
     def get_record(record)
@@ -442,7 +442,7 @@ class GitCommitMailer
   end
 
   class << self
-    def execute(command, working_directory=nil)
+    def execute(command, working_directory=nil, &block)
       if working_directory
         cd_command = "cd #{working_directory} && "
       else
@@ -456,13 +456,17 @@ class GitCommitMailer
 
       script = "(#{cd_command}#{command})#{suppress_stderr}"
       puts script if ENV['DEBUG']
-      result = `#{script}`
+      if block_given?
+        IO.popen(script, "w+", &block)
+      else
+        result = `#{script}`
+      end
       raise "execute failed: #{command}" unless $?.exitstatus.zero?
       result
     end
 
-    def git(repository, command)
-      execute "git --git-dir=#{Shellwords.escape(repository)} #{command}"
+    def git(repository, command, &block)
+      execute("git --git-dir=#{Shellwords.escape(repository)} #{command}", &block)
     end
 
     def get_record(repository, revision, record)
@@ -761,8 +765,8 @@ class GitCommitMailer
     CommitInfo.new(self, *args)
   end
 
-  def git(command)
-    GitCommitMailer.git(@repository, command)
+  def git(command, &block)
+    GitCommitMailer.git(@repository, command, &block)
   end
 
   def get_record(revision, record)
@@ -1058,62 +1062,73 @@ EOF
     git("show -s --pretty=oneline #@old_revision")
   end
 
-  def process_annotated_tag
+  def short_log(revision_specifier)
+    log = git("rev-list --pretty=short #{Shellwords.escape(revision_specifier)}")
+    git("shortlog") do |git|
+      git.write(log)
+      git.close_write
+      return git.read
+    end
+  end
+
+  def short_log_from_previous_tag(previous_tag)
+    if previous_tag
+      # Show changes since the previous release
+      short_log("#{previous_tag}..#@new_revision")
+    else
+      # No previous tag, show all the changes since time began
+      short_log(@new_revision)
+    end
+  end
+
+  def previous_tag_by_revision(revision)
+    # If the tagged object is a commit, then we assume this is a
+    # release, and so we calculate which tag this tag is
+    # replacing
+    begin
+      previous_tag = git("describe --abbrev=0 #{revision}^").strip
+    rescue
+    end
+  end
+
+  def annotated_tag_content
     message = ''
-    # Use git for-each-ref to pull out the individual fields from the
-    # tag
-    tag_object = git("for-each-ref --format='%(*objectname)' #@reference").strip
-    tag_type = git("for-each-ref --format='%(*objecttype)' #@reference").strip
     tagger = git("for-each-ref --format='%(taggername)' #@reference").strip
     tagged = git("for-each-ref --format='%(taggerdate:rfc2822)' #@reference").strip
-    previous_tag = nil
-
-    message << "   tagging  #{tag_object} (#{tag_type})\n"
-    case tag_type
-    when "commit"
-      # If the tagged object is a commit, then we assume this is a
-      # release, and so we calculate which tag this tag is
-      # replacing
-      begin
-        previous_tag = git("describe --abbrev=0 #@new_revision^").strip
-      rescue
-      end
-
-      message << "  replaces  #{previous_tag}\n" if previous_tag
-    else
-      message << "    length  #{git("cat-file -s #{tag_object}").strip} bytes\n"
-    end
     message << " tagged by  #{tagger}\n"
     message << "        on  #{format_time(Time.rfc2822(tagged))}\n\n"
 
     # Show the content of the tag message; this might contain a change
     # log or release notes so is worth displaying.
-    tag_content = git("cat-file tag #@new_revision").split("\n")
+    tag_content = git("cat-file tag #{@new_revision}").split("\n")
     #skips header section
-    tag_content.shift while not tag_content[0].empty?
+    tag_content.shift while not tag_content.first.empty?
     #skips the empty line indicating the end of header section
     tag_content.shift
 
     message << tag_content.join("\n") + "\n"
+    message
+  end
+
+  def process_annotated_tag
+    message = ''
+    # Use git for-each-ref to pull out the individual fields from the tag
+    tag_object = git("for-each-ref --format='%(*objectname)' #@reference").strip
+    tag_type = git("for-each-ref --format='%(*objecttype)' #@reference").strip
 
     case tag_type
     when "commit"
-      # Only commit tags make sense to have rev-list operations
-      # performed on them
-      if previous_tag
-        # Show changes since the previous release
-        message << git("rev-list --pretty=short \"#{previous_tag}..#@new_revision\" |
-                    git shortlog")
-      else
-        # No previous tag, show all the changes since time
-        # began
-        message << git("rev-list --pretty=short #@new_revision | git shortlog")
-      end
+      message << "   tagging  #{tag_object} (#{tag_type})\n"
+      previous_tag = previous_tag_by_revision(@new_revision)
+      message << "  replaces  #{previous_tag}\n" if previous_tag
+      message << annotated_tag_content
+      message << short_log_from_previous_tag(previous_tag)
     else
-      # XXX: Is there anything useful we can do for non-commit
-      # objects?
-      raise 'unexpected'
+      message << "   tagging  #{tag_object} (#{tag_type})\n"
+      message << "    length  #{git("cat-file -s #{tag_object}").strip} bytes\n"
+      message << annotated_tag_content
     end
+
     message
   end
 
