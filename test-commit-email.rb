@@ -462,6 +462,28 @@ EOF
     assert_mail('test_update_annotated_tag.push_mail', push_mail)
   end
 
+  def test_short_log
+    prepare_to_tag
+
+    append_line(DEFAULT_FILE, 'a line')
+    git "commit -m 'release v0.0.1' -a"
+    git "push"
+    git "tag -a -m \'sample tag (v0.0.1)\' v0.0.1"
+    git "push --tags"
+    append_line(DEFAULT_FILE, 'a line')
+    git "commit -m 'last tweaks' -a"
+    append_line(DEFAULT_FILE, 'a line')
+    git "commit -m 'release v0.0.2' -a"
+    git "push"
+    git "tag -a -f -m \'sample tag (v0.0.2)\' v0.0.2"
+    git "push --tags"
+
+    push_mail, commit_mails = last_mails
+
+    assert_not_nil(push_mail)
+    assert_mail('test_short_log.push_mail', push_mail)
+  end
+
   def test_delete_annotated_tag
     prepare_to_tag
 
