@@ -175,13 +175,13 @@ class GitCommitMailer
         @new_date = Time.at(@mailer.get_record(@new_revision, "%at").to_i)
 
         begin
-          @old_revision = @mailer.git("log -n 1 --pretty=format:%H #{revision}~").strip
+          @old_revision = @mailer.parent_commit(revision)
           @old_date = Time.at(@mailer.get_record(@old_revision, "%at").to_i)
-        rescue
+        rescue NoParentCommit
           @old_revision = '0' * 40
           @old_date = nil
         end
-        #@old_revision = git("rev-parse #{revision}~").strip
+        #@old_revision = @mailer.parent_commit(revision)
       end
 
       def mode_changed?
@@ -363,8 +363,6 @@ class GitCommitMailer
       output = git("log -n 1 --pretty=format:'' -C -p #{@revision}")
       output = output.lines.to_a
       output.shift #removes the first empty line
-
-      #f = IO.popen("git diff #{revision}~ #{revision}")
 
       @diffs = []
       lines = []
@@ -1081,13 +1079,24 @@ EOF
     end
   end
 
+  class NoParentCommit < Exception
+  end
+
+  def parent_commit(revision)
+    begin
+      git("rev-parse #{revision}^").strip
+    rescue
+      raise NoParentCommit
+    end
+  end
+
   def previous_tag_by_revision(revision)
     # If the tagged object is a commit, then we assume this is a
     # release, and so we calculate which tag this tag is
     # replacing
     begin
-      previous_tag = git("describe --abbrev=0 #{revision}^").strip
-    rescue
+      previous_tag = git("describe --abbrev=0 #{parent_commit(revision)}").strip
+    rescue NoParentCommit
     end
   end
 
@@ -1165,13 +1174,13 @@ EOF
   def find_branch_name_from_its_descendant_revision(revision)
     begin
       name = git("name-rev --name-only --refs refs/heads/* #{revision}").strip
-      revision = git("rev-parse #{revision}~").strip
+      revision = parent_commit(revision)
     end until name.sub(/([~^][0-9]+)*\z/,'') == name
     name
   end
 
   def traverse_merge_commit(merge_commit)
-    first_grand_parent = git("rev-parse #{merge_commit.first_parent}~").strip
+    first_grand_parent = parent_commit(merge_commit.first_parent)
 
     [merge_commit.first_parent, *merge_commit.other_parents].each do |revision|
       is_traversing_first_parent = (revision == merge_commit.first_parent)
