@@ -19,7 +19,6 @@
 require 'rubygems'
 gem 'test-unit'
 require 'test/unit'
-
 require 'tempfile'
 
 require 'commit-email'
@@ -35,15 +34,69 @@ END_OF_CONTENT
     GitCommitMailer.execute(command, directory)
   end
 
+  def sleep_to_advance_timestamp
+    sleep 1.1
+  end
+
+  def delete_output_from_hook
+    FileUtils.rm(@post_receive_stdout) if File.exist?(@post_receive_stdout)
+  end
+
   def git(command, repository_directory=@repository_directory)
-    sleep 1.1 if command =~ /\A(commit|merge|tag) / #wait for the timestamp to tick
-    trash_post_receive_output if command =~ /\Apush/
+    sleep_to_advance_timestamp if command =~ /\A(commit|merge|tag) /
+    delete_output_from_hook if command =~ /\Apush/
 
     if command =~ /\Ainit/
       execute("git #{command}", repository_directory)
     else
       execute "git --git-dir=#{repository_directory} #{command}"
     end
+  end
+
+  def git_commit_new_file(file_name, content, message=nil)
+    create_file(file_name, content)
+
+    message ||= "This is a auto-generated commit message: added #{file_name}"
+    git "add #{file_name}"
+    git "commit -m \"#{message}\""
+  end
+
+  def enable_hook
+    if File.exist?(@origin_repository_directory + "hooks/post-receive.sample")
+      FileUtils.mv(@origin_repository_directory + "hooks/post-receive.sample",
+                   @origin_repository_directory + "hooks/post-receive")
+    end
+    execute "chmod +x hooks/post-receive", @origin_repository_directory
+  end
+
+  def register_hook
+    @post_receive_stdout = @origin_repository_directory + 'post-receive.stdout'
+    enable_hook
+    File.open(@origin_repository_directory + "hooks/post-receive", 'a') do |file|
+      file.puts("cat >> #{@post_receive_stdout}")
+    end
+  end
+
+  def create_origin_repository
+    @origin_repository_directory = @test_directory + 'origin/'
+    FileUtils.mkdir @origin_repository_directory
+    git 'init --bare', @origin_repository_directory
+    register_hook
+  end
+
+  def config_user_information
+    git 'config user.name "User Name"'
+    git 'config user.email "user@example.com"'
+  end
+
+  def create_working_repository
+    @git_directory = @test_directory + 'repo/'
+    @repository_directory = @git_directory + '.git/'
+    FileUtils.mkdir @git_directory
+    git 'init', @git_directory
+    config_user_information
+    git "remote add origin #{@origin_repository_directory}"
+    git "config --add push.default current"
   end
 
   def temporary_name
@@ -58,65 +111,10 @@ END_OF_CONTENT
     FileUtils.mkdir @test_directory
   end
 
-  def config_user_info
-    git 'config user.name "User Name"'
-    git 'config user.email "user@example.com"'
-  end
-
-  def register_hook_to_origin
-    @post_receive_stdout = @origin_repository_directory + 'post-receive.stdout'
-    if File.exist?(@origin_repository_directory + "hooks/post-receive.sample")
-      FileUtils.mv(@origin_repository_directory + "hooks/post-receive.sample",
-                   @origin_repository_directory + "hooks/post-receive")
-    end
-    execute "chmod +x hooks/post-receive", @origin_repository_directory
-    File.open(@origin_repository_directory + "hooks/post-receive", 'a') do |file|
-      file.puts("cat >> #{@post_receive_stdout}")
-    end
-  end
-
-  def create_origin_repository
-    @origin_repository_directory = @test_directory + 'origin/'
-    FileUtils.mkdir @origin_repository_directory
-    git 'init --bare', @origin_repository_directory
-    register_hook_to_origin
-  end
-
-  def create_working_repository
-    @git_directory = @test_directory + 'repo/'
-    @repository_directory = @git_directory + '.git/'
-    FileUtils.mkdir @git_directory
-    git 'init', @git_directory
-    config_user_info
-    git "remote add origin #{@origin_repository_directory}"
-    git "config --add push.default current"
-  end
-
   def create_repositories
     make_test_directory
     create_origin_repository
     create_working_repository
-  end
-
-  def each_reference_change
-    begin
-      File.open(@post_receive_stdout, 'r') do |file|
-        while line = file.gets
-          old_revision, new_revision, reference = line.split
-          puts "#{old_revision} #{new_revision} #{reference}" if ENV['DEBUG']
-          yield old_revision, new_revision, reference
-        end
-      end
-    rescue Errno::ENOENT
-    end
-  end
-
-  def process_reference_change(*args)
-    @push_mail, @commit_mails = @mailer.process_reference_change(*args)
-  end
-
-  def trash_post_receive_output
-    FileUtils.rm(@post_receive_stdout) if File.exist?(@post_receive_stdout)
   end
 
   def delete_repositories
@@ -153,67 +151,6 @@ END_OF_CONTENT
     restore_environment_variables
   end
 
-  def zero_revision
-    '0' * 40
-  end
-
-  def create_mailer(argv)
-    @mailer = GitCommitMailer.parse_options_and_create(argv.split)
-  end
-
-  def create_default_mailer
-    create_mailer("--repository=#{@origin_repository_directory} " +
-                  "--name=sample-repo " +
-                  "--from from@example.com " +
-                  "--error-to error@example.com to@example")
-  end
-
-  def black_out_sha1(string)
-    string.gsub(/[0-9a-fA-F]{40}/, "*" * 40).
-           gsub(/[0-9a-fA-F]{7}/, "*" * 7)
-  end
-
-  def black_out_date(string)
-    date_format1 = '20[0-9][0-9]-[01][0-9]-[0-3][0-9] [0-2][0-9]:[0-5][0-9]:[0-5][0-9] ' +
-                   '[+-][0-9]{4} \([A-Z][a-z][a-z], [0-3][0-9] [A-Z][a-z][a-z] 20..\)'
-    date_format2 = '20[0-9][0-9]-[01][0-9]-[0-3][0-9] [0-2][0-9]:[0-5][0-9]:[0-5][0-9] ' +
-                   '[+-][0-9]{4}'
-    date_format3 = '^Date: [A-Z][a-z][a-z], [0-3][0-9] [A-Z][a-z][a-z] 20[0-9][0-9] ' +
-                   '[0-2][0-9]:[0-5][0-9]:[0-5][0-9] [+-][0-9]{4}'
-    string.gsub(Regexp.new(date_format1), '****-**-** **:**:** +**** (***, ** *** ****)').
-           gsub(Regexp.new(date_format2), '****-**-** **:**:** +****').
-           gsub(Regexp.new(date_format3), 'Date: ***, ** *** **** **:**:** +****')
-  end
-
-  def black_out_mail(mail)
-    mail = black_out_sha1(mail)
-    mail = black_out_date(mail)
-  end
-
-  def commit_new_file(file_name, content, message=nil)
-    create_file(file_name, content)
-
-    message ||= "This is a auto-generated commit message: added #{file_name}"
-    git "add #{file_name}"
-    git "commit -m \"#{message}\""
-  end
-
-  def assert_mail(expected_mail_file_name, tested_mail)
-    assert_equal(expected_mail(expected_mail_file_name), black_out_mail(tested_mail))
-  end
-
-  def last_mails
-    push_mail, commit_mails = nil, []
-    each_reference_change do |old_revision, new_revision, reference|
-      push_mail, commit_mails = process_reference_change(old_revision, new_revision, reference)
-    end
-    [push_mail, commit_mails]
-  end
-
-  def expected_mail(file)
-    IO.read('fixtures/' + file)
-  end
-
   def file_path(file_name)
     @git_directory + file_name
   end
@@ -245,9 +182,75 @@ END_OF_CONTENT
     create_file(file_name, content)
   end
 
+  def create_mailer(argv)
+    @mailer = GitCommitMailer.parse_options_and_create(argv.split)
+  end
+
+  def create_default_mailer
+    create_mailer("--repository=#{@origin_repository_directory} " +
+                  "--name=sample-repo " +
+                  "--from from@example.com " +
+                  "--error-to error@example.com to@example")
+  end
+
+  def each_reference_change
+    begin
+      File.open(@post_receive_stdout, 'r') do |file|
+        while line = file.gets
+          old_revision, new_revision, reference = line.split
+          puts "#{old_revision} #{new_revision} #{reference}" if ENV['DEBUG']
+          yield old_revision, new_revision, reference
+        end
+      end
+    rescue Errno::ENOENT
+    end
+  end
+
+  def process_reference_change(*args)
+    @push_mail, @commit_mails = @mailer.process_reference_change(*args)
+  end
+
+  def last_mails
+    push_mail, commit_mails = nil, []
+    each_reference_change do |old_revision, new_revision, reference|
+      push_mail, commit_mails = process_reference_change(old_revision, new_revision, reference)
+    end
+    [push_mail, commit_mails]
+  end
+
+  def black_out_sha1(string)
+    string.gsub(/[0-9a-fA-F]{40}/, "*" * 40).
+           gsub(/[0-9a-fA-F]{7}/, "*" * 7)
+  end
+
+  def black_out_date(string)
+    date_format1 = '20[0-9][0-9]-[01][0-9]-[0-3][0-9] [0-2][0-9]:[0-5][0-9]:[0-5][0-9] ' +
+                   '[+-][0-9]{4} \([A-Z][a-z][a-z], [0-3][0-9] [A-Z][a-z][a-z] 20..\)'
+    date_format2 = '20[0-9][0-9]-[01][0-9]-[0-3][0-9] [0-2][0-9]:[0-5][0-9]:[0-5][0-9] ' +
+                   '[+-][0-9]{4}'
+    date_format3 = '^Date: [A-Z][a-z][a-z], [0-3][0-9] [A-Z][a-z][a-z] 20[0-9][0-9] ' +
+                   '[0-2][0-9]:[0-5][0-9]:[0-5][0-9] [+-][0-9]{4}'
+    string.gsub(Regexp.new(date_format1), '****-**-** **:**:** +**** (***, ** *** ****)').
+           gsub(Regexp.new(date_format2), '****-**-** **:**:** +****').
+           gsub(Regexp.new(date_format3), 'Date: ***, ** *** **** **:**:** +****')
+  end
+
+  def black_out_mail(mail)
+    mail = black_out_sha1(mail)
+    mail = black_out_date(mail)
+  end
+
+  def expected_mail(file)
+    IO.read('fixtures/' + file)
+  end
+
+  def assert_mail(expected_mail_file_name, tested_mail)
+    assert_equal(expected_mail(expected_mail_file_name), black_out_mail(tested_mail))
+  end
+
   def test_single_commit
     create_default_mailer
-    commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
+    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
 
     git 'push origin master'
 
@@ -268,7 +271,7 @@ Firstly, it'll be appended with some lines in a non-master branch.
 Secondly, it'll be prepended and inserted with some lines in the master branch.
 Finally, it'll get merged.
 EOF
-    commit_new_file(DEFAULT_FILE, file_content, "added a sample text file")
+    git_commit_new_file(DEFAULT_FILE, file_content, "added a sample text file")
 
     git "branch #{sample_branch}"
     git "checkout #{sample_branch}"
@@ -320,7 +323,7 @@ This file will be modified to make commits.
     
 In the above line, I intentionally left some spaces.
 EOF
-    commit_new_file(DEFAULT_FILE, file_content, "added a sample file")
+    git_commit_new_file(DEFAULT_FILE, file_content, "added a sample file")
     git 'push origin master'
 
     edit_file(DEFAULT_FILE) do |lines|
@@ -353,7 +356,7 @@ some filler text to make two hunks with diff
 some filler text to make two hunks with diff
 some filler text to make two hunks with diff
 EOF
-    commit_new_file(DEFAULT_FILE, file_content, "added a sample file")
+    git_commit_new_file(DEFAULT_FILE, file_content, "added a sample file")
     git 'push origin master'
 
     prepend_line(DEFAULT_FILE, 'a prepended line')
@@ -395,7 +398,7 @@ This is a sample text file.
 This file will be modified to make commits.
 This line is needed to assist the auto-merge algorithm.
 EOF
-    commit_new_file(DEFAULT_FILE, file_content, "added a sample file")
+    git_commit_new_file(DEFAULT_FILE, file_content, "added a sample file")
     git 'push origin master'
 
     git "branch #{first_branch}"
@@ -446,7 +449,7 @@ EOF
 
   def test_non_ascii_file_name
     create_default_mailer
-    commit_new_file("日本語.txt", "日本語の文章です。", "added a file with japanese file name")
+    git_commit_new_file("日本語.txt", "日本語の文章です。", "added a file with japanese file name")
     git "push origin master"
 
     push_mail, commit_mails = last_mails
@@ -456,7 +459,7 @@ EOF
 
   def test_long_word_in_commit_subject
     create_default_mailer
-    commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "x" * 60)
+    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "x" * 60)
 
     git 'push origin master'
 
@@ -467,7 +470,7 @@ EOF
 
   def prepare_to_tag
     create_default_mailer
-    commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "sample commit")
+    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "sample commit")
     git "push"
   end
 
