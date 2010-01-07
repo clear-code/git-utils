@@ -39,7 +39,7 @@ END_OF_CONTENT
   end
 
   def delete_output_from_hook
-    FileUtils.rm(@post_receive_stdout) if File.exist?(@post_receive_stdout)
+    FileUtils.rm(@hook_output) if File.exist?(@hook_output)
   end
 
   def git(command, repository_directory=@repository_directory)
@@ -62,18 +62,18 @@ END_OF_CONTENT
   end
 
   def enable_hook
-    if File.exist?(@origin_repository_directory + "hooks/post-receive.sample")
-      FileUtils.mv(@origin_repository_directory + "hooks/post-receive.sample",
-                   @origin_repository_directory + "hooks/post-receive")
+    if File.exist?(@hook + ".sample")
+      FileUtils.mv(@hook + ".sample", @hook)
     end
-    execute "chmod +x hooks/post-receive", @origin_repository_directory
+    execute "chmod +x #{@hook}"
   end
 
-  def register_hook
-    @post_receive_stdout = @origin_repository_directory + 'post-receive.stdout'
+  def grab_hook_output
+    @hook = @origin_repository_directory + 'hooks/post-receive'
+    @hook_output = @hook + '.output'
     enable_hook
-    File.open(@origin_repository_directory + "hooks/post-receive", 'a') do |file|
-      file.puts("cat >> #{@post_receive_stdout}")
+    File.open(@hook, 'a') do |file|
+      file.puts("cat >> #{@hook_output}")
     end
   end
 
@@ -81,7 +81,7 @@ END_OF_CONTENT
     @origin_repository_directory = @test_directory + 'origin/'
     FileUtils.mkdir @origin_repository_directory
     git 'init --bare', @origin_repository_directory
-    register_hook
+    grab_hook_output
   end
 
   def config_user_information
@@ -195,7 +195,7 @@ END_OF_CONTENT
 
   def each_reference_change
     begin
-      File.open(@post_receive_stdout, 'r') do |file|
+      File.open(@hook_output, 'r') do |file|
         while line = file.gets
           old_revision, new_revision, reference = line.split
           puts "#{old_revision} #{new_revision} #{reference}" if ENV['DEBUG']
