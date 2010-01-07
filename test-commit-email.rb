@@ -52,6 +52,12 @@ END_OF_CONTENT
     path = "#{prefix}#{t}-#{$$}-#{rand(0x100000000).to_s(36)}"
   end
 
+  def make_test_dir
+    while File.exist?(@test_dir = Dir.tmpdir + "/" + temporary_name + "/")
+    end
+    FileUtils.mkdir @test_dir
+  end
+
   def config_user_info
     git 'config user.name "User Name"'
     git 'config user.email "user@example.com"'
@@ -68,9 +74,7 @@ END_OF_CONTENT
   end
 
   def create_repository
-    while File.exist?(@test_dir = Dir.tmpdir + "/" + temporary_name + "/")
-    end
-    FileUtils.mkdir @test_dir
+    make_test_dir
     @origin_repository_dir = @test_dir + 'origin/'
     FileUtils.mkdir @origin_repository_dir
     git 'init --bare', @origin_repository_dir
