@@ -31,18 +31,18 @@ This is a sample text file.
 This file will be modified to make commits.
 END_OF_CONTENT
 
-  def execute(command, directory=@git_dir)
+  def execute(command, directory=@git_directory)
     GitCommitMailer.execute(command, directory)
   end
 
-  def git(command, repository_dir=@repository_dir)
+  def git(command, repository_directory=@repository_directory)
     sleep 1.1 if command =~ /\A(commit|merge|tag) / #wait for the timestamp to tick
     trash_post_receive_output if command =~ /\Apush/
 
     if command =~ /\Ainit/
-      execute("git #{command}", repository_dir)
+      execute("git #{command}", repository_directory)
     else
-      execute "git --git-dir=#{repository_dir} #{command}"
+      execute "git --git-dir=#{repository_directory} #{command}"
     end
   end
 
@@ -52,10 +52,10 @@ END_OF_CONTENT
     path = "#{prefix}#{t}-#{$$}-#{rand(0x100000000).to_s(36)}"
   end
 
-  def make_test_dir
-    while File.exist?(@test_dir = Dir.tmpdir + "/" + temporary_name + "/")
+  def make_test_directory
+    while File.exist?(@test_directory = Dir.tmpdir + "/" + temporary_name + "/")
     end
-    FileUtils.mkdir @test_dir
+    FileUtils.mkdir @test_directory
   end
 
   def config_user_info
@@ -64,28 +64,28 @@ END_OF_CONTENT
   end
 
   def register_hook_to_origin
-    @post_receive_stdout = @origin_repository_dir + 'post-receive.stdout'
-    if File.exist?(@origin_repository_dir + "hooks/post-receive.sample")
-      FileUtils.mv(@origin_repository_dir + "hooks/post-receive.sample",
-                   @origin_repository_dir + "hooks/post-receive")
+    @post_receive_stdout = @origin_repository_directory + 'post-receive.stdout'
+    if File.exist?(@origin_repository_directory + "hooks/post-receive.sample")
+      FileUtils.mv(@origin_repository_directory + "hooks/post-receive.sample",
+                   @origin_repository_directory + "hooks/post-receive")
     end
-    execute "chmod +x hooks/post-receive", @origin_repository_dir
-    append_line(@origin_repository_dir + "hooks/post-receive", "cat >> #{@post_receive_stdout}")
+    execute "chmod +x hooks/post-receive", @origin_repository_directory
+    append_line(@origin_repository_directory + "hooks/post-receive", "cat >> #{@post_receive_stdout}")
   end
 
   def create_repository
-    make_test_dir
-    @origin_repository_dir = @test_dir + 'origin/'
-    FileUtils.mkdir @origin_repository_dir
-    git 'init --bare', @origin_repository_dir
+    make_test_directory
+    @origin_repository_directory = @test_directory + 'origin/'
+    FileUtils.mkdir @origin_repository_directory
+    git 'init --bare', @origin_repository_directory
     register_hook_to_origin
 
-    @git_dir = @test_dir + 'repo/'
-    @repository_dir = @git_dir + '.git/'
-    FileUtils.mkdir @git_dir
-    git 'init', @git_dir
+    @git_directory = @test_directory + 'repo/'
+    @repository_directory = @git_directory + '.git/'
+    FileUtils.mkdir @git_directory
+    git 'init', @git_directory
     config_user_info
-    git "remote add origin #{@origin_repository_dir}"
+    git "remote add origin #{@origin_repository_directory}"
     git "config --add push.default current"
   end
 
@@ -112,7 +112,7 @@ END_OF_CONTENT
 
   def delete_repository
     return if ENV['DEBUG'] == 'yes'
-    FileUtils.rm_r @test_dir
+    FileUtils.rm_r @test_directory
   end
 
   def save_environment_variables(names)
@@ -153,7 +153,7 @@ END_OF_CONTENT
   end
 
   def create_default_mailer
-    create_mailer("--repository=#{@origin_repository_dir} " +
+    create_mailer("--repository=#{@origin_repository_directory} " +
                   "--name=sample-repo " +
                   "--from from@example.com " +
                   "--error-to error@example.com to@example")
@@ -188,7 +188,7 @@ END_OF_CONTENT
   end
 
   def create_file(filename, content)
-    File.open(@git_dir + filename, 'w') do |file|
+    File.open(@git_directory + filename, 'w') do |file|
       file.puts(content)
     end
   end
