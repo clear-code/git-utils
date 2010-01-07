@@ -187,22 +187,22 @@ END_OF_CONTENT
     end
   end
 
-  def create_file(filename, content)
-    File.open(@git_directory + filename, 'w') do |file|
+  def create_file(file_name, content)
+    File.open(@git_directory + file_name, 'w') do |file|
       file.puts(content)
     end
   end
 
-  def commit_new_file(filename, content, message=nil)
-    create_file(filename, content)
+  def commit_new_file(file_name, content, message=nil)
+    create_file(file_name, content)
 
-    message ||= "This is a auto-generated commit message: added #{filename}"
-    git "add #{filename}"
+    message ||= "This is a auto-generated commit message: added #{file_name}"
+    git "add #{file_name}"
     git "commit -m \"#{message}\""
   end
 
-  def assert_mail(expected_mail_filename, tested_mail)
-    assert_equal(read_file('fixtures/'+expected_mail_filename), black_out_mail(tested_mail))
+  def assert_mail(expected_mail_file_name, tested_mail)
+    assert_equal(read_file('fixtures/'+expected_mail_file_name), black_out_mail(tested_mail))
   end
 
   def last_mails
@@ -414,7 +414,7 @@ EOF
     assert_mail('test_nested_merges.5', commit_mails[4])
   end
 
-  def test_non_ascii_filename
+  def test_non_ascii_file_name
     create_default_mailer
     commit_new_file("日本語.txt", "日本語の文章です。", "added a file with japanese file name")
     git "push origin master"
