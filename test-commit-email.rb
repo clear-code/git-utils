@@ -30,7 +30,7 @@ This is a sample text file.
 This file will be modified to make commits.
 END_OF_CONTENT
 
-  def execute(command, directory=@git_directory)
+  def execute(command, directory=@working_tree_directory)
     GitCommitMailer.execute(command, directory)
   end
 
@@ -90,10 +90,10 @@ END_OF_CONTENT
   end
 
   def create_working_repository
-    @git_directory = @test_directory + 'repo/'
-    @repository_directory = @git_directory + '.git/'
-    FileUtils.mkdir @git_directory
-    git 'init', @git_directory
+    @working_tree_directory = @test_directory + 'repo/'
+    @repository_directory = @working_tree_directory + '.git/'
+    FileUtils.mkdir @working_tree_directory
+    git 'init', @working_tree_directory
     config_user_information
     git "remote add origin #{@origin_repository_directory}"
     git "config --add push.default current"
@@ -152,7 +152,7 @@ END_OF_CONTENT
   end
 
   def file_path(file_name)
-    @git_directory + file_name
+    @working_tree_directory + file_name
   end
 
   def create_file(file_name, content)
