@@ -181,10 +181,8 @@ END_OF_CONTENT
     mail = black_out_date(mail)
   end
 
-  def read_file(file)
-    File.open(file) do |file|
-      return file.read
-    end
+  def expected_mail(file)
+    IO.read('fixtures/' + file)
   end
 
   def create_file(file_name, content)
@@ -202,7 +200,7 @@ END_OF_CONTENT
   end
 
   def assert_mail(expected_mail_file_name, tested_mail)
-    assert_equal(read_file('fixtures/'+expected_mail_file_name), black_out_mail(tested_mail))
+    assert_equal(expected_mail(expected_mail_file_name), black_out_mail(tested_mail))
   end
 
   def last_mails
