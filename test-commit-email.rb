@@ -70,7 +70,9 @@ END_OF_CONTENT
                    @origin_repository_directory + "hooks/post-receive")
     end
     execute "chmod +x hooks/post-receive", @origin_repository_directory
-    append_line(@origin_repository_directory + "hooks/post-receive", "cat >> #{@post_receive_stdout}")
+    File.open(@origin_repository_directory + "hooks/post-receive", 'a') do |file|
+      file.puts("cat >> #{@post_receive_stdout}")
+    end
   end
 
   def create_repository
@@ -181,16 +183,6 @@ END_OF_CONTENT
     mail = black_out_date(mail)
   end
 
-  def expected_mail(file)
-    IO.read('fixtures/' + file)
-  end
-
-  def create_file(file_name, content)
-    File.open(@git_directory + file_name, 'w') do |file|
-      file.puts(content)
-    end
-  end
-
   def commit_new_file(file_name, content, message=nil)
     create_file(file_name, content)
 
@@ -211,16 +203,33 @@ END_OF_CONTENT
     [push_mail, commit_mails]
   end
 
+  def expected_mail(file)
+    IO.read('fixtures/' + file)
+  end
+
+  def file_path(file_name)
+    @git_directory + file_name
+  end
+
+  def create_file(file_name, content)
+    File.open(file_path(file_name), 'w') do |file|
+      file.puts(content)
+    end
+  end
+
   def prepend_line(file_name, line)
-    execute "sed -i -e '1 s/^/'#{Shellwords.escape(line)}'\\n/' #{Shellwords.escape(file_name)}"
+    content = line + "\n" + IO.read(file_path(file_name))
+    create_file(file_name, content)
   end
 
   def append_line(file_name, line)
-    execute "echo #{Shellwords.escape(line)} >> #{Shellwords.escape(file_name)}"
+    content = IO.read(file_path(file_name)) + line + "\n"
+    create_file(file_name, content)
   end
 
   def insert_line(file_name, line, offset)
-    execute "sed -i -e '#{offset} s/^/'#{Shellwords.escape(line)}'\\n/' #{Shellwords.escape(file_name)}"
+    content = IO.readlines(file_path(file_name)).insert(offset, line + "\n").join
+    create_file(file_name, content)
   end
 
   def test_single_commit
