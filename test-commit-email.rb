@@ -85,7 +85,7 @@ END_OF_CONTENT
     git "config --add push.default current"
   end
 
-  def each_post_receive_output
+  def each_reference_change
     begin
       File.open(@post_receive_stdout, 'r') do |file|
         while line = file.gets
@@ -203,7 +203,7 @@ END_OF_CONTENT
 
   def last_mails
     push_mail, commit_mails = nil, []
-    each_post_receive_output do |old_revision, new_revision, reference|
+    each_reference_change do |old_revision, new_revision, reference|
       push_mail, commit_mails = process_reference_change(old_revision, new_revision, reference)
     end
     [push_mail, commit_mails]
@@ -272,7 +272,7 @@ EOF
     git "push origin master #{sample_branch}"
 
     pushes = []
-    each_post_receive_output do |old_revision, new_revision, reference|
+    each_reference_change do |old_revision, new_revision, reference|
       pushes << process_reference_change(old_revision, new_revision, reference)
     end
 
