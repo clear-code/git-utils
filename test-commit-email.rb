@@ -75,13 +75,14 @@ END_OF_CONTENT
     end
   end
 
-  def create_repository
-    make_test_directory
+  def create_origin_repository
     @origin_repository_directory = @test_directory + 'origin/'
     FileUtils.mkdir @origin_repository_directory
     git 'init --bare', @origin_repository_directory
     register_hook_to_origin
+  end
 
+  def create_working_repository
     @git_directory = @test_directory + 'repo/'
     @repository_directory = @git_directory + '.git/'
     FileUtils.mkdir @git_directory
@@ -89,6 +90,12 @@ END_OF_CONTENT
     config_user_info
     git "remote add origin #{@origin_repository_directory}"
     git "config --add push.default current"
+  end
+
+  def create_repository
+    make_test_directory
+    create_origin_repository
+    create_working_repository
   end
 
   def each_reference_change
