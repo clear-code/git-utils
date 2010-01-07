@@ -232,6 +232,12 @@ END_OF_CONTENT
     create_file(file_name, content)
   end
 
+  def edit_file(file_name)
+    lines = IO.readlines(file_path(file_name))
+    content = yield(lines).join
+    create_file(file_name, content)
+  end
+
   def test_single_commit
     create_default_mailer
     commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
@@ -310,7 +316,11 @@ EOF
     commit_new_file(DEFAULT_FILE, file_content, "added a sample file")
     git 'push origin master'
 
-    execute "sed -r -i -e 's/ +$//' #{DEFAULT_FILE}"
+    edit_file(DEFAULT_FILE) do |lines|
+      lines.collect do |line|
+        line.rstrip + "\n"
+      end
+    end
     git 'commit -a -m "removed trailing spaces"'
 
     git 'push'
@@ -388,7 +398,10 @@ EOF
     git "push"
 
     git "checkout master"
-    execute "sed -i -e '1 s/This/THIS/' #{DEFAULT_FILE}"
+    edit_file(DEFAULT_FILE) do |lines|
+      lines[0].sub!(/This/, 'THIS')
+      lines
+    end
     git "commit -a -m \"a sample commit in master branch: This => THIS\""
     git "push"
 
@@ -399,7 +412,10 @@ EOF
     git "push"
 
     git "checkout master"
-    execute "sed -i -e '2 s/file/FILE/' #{DEFAULT_FILE}"
+    edit_file(DEFAULT_FILE) do |lines|
+      lines[1].sub!(/file/, 'FILE')
+      lines
+    end
     git "commit -a -m \"a sample commit in master branch: file => FILE\""
     git "push"
 
