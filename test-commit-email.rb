@@ -92,7 +92,7 @@ END_OF_CONTENT
     git "config --add push.default current"
   end
 
-  def create_repository
+  def create_repositories
     make_test_directory
     create_origin_repository
     create_working_repository
@@ -119,7 +119,7 @@ END_OF_CONTENT
     FileUtils.rm(@post_receive_stdout) if File.exist?(@post_receive_stdout)
   end
 
-  def delete_repository
+  def delete_repositories
     return if ENV['DEBUG'] == 'yes'
     FileUtils.rm_r @test_directory
   end
@@ -145,11 +145,11 @@ END_OF_CONTENT
                                 'GIT_COMMITTER_NAME',
                                 'GIT_COMMITTER_EMAIL',
                                 'EMAIL'])
-    create_repository
+    create_repositories
   end
 
   def teardown
-    delete_repository
+    delete_repositories
     restore_environment_variables
   end
 
