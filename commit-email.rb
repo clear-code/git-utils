@@ -1573,16 +1573,16 @@ CONTENT
     project
   end
 
-  def mime_encoded_word(subject)
-    encoded = NKF.nkf("-wWM", subject)
+  def mime_encoded_word(string)
+    encoded_string = NKF.nkf("-wWM", string)
 
     #XXX work around NKF's bug of gratuitously wrapping long ascii words with
     #    MIME encoded-word syntax's header and footer, while not actually
     #    encoding the payload as base64: just strip the header and footer out.
-    encoded.gsub!(/=\?EUC-JP\?B\?(.*)\?=\n /) {$1}
-    encoded.gsub!(/(\n )*=\?US-ASCII\?Q\?(.*)\?=(\n )*/) {$2}
+    encoded_string.gsub!(/=\?EUC-JP\?B\?(.*)\?=\n /) {$1}
+    encoded_string.gsub!(/(\n )*=\?US-ASCII\?Q\?(.*)\?=(\n )*/) {$2}
 
-    encoded
+    encoded_string
   end
 
   def make_subject(info)
