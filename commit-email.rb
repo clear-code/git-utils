@@ -881,6 +881,8 @@ class GitCommitMailer
      git("rev-parse --not --branches").lines.find_all do |line|
        line.strip!
        not line.index(current_reference_rev)
+     end.collect do |line|
+       Shellwords.escape(line)
      end.join(' ')
   end
 
