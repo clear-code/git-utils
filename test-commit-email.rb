@@ -151,33 +151,33 @@ END_OF_CONTENT
     restore_environment_variables
   end
 
-  def file_path(file_name)
+  def expand_path(file_name)
     @working_tree_directory + file_name
   end
 
   def create_file(file_name, content)
-    File.open(file_path(file_name), 'w') do |file|
+    File.open(expand_path(file_name), 'w') do |file|
       file.puts(content)
     end
   end
 
   def prepend_line(file_name, line)
-    content = line + "\n" + IO.read(file_path(file_name))
+    content = line + "\n" + IO.read(expand_path(file_name))
     create_file(file_name, content)
   end
 
   def append_line(file_name, line)
-    content = IO.read(file_path(file_name)) + line + "\n"
+    content = IO.read(expand_path(file_name)) + line + "\n"
     create_file(file_name, content)
   end
 
   def insert_line(file_name, line, offset)
-    content = IO.readlines(file_path(file_name)).insert(offset, line + "\n").join
+    content = IO.readlines(expand_path(file_name)).insert(offset, line + "\n").join
     create_file(file_name, content)
   end
 
   def edit_file(file_name)
-    lines = IO.readlines(file_path(file_name))
+    lines = IO.readlines(expand_path(file_name))
     content = yield(lines).join
     create_file(file_name, content)
   end
