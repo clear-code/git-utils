@@ -1075,10 +1075,10 @@ CONTENT
   def excluded_revisions
      # refer to the long comment located at the top of this file for the
      # explanation of this command.
-     current_reference_rev = git("rev-parse #@reference").strip
+     current_reference_revision = git("rev-parse #@reference").strip
      git("rev-parse --not --branches").lines.find_all do |line|
        line.strip!
-       not line.index(current_reference_rev)
+       not line.index(current_reference_revision)
      end.collect do |line|
        Shellwords.escape(line)
      end.join(' ')
