@@ -1750,6 +1750,7 @@ Date: #{Time.now.rfc2822}
 
 #{detail}
   MAIL
+      exit 1
     end
   end
 end
