@@ -456,10 +456,17 @@ class GitCommitMailer
         "X-Git-Commit-Id: #{commit_id}" ]
     end
 
+    def affected_paths
+      paths = []
+      sub_paths = sub_paths('')
+      paths.concat(sub_paths)
+      paths.uniq
+    end
+
     def mail_subject
       affected_path_info = ""
       if @mailer.show_path?
-        _affected_paths = @mailer.affected_paths(info)
+        _affected_paths = affected_paths
         unless _affected_paths.empty?
           affected_path_info = " (#{_affected_paths.join(',')})"
         end
@@ -1613,13 +1620,6 @@ EOF
     encoded_string.gsub!(/(\n )*=\?US-ASCII\?Q\?(.*)\?=(\n )*/) {$2}
 
     encoded_string
-  end
-
-  def affected_paths(info)
-    paths = []
-    sub_paths = info.sub_paths('')
-    paths.concat(sub_paths)
-    paths.uniq
   end
 
   def utf8_to_utf7(utf8)

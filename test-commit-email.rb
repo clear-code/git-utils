@@ -161,6 +161,10 @@ END_OF_CONTENT
     end
   end
 
+  def create_directory(directory_name)
+    FileUtils.mkdir expand_path(directory_name)
+  end
+
   def prepend_line(file_name, line)
     content = line + "\n" + IO.read(expand_path(file_name))
     create_file(file_name, content)
@@ -311,6 +315,29 @@ END_OF_CONTENT
     end
 
     assert_rss('test_rss.rss', rss_file_path)
+  end
+
+  def test_show_path
+    create_mailer("--repository=#{@origin_repository_directory} " +
+                  "--name=sample-repo " +
+                  "--from from@example.com " +
+                  "--error-to error@example.com to@example " +
+                  "--show-path")
+
+    create_directory("mm")
+    create_file("mm/memory.c", "/* memory related code goes here */")
+    create_directory("drivers")
+    create_file("drivers/PLACEHOLDER", "just to make git recognize drivers directory")
+    git "add ."
+    git "commit -m %s" % Shellwords.escape("added mm and drivers directory")
+    git "push"
+
+    append_line("mm/memory.c", "void *malloc(size_t size);")
+    git "commit -a -m %s" % Shellwords.escape("added malloc declaration")
+    git "push"
+
+    _, commit_mails = last_mails
+    assert_mail('test_show_path', commit_mails.first)
   end
 
   def test_push_with_merge
