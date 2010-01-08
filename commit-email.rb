@@ -559,18 +559,18 @@ INFO
           short_revision = diff.short_old_revision
         when :modified
           command = "diff"
-          args.concat(["-r", diff.short_old_revision, diff.short_new_revision,
+          args.concat([diff.short_old_revision, diff.short_new_revision, "--",
                        diff.link])
         when :renamed
           command = "diff"
           args.concat(["-C","--diff-filter=R",
-                       "-r", diff.short_old_revision, diff.short_new_revision, "--",
+                       diff.short_old_revision, diff.short_new_revision, "--",
                        diff.from_file, diff.to_file])
           similarity_index = " #{diff.similarity_index}%"
         when :copied
           command = "diff"
           args.concat(["-C","--diff-filter=C",
-                       "-r", diff.short_old_revision, diff.short_new_revision, "--",
+                       diff.short_old_revision, diff.short_new_revision, "--",
                        diff.from_file, diff.to_file])
           similarity_index = " #{diff.similarity_index}%"
         else

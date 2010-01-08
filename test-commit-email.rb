@@ -340,6 +340,25 @@ END_OF_CONTENT
     assert_mail('test_show_path', commit_mails.first)
   end
 
+  def test_no_diff
+    create_mailer("--repository=#{@origin_repository_directory} " +
+                  "--name=sample-repo " +
+                  "--from from@example.com " +
+                  "--error-to error@example.com to@example " +
+                  "--no-diff")
+
+    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
+
+    append_line(DEFAULT_FILE, "an appended line.")
+    git "commit -a -m %s" % Shellwords.escape("appended a line")
+
+    git 'push'
+    _, commit_mails = last_mails
+
+    assert_mail('test_no_diff.1', commit_mails.shift)
+    assert_mail('test_no_diff.2', commit_mails.shift)
+  end
+
   def test_push_with_merge
     create_default_mailer
     sample_branch = 'sample_branch'
