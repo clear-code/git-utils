@@ -102,7 +102,7 @@ END_OF_CONTENT
   def temporary_name
     prefix = 'git-'
     t = Time.now.strftime("%Y%m%d")
-    path = "#{prefix}#{t}-#{$$}-#{rand(0x100000000).to_s(36)}"
+    path = "#{prefix}#{t}-#{format('%05d',$$)}-#{rand(36**10).to_s(36)}"
   end
 
   def make_test_directory
@@ -183,6 +183,7 @@ END_OF_CONTENT
   end
 
   def create_mailer(argv)
+    p argv.split if ENV['DEBUG']
     @mailer = GitCommitMailer.parse_options_and_create(argv.split)
   end
 
@@ -240,12 +241,44 @@ END_OF_CONTENT
     mail = black_out_date(mail)
   end
 
-  def expected_mail(file)
+  def read_from_fixture_directory(file)
     IO.read('fixtures/' + file)
+  end
+
+  def expected_rss(file)
+    read_from_fixture_directory(file)
+  end
+
+  def expected_mail(file)
+    read_from_fixture_directory(file)
   end
 
   def assert_mail(expected_mail_file_name, tested_mail)
     assert_equal(expected_mail(expected_mail_file_name), black_out_mail(tested_mail))
+  end
+
+  def assert_rss(expected_rss_file_path, actual_rss_file_path)
+    expected = expected_rss(expected_rss_file_path)
+    actual = IO.read(actual_rss_file_path) + "\n"
+    dc_date = '(<dc:date>20[0-9]{2}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.)' +
+              '([0-9]{0,6})(\+09:00<\/dc:date>)'
+    actual.gsub!(Regexp.new(dc_date)) do
+      $1 + format('%06d', $2.to_i) + $3
+    end
+    actual.sub!(/<rdf:RDF(([ \n]|xmlns[^ \n]*)*)>/, '<rdf:RDF>')
+
+    index = 0
+    actual = actual.scan(/(.|\n)/).collect do |character|
+      expected_character = expected[index].chr
+      index += 1
+      if expected_character == '*'
+        expected_character
+      else
+        character
+      end
+    end.join
+
+    assert_equal(expected, actual)
   end
 
   def test_single_commit
@@ -258,6 +291,26 @@ END_OF_CONTENT
 
     assert_mail('test_single_commit.push_mail', push_mail)
     assert_mail('test_single_commit', commit_mails[0])
+  end
+
+  def test_rss
+    rss_file_path = "#{@test_directory}sample-repo.rss"
+    create_mailer("--repository=#{@origin_repository_directory} " +
+                  "--name=sample-repo " +
+                  "--from from@example.com " +
+                  "--error-to error@example.com to@example " +
+                  "--repository-uri http://git.example.com/sample-repo.git " +
+                  "--rss-uri file://#{@origin_repository_directory} " +
+                  "--rss-path #{rss_file_path}")
+
+    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
+    git 'push'
+
+    each_reference_change do |old_revision, new_revision, reference|
+      process_reference_change(old_revision, new_revision, reference)
+    end
+
+    assert_rss('test_rss.rss', rss_file_path)
   end
 
   def test_push_with_merge

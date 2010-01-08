@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rdf:RDF>
+  <channel rdf:about="file:///tmp/git-********-*****-**********/origin/">
+    <title>Repository of sample-repo</title>
+    <link>http://git.example.com/sample-repo.git</link>
+    <description>Repository of sample-repo</description>
+    <items>
+      <rdf:Seq>
+        <rdf:li resource="http://git.example.com/sample-repo.git/commit/?id=****************************************"/>
+      </rdf:Seq>
+    </items>
+    <dc:date>20**-**-**T**:**:**.*********:**</dc:date>
+  </channel>
+  <item rdf:about="http://git.example.com/sample-repo.git/commit/?id=****************************************">
+    <title>[master] an initial commit</title>
+    <link>http://git.example.com/sample-repo.git/commit/?id=****************************************</link>
+    <description>an initial commit
+
+</description>
+    <content:encoded>&lt;pre&gt;User Name	20**-**-** **:**:** ***** (***, ** *** ****)
+
+  New Revision: ****************************************
+
+  Log:
+    an initial commit
+
+  Added files:
+    sample_file
+
+  Added: sample_file (+2 -0) 100644
+===================================================================
+--- /dev/null
++++ sample_file    20**-**-** **:**:** ***** (6fbd589)
+@@ -0,0 +1,2 @@
++This is a sample text file.
++This file will be modified to make commits.
+
+&lt;/pre&gt;</content:encoded>
+    <dc:creator>User Name</dc:creator>
+    <dc:date>20**-**-**T**:**:*****:**</dc:date>
+  </item>
+</rdf:RDF>
