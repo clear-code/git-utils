@@ -83,10 +83,10 @@ class GitCommitMailer
       @reference = reference
       @reference_type = reference_type
       @log = log
-      author, author_email, date = get_records(["%an", "%an <%ae>", "%at"])
+      author, author_email = get_records(["%an", "%an <%ae>"])
       @author = author
       @author_email = author_email
-      @date = Time.at(date.to_i)
+      @date = Time.now
       @change_type = change_type
       @commits = commits || []
     end
