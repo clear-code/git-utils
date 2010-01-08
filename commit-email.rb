@@ -1024,26 +1024,35 @@ CONTENT
   end
 
   def make_push_message(reference_type, change_type)
-    if reference_type == :branch and change_type == :update
-      process_update_branch
-    elsif reference_type == :branch and change_type == :create
-      process_create_branch
-    elsif reference_type == :branch and change_type == :delete
-      process_delete_branch
-    elsif reference_type == :annotated_tag and change_type == :update
-      process_update_annotated_tag
-    elsif reference_type == :annotated_tag and change_type == :create
-      process_create_annotated_tag
-    elsif reference_type == :annotated_tag and change_type == :delete
-      process_delete_annotated_tag
-    elsif reference_type == :unannotated_tag and change_type == :update
-      process_update_unannotated_tag
-    elsif reference_type == :unannotated_tag and change_type == :create
-      process_create_unannotated_tag
-    elsif reference_type == :unannotated_tag and change_type == :delete
-      process_delete_unannotated_tag
+    raise "unexpected change_type" if not [:update, :create, :delete].
+                                            index(change_type)
+
+    if reference_type == :branch
+      if change_type == :update
+        process_update_branch
+      elsif change_type == :create
+        process_create_branch
+      elsif change_type == :delete
+        process_delete_branch
+      end
+    elsif reference_type == :annotated_tag
+      if change_type == :update
+        process_update_annotated_tag
+      elsif change_type == :create
+        process_create_annotated_tag
+      elsif change_type == :delete
+        process_delete_annotated_tag
+      end
+    elsif reference_type == :unannotated_tag
+      if change_type == :update
+        process_update_unannotated_tag
+      elsif change_type == :create
+        process_create_unannotated_tag
+      elsif change_type == :delete
+        process_delete_unannotated_tag
+      end
     else
-      raise 'unexpected'
+      raise "unexpected reference_type"
     end
   end
 
