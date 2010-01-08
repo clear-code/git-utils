@@ -121,6 +121,19 @@ class GitCommitMailer
       "(push) #{PushInfo::REFERENCE_TYPE[reference_type]} "+
       "(#{short_reference}) is #{PushInfo::CHANGE_TYPE[change_type]}."
     end
+
+    def mail_body
+      body = ""
+      body << "#{author}\t#{@mailer.format_time(date)}\n"
+      body << "\n"
+      body << "New Push:\n"
+      body << "\n"
+      body << "  Log:\n"
+      log.rstrip.each_line do |line|
+        body << "    #{line}"
+      end
+      body << "\n\n"
+    end
   end
 
   class CommitInfo < Info
@@ -455,6 +468,157 @@ class GitCommitMailer
       "[#{short_reference}#{affected_path_info}] " + subject
     end
     alias :rss_title :mail_subject
+
+    def changed_items(title, type, items)
+      rv = ""
+      unless items.empty?
+        rv << "  #{title} #{type}:\n"
+        if block_given?
+          yield(rv, items)
+        else
+          rv << items.collect {|item| "    #{item}\n"}.join('')
+        end
+      end
+      rv
+    end
+
+    def changed_files(title, files, &block)
+      changed_items(title, "files", files, &block)
+    end
+
+    def mail_added_files
+      changed_files("Added", added_files)
+    end
+
+    def mail_deleted_files
+      changed_files("Removed", deleted_files)
+    end
+
+    def mail_modified_files
+      changed_files("Modified", updated_files)
+    end
+
+    def mail_copied_files
+      changed_files("Copied", copied_files) do |rv, files|
+        rv << files.collect do |from_file, to_file|
+          <<-INFO
+    #{to_file}
+      (from #{from_file})
+INFO
+        end.join("")
+      end
+    end
+
+    def mail_renamed_files
+      changed_files("Renamed", renamed_files) do |rv, files|
+        rv << files.collect do |from_file, to_file|
+          <<-INFO
+      #{to_file}
+      (from #{from_file})
+INFO
+        end.join("")
+      end
+    end
+
+    CHANGED_TYPE = {
+      :added => "Added",
+      :modified => "Modified",
+      :deleted => "Deleted",
+      :copied => "Copied",
+      :renamed => "Renamed",
+    }
+
+    def change_info
+      result = ""
+      diff_info.each do |desc|
+        result << "#{desc}\n"
+      end
+      result
+    end
+
+    def diff_info
+      diffs.collect do |diff|
+        args = []
+        short_revision = diff.short_new_revision
+        similarity_index = ""
+        file_mode = ""
+        case diff.type
+        when :added
+          command = "show"
+          file_mode = " #{diff.new_file_mode}"
+        when :deleted
+          command = "show"
+          file_mode = " #{diff.deleted_file_mode}"
+          short_revision = diff.short_old_revision
+        when :modified
+          command = "diff"
+          args.concat(["-r", diff.short_old_revision, diff.short_new_revision,
+                       diff.link])
+        when :renamed
+          command = "diff"
+          args.concat(["-C","--diff-filter=R",
+                       "-r", diff.short_old_revision, diff.short_new_revision, "--",
+                       diff.from_file, diff.to_file])
+          similarity_index = " #{diff.similarity_index}%"
+        when :copied
+          command = "diff"
+          args.concat(["-C","--diff-filter=C",
+                       "-r", diff.short_old_revision, diff.short_new_revision, "--",
+                       diff.from_file, diff.to_file])
+          similarity_index = " #{diff.similarity_index}%"
+        else
+          raise "unknown diff type: #{diff.type}"
+        end
+        if command == "show"
+          args.concat(["#{short_revision}:#{diff.link}"])
+        end
+
+        command += " #{args.join(' ')}" unless args.empty?
+
+        line_info = "+#{diff.added_line} -#{diff.deleted_line}"
+        desc =  "  #{CHANGED_TYPE[diff.type]}: #{diff.file} (#{line_info})"
+        desc << "#{file_mode}#{similarity_index}\n"
+        if diff.mode_changed?
+          desc << "  Mode: #{diff.old_mode} -> #{diff.new_mode}\n"
+        end
+        desc << "#{"=" * 67}\n"
+
+        if @mailer.add_diff?
+          desc << diff.value
+        else
+          desc << <<-CONTENT
+    % git #{command}
+CONTENT
+        end
+
+        desc
+      end
+    end
+
+    def mail_body
+      body = ""
+      body << "#{author}\t#{@mailer.format_time(date)}\n"
+      body << "\n"
+      body << "  New Revision: #{revision}\n"
+      body << "\n"
+      unless merge_status.length.zero?
+        body << "  #{merge_status.join("\n  ")}\n\n"
+      end
+      body << "  Log:\n"
+      log.rstrip.each_line do |line|
+        body << "    #{line}"
+      end
+      body << "\n\n"
+      body << mail_added_files
+      body << mail_copied_files
+      body << mail_deleted_files
+      body << mail_modified_files
+      body << mail_renamed_files
+
+      body << "\n"
+      body << change_info
+    end
+    alias :rss_content :mail_body
   end
 
   class << self
@@ -1322,6 +1486,10 @@ EOF
     @send_push_mail
   end
 
+  def format_time(time)
+    time.strftime('%Y-%m-%d %X %z (%a, %d %b %Y)')
+  end
+
   private
   def server_and_addresses(mail)
     _from = GitCommitMailer.extract_email_address_from_mail(mail)
@@ -1361,7 +1529,7 @@ EOF
   end
 
   def make_mail(info)
-    utf8_body = make_body(info)
+    utf8_body = info.mail_body
     utf7_body = nil
     utf7_body = utf8_to_utf7(utf8_body) if use_utf7?
     if utf7_body
@@ -1379,176 +1547,6 @@ EOF
     end
 
     make_header(encoding, bit, info) + "\n" + body
-  end
-
-  def make_body(info)
-    if info.is_a?(CommitInfo)
-      body = ""
-      body << "#{info.author}\t#{format_time(info.date)}\n"
-      body << "\n"
-      body << "  New Revision: #{info.revision}\n"
-      body << "\n"
-      unless info.merge_status.length.zero?
-        body << "  #{info.merge_status.join("\n  ")}\n\n"
-      end
-      body << "  Log:\n"
-      info.log.rstrip.each_line do |line|
-        body << "    #{line}"
-      end
-      body << "\n\n"
-      body << added_files(info)
-      body << copied_files(info)
-      body << deleted_files(info)
-      body << modified_files(info)
-      body << renamed_files(info)
-
-      body << "\n"
-      body << change_info(info)
-    elsif info.is_a?(PushInfo)
-      body = ""
-      body << "#{info.author}\t#{format_time(info.date)}\n"
-      body << "\n"
-      body << "New Push:\n"
-      body << "\n"
-      body << "  Log:\n"
-      info.log.rstrip.each_line do |line|
-        body << "    #{line}"
-      end
-      body << "\n\n"
-    else
-      raise "a new Info Class?"
-    end
-    body
-  end
-
-  def format_time(time)
-    time.strftime('%Y-%m-%d %X %z (%a, %d %b %Y)')
-  end
-
-  def changed_items(title, type, items)
-    rv = ""
-    unless items.empty?
-      rv << "  #{title} #{type}:\n"
-      if block_given?
-        yield(rv, items)
-      else
-        rv << items.collect {|item| "    #{item}\n"}.join('')
-      end
-    end
-    rv
-  end
-
-  def changed_files(title, files, &block)
-    changed_items(title, "files", files, &block)
-  end
-
-  def added_files(info)
-    changed_files("Added", info.added_files)
-  end
-
-  def deleted_files(info)
-    changed_files("Removed", info.deleted_files)
-  end
-
-  def modified_files(info)
-    changed_files("Modified", info.updated_files)
-  end
-
-  def copied_files(info)
-    changed_files("Copied", info.copied_files) do |rv, files|
-      rv << files.collect do |from_file, to_file|
-        <<-INFO
-    #{to_file}
-      (from #{from_file})
-INFO
-      end.join("")
-    end
-  end
-
-  def renamed_files(info)
-    changed_files("Renamed", info.renamed_files) do |rv, files|
-      rv << files.collect do |from_file, to_file|
-        <<-INFO
-    #{to_file}
-      (from #{from_file})
-INFO
-      end.join("")
-    end
-  end
-
-  CHANGED_TYPE = {
-    :added => "Added",
-    :modified => "Modified",
-    :deleted => "Deleted",
-    :copied => "Copied",
-    :renamed => "Renamed",
-  }
-
-  def change_info(info)
-    result = ""
-    diff_info(info).each do |desc|
-      result << "#{desc}\n"
-    end
-    result
-  end
-
-  def diff_info(info)
-    info.diffs.collect do |diff|
-      args = []
-      short_revision = diff.short_new_revision
-      similarity_index = ""
-      file_mode = ""
-      case diff.type
-      when :added
-        command = "show"
-        file_mode = " #{diff.new_file_mode}"
-      when :deleted
-        command = "show"
-        file_mode = " #{diff.deleted_file_mode}"
-        short_revision = diff.short_old_revision
-      when :modified
-        command = "diff"
-        args.concat(["-r", diff.short_old_revision, diff.short_new_revision,
-                     diff.link])
-      when :renamed
-        command = "diff"
-        args.concat(["-C","--diff-filter=R",
-                     "-r", diff.short_old_revision, diff.short_new_revision, "--",
-                     diff.from_file, diff.to_file])
-        similarity_index = " #{diff.similarity_index}%"
-      when :copied
-        command = "diff"
-        args.concat(["-C","--diff-filter=C",
-                     "-r", diff.short_old_revision, diff.short_new_revision, "--",
-                     diff.from_file, diff.to_file])
-        similarity_index = " #{diff.similarity_index}%"
-      else
-        raise "unknown diff type: #{diff.type}"
-      end
-      if command == "show"
-        args.concat(["#{short_revision}:#{diff.link}"])
-      end
-
-      command += " #{args.join(' ')}" unless args.empty?
-
-      line_info = "+#{diff.added_line} -#{diff.deleted_line}"
-      desc =  "  #{CHANGED_TYPE[diff.type]}: #{diff.file} (#{line_info})"
-      desc << "#{file_mode}#{similarity_index}\n"
-      if diff.mode_changed?
-        desc << "  Mode: #{diff.old_mode} -> #{diff.new_mode}\n"
-      end
-      desc << "#{"=" * 67}\n"
-
-      if add_diff?
-        desc << diff.value
-      else
-        desc << <<-CONTENT
-    % git #{command}
-CONTENT
-      end
-
-      desc
-    end
   end
 
   def name
@@ -1666,11 +1664,11 @@ CONTENT
       end
 
       @commit_infos.each do |info|
-        diff_info(info).each do |description|
+        info.diff_info.each do |description|
           item = maker.items.new_item
           item.title = info.rss_title
           item.description = info.log
-          item.content_encoded = "<pre>#{RSS::Utils.html_escape(make_body(info))}</pre>"
+          item.content_encoded = "<pre>#{RSS::Utils.html_escape(info.rss_content)}</pre>"
           item.link = "#{@repository_uri}/commit/?id=#{info.revision}"
           item.dc_date = info.date
           item.dc_creator = info.author
