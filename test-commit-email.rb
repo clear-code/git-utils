@@ -359,6 +359,21 @@ END_OF_CONTENT
     assert_mail('test_no_diff.2', commit_mails.shift)
   end
 
+  def test_max_size
+    create_mailer("--repository=#{@origin_repository_directory} " +
+                  "--name=sample-repo " +
+                  "--from from@example.com " +
+                  "--error-to error@example.com to@example " +
+                  "--max-size=100B")
+
+    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
+    git 'push'
+
+    push_mail, _ = last_mails
+
+    assert_mail('test_max_size.push_mail', push_mail)
+  end
+
   def test_push_with_merge
     create_default_mailer
     sample_branch = 'sample_branch'
