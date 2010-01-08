@@ -1273,7 +1273,7 @@ EOF
 
     make_infos
     make_mails
-    #output_rss #XXX eneble this in the future
+    output_rss
 
     [@push_mail, @commit_mails]
   end
@@ -1550,6 +1550,8 @@ CONTENT
   end
 
   def make_header(body_encoding, body_encoding_bit, info)
+    subject = "#{(name + ' ') if name}" +
+              mime_encoded_word("#{make_subject(info)}")
     headers = []
     headers += info.headers
     headers << "MIME-Version: 1.0"
@@ -1557,7 +1559,7 @@ CONTENT
     headers << "Content-Transfer-Encoding: #{body_encoding_bit}"
     headers << "From: #{from(info)}"
     headers << "To: #{to.join(', ')}"
-    headers << "Subject: #{(name + ' ') if name}#{make_subject(info)}"
+    headers << "Subject: #{subject}"
     headers << "Date: #{info.date.rfc2822}"
     headers.find_all do |header|
       /\A\s*\z/ !~ header
@@ -1609,8 +1611,6 @@ CONTENT
     else
       raise "a new Info class?"
     end
-
-    mime_encoded_word(subject)
   end
 
   def affected_paths(info)
@@ -1660,10 +1660,10 @@ CONTENT
       maker.encoding = "UTF-8"
 
       maker.channel.about = @rss_uri
-      maker.channel.title = rss_title(@name || @repository_uri)
+      maker.channel.title = rss_title(name || @repository_uri)
       maker.channel.link = @repository_uri
       maker.channel.description = rss_title(@name || @repository_uri)
-      maker.channel.dc_date = info.date
+      maker.channel.dc_date = @push_info.date
 
       if base_rss
         base_rss.items.each do |item|
@@ -1671,13 +1671,13 @@ CONTENT
         end
       end
 
-      diff_info.each do |name, infos|
-        infos.each do |desc, link|
+      @commit_infos.each do |info|
+        diff_info(info).each do |description|
           item = maker.items.new_item
-          item.title = name
+          item.title = make_subject(info)
           item.description = info.log
-          item.content_encoded = "<pre>#{RSS::Utils.html_escape(desc)}</pre>"
-          item.link = link
+          item.content_encoded = "<pre>#{RSS::Utils.html_escape(make_body(info))}</pre>"
+          item.link = "#{@repository_uri}/commit/?id=#{info.revision}"
           item.dc_date = info.date
           item.dc_creator = info.author
         end
