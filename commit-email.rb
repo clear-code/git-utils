@@ -1455,7 +1455,9 @@ EOF
 
     make_infos
     make_mails
-    output_rss
+    if rss_output_available?
+      output_rss
+    end
 
     [@push_mail, @commit_mails]
   end
@@ -1498,7 +1500,6 @@ EOF
   end
 
   def output_rss
-    return unless rss_output_available?
     prev_rss = nil
     begin
       if File.exist?(@rss_path)
