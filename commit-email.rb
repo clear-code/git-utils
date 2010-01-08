@@ -116,6 +116,11 @@ class GitCommitMailer
       :update => "updated",
       :delete => "deleted",
     }
+
+    def mail_subject
+      "(push) #{PushInfo::REFERENCE_TYPE[reference_type]} "+
+      "(#{short_reference}) is #{PushInfo::CHANGE_TYPE[change_type]}."
+    end
   end
 
   class CommitInfo < Info
@@ -437,6 +442,19 @@ class GitCommitMailer
         "X-Git-Repository: XXX",
         "X-Git-Commit-Id: #{commit_id}" ]
     end
+
+    def mail_subject
+      affected_path_info = ""
+      if @mailer.show_path?
+        _affected_paths = @mailer.affected_paths(info)
+        unless _affected_paths.empty?
+          affected_path_info = " (#{_affected_paths.join(',')})"
+        end
+      end
+
+      "[#{short_reference}#{affected_path_info}] " + subject
+    end
+    alias :rss_title :mail_subject
   end
 
   class << self
@@ -1551,7 +1569,7 @@ CONTENT
 
   def make_header(body_encoding, body_encoding_bit, info)
     subject = "#{(name + ' ') if name}" +
-              mime_encoded_word("#{make_subject(info)}")
+              mime_encoded_word("#{info.mail_subject}")
     headers = []
     headers += info.headers
     headers << "MIME-Version: 1.0"
@@ -1587,30 +1605,6 @@ CONTENT
     encoded_string.gsub!(/(\n )*=\?US-ASCII\?Q\?(.*)\?=(\n )*/) {$2}
 
     encoded_string
-  end
-
-  def make_subject(info)
-    subject = ""
-    affected_path_info = ""
-
-    if info.is_a?(CommitInfo)
-      if show_path?
-        _affected_paths = affected_paths(info)
-        unless _affected_paths.empty?
-          affected_path_info = " (#{_affected_paths.join(',')})"
-        end
-      end
-
-      subject << "[#{info.short_reference}#{affected_path_info}] "
-      subject << info.subject
-    elsif info.is_a?(PushInfo)
-      subject << "(push) "
-      subject << "#{PushInfo::REFERENCE_TYPE[info.reference_type]} "+
-                 "(#{info.short_reference}) is " +
-                 "#{PushInfo::CHANGE_TYPE[info.change_type]}."
-    else
-      raise "a new Info class?"
-    end
   end
 
   def affected_paths(info)
@@ -1674,7 +1668,7 @@ CONTENT
       @commit_infos.each do |info|
         diff_info(info).each do |description|
           item = maker.items.new_item
-          item.title = make_subject(info)
+          item.title = info.rss_title
           item.description = info.log
           item.content_encoded = "<pre>#{RSS::Utils.html_escape(make_body(info))}</pre>"
           item.link = "#{@repository_uri}/commit/?id=#{info.revision}"
