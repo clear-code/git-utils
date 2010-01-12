@@ -420,6 +420,20 @@ END_OF_CONTENT
     assert_mail('test_no_diff_copy', commit_mails.shift)
   end
 
+  def test_no_diff_remove
+    create_mailer_with_no_diff_option
+
+    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
+    git 'push'
+
+    remove_file(DEFAULT_FILE)
+    git "commit -a -m %s" % Shellwords.escape("removed a file")
+    git 'push'
+    _, commit_mails = last_mails
+
+    assert_mail('test_no_diff_remove', commit_mails.shift)
+  end
+
   def test_rename
     create_default_mailer
 

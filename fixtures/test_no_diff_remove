@@ -1,0 +1,26 @@
+X-Git-Author: User Name
+X-Git-Revision: ****************************************
+X-Git-Repository: XXX
+X-Git-Commit-Id: ****************************************
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+From: User Name <user@example.com>
+To: to@example
+Subject: sample-repo [master] removed a file
+Date: ***, ** *** **** **:**:** +****
+
+User Name	****-**-** **:**:** +**** (***, ** *** ****)
+
+  New Revision: ****************************************
+
+  Log:
+    removed a file
+
+  Removed files:
+    sample_file
+
+  Deleted: sample_file (+0 -2) 100644
+===================================================================
+    % git show *******:sample_file
+
