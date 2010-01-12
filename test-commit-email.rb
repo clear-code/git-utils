@@ -34,22 +34,36 @@ END_OF_CONTENT
     GitCommitMailer.execute(command, directory)
   end
 
-  def sleep_to_advance_timestamp
-    sleep 1.1
+  def advance_timestamp
+    @timestamp = @timestamp.succ
   end
 
   def delete_output_from_hook
     FileUtils.rm(@hook_output) if File.exist?(@hook_output)
   end
 
-  def git(command, repository_directory=@repository_directory)
-    sleep_to_advance_timestamp if command =~ /\A(commit|merge|tag) /
-    delete_output_from_hook if command =~ /\Apush/
+  def set_timestamp
+    ENV["GIT_AUTHOR_DATE"] = @timestamp.to_s
+    ENV["GIT_COMMITTER_DATE"] = @timestamp.to_s
+  end
 
+  def reset_timestamp
+    ENV["GIT_AUTHOR_DATE"] = nil
+    ENV["GIT_COMMITTER_DATE"] = nil
+  end
+
+  def git(command, repository_directory=@repository_directory)
     if command =~ /\Ainit/
       execute("git #{command}", repository_directory)
     else
+      if command =~ /\A(commit|merge|tag) /
+        advance_timestamp
+        set_timestamp
+      end
+      delete_output_from_hook if command =~ /\Apush/
+
       execute "git --git-dir=#{repository_directory} #{command}"
+      reset_timestamp
     end
   end
 
@@ -143,6 +157,7 @@ END_OF_CONTENT
                                 'GIT_COMMITTER_NAME',
                                 'GIT_COMMITTER_EMAIL',
                                 'EMAIL'])
+    @timestamp = Time.now.utc
     create_repositories
   end
 
