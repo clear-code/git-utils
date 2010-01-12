@@ -1,0 +1,43 @@
+X-Git-Author: User Name
+X-Git-Revision: ****************************************
+X-Git-Repository: XXX
+X-Git-Commit-Id: ****************************************
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+From: User Name <user@example.com>
+To: to@example
+Subject: sample-repo [master] copied a file
+Date: ***, ** *** **** **:**:** +****
+User Name	****-**-** **:**:** +**** (***, ** *** ****)
+
+  New Revision: ****************************************
+
+  Log:
+    copied a file
+
+  Copied files:
+    copied.txt
+      (from sample_file)
+  Modified files:
+    sample_file
+
+  Copied: copied.txt (+2 -0) 86%
+===================================================================
+--- sample_file    ****-**-** **:**:** +**** (*******)
++++ copied.txt    ****-**-** **:**:** +**** (*******)
+@@ -1,2 +1,4 @@
+ This is a sample text file.
+ This file will be modified to make commits.
++hi.
++Hello.
+
+  Modified: sample_file (+1 -0)
+===================================================================
+--- sample_file    ****-**-** **:**:** +**** (*******)
++++ sample_file    ****-**-** **:**:** +**** (*******)
+@@ -1,2 +1,3 @@
+ This is a sample text file.
+ This file will be modified to make commits.
++hi.
+

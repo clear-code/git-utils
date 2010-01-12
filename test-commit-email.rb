@@ -155,6 +155,16 @@ END_OF_CONTENT
     @working_tree_directory + file_name
   end
 
+  def move_file(old_file_name, new_file_name)
+    FileUtils.mv(@working_tree_directory + old_file_name,
+                 @working_tree_directory + new_file_name)
+  end
+
+  def copy_file(file_name, copied_file_name)
+    FileUtils.cp(@working_tree_directory + file_name,
+                 @working_tree_directory + copied_file_name)
+  end
+
   def create_file(file_name, content)
     File.open(expand_path(file_name), 'w') do |file|
       file.puts(content)
@@ -257,8 +267,19 @@ END_OF_CONTENT
     read_from_fixture_directory(file)
   end
 
+  def header_section(mail)
+    mail[/^(.|\n)*\+\*\*\*\*\n/]
+  end
+
+  def body_section(mail)
+    mail.sub(/^(.|\n)*\+\*\*\*\*\n/, '')
+  end
+
   def assert_mail(expected_mail_file_name, tested_mail)
-    assert_equal(expected_mail(expected_mail_file_name), black_out_mail(tested_mail))
+    assert_equal(header_section(expected_mail(expected_mail_file_name)),
+                 header_section(black_out_mail(tested_mail)))
+    assert_equal(body_section(expected_mail(expected_mail_file_name)),
+                 body_section(black_out_mail(tested_mail)))
   end
 
   def assert_rss(expected_rss_file_path, actual_rss_file_path)
@@ -357,6 +378,76 @@ END_OF_CONTENT
 
     assert_mail('test_no_diff.1', commit_mails.shift)
     assert_mail('test_no_diff.2', commit_mails.shift)
+  end
+
+  def test_rename
+    create_default_mailer
+
+    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
+    git 'push'
+
+    move_file(DEFAULT_FILE, "renamed.txt")
+    git "add ."
+    git "commit -a -m %s" % Shellwords.escape("renamed a file")
+
+    git 'push'
+    _, commit_mails = last_mails
+
+    assert_mail('test_rename', commit_mails.shift)
+  end
+
+  def test_rename_with_modification
+    create_default_mailer
+
+    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
+    git 'push'
+
+    renamed_file_name = "renamed.txt"
+    move_file(DEFAULT_FILE, renamed_file_name)
+    append_line(renamed_file_name, "Hello.")
+    git "add ."
+    git "commit -a -m %s" % Shellwords.escape("renamed a file")
+
+    git 'push'
+    _, commit_mails = last_mails
+
+    assert_mail('test_rename_with_modification', commit_mails.shift)
+  end
+
+  def test_copy
+    create_default_mailer
+
+    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
+    git 'push'
+    append_line(DEFAULT_FILE, "hi.")
+
+    copy_file(DEFAULT_FILE, "renamed.txt")
+    git "add ."
+    git "commit -a -m %s" % Shellwords.escape("copied a file")
+
+    git 'push'
+    _, commit_mails = last_mails
+
+    assert_mail('test_copy', commit_mails.shift)
+  end
+
+  def test_copy_with_modification
+    create_default_mailer
+
+    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
+    git 'push'
+    append_line(DEFAULT_FILE, "hi.")
+
+    copied_file_name = "copied.txt"
+    copy_file(DEFAULT_FILE, copied_file_name)
+    append_line(copied_file_name, "Hello.")
+    git "add ."
+    git "commit -a -m %s" % Shellwords.escape("copied a file")
+
+    git 'push'
+    _, commit_mails = last_mails
+
+    assert_mail('test_copy_with_modification', commit_mails.shift)
   end
 
   def test_max_size

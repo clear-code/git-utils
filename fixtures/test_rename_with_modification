@@ -1,0 +1,31 @@
+X-Git-Author: User Name
+X-Git-Revision: ****************************************
+X-Git-Repository: XXX
+X-Git-Commit-Id: ****************************************
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+From: User Name <user@example.com>
+To: to@example
+Subject: sample-repo [master] renamed a file
+Date: ***, ** *** **** **:**:** +****
+User Name	****-**-** **:**:** +**** (***, ** *** ****)
+
+  New Revision: ****************************************
+
+  Log:
+    renamed a file
+
+  Renamed files:
+      renamed.txt
+      (from sample_file)
+
+  Renamed: renamed.txt (+1 -0) 91%
+===================================================================
+--- sample_file    ****-**-** **:**:** +**** (*******)
++++ renamed.txt    ****-**-** **:**:** +**** (*******)
+@@ -1,2 +1,3 @@
+ This is a sample text file.
+ This file will be modified to make commits.
++Hello.
+
