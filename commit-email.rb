@@ -1609,7 +1609,7 @@ EOF
     headers << "Date: #{info.date.rfc2822}"
     headers.find_all do |header|
       /\A\s*\z/ !~ header
-    end.join("\n")
+    end.join("\n") + "\n"
   end
 
   def detect_project

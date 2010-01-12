@@ -268,11 +268,11 @@ END_OF_CONTENT
   end
 
   def header_section(mail)
-    mail[/^(.|\n)*\+\*\*\*\*\n/]
+    mail[/^(.|\n)*\n\n/]
   end
 
   def body_section(mail)
-    mail.sub(/^(.|\n)*\+\*\*\*\*\n/, '')
+    mail.sub(/^(.|\n)*\n\n/, '')
   end
 
   def assert_mail(expected_mail_file_name, tested_mail)
