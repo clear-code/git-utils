@@ -324,6 +324,54 @@ class GitCommitMailer
       def file_path
         file
       end
+
+      def git_command
+        case type
+        when :added
+          command = "show"
+          args = ["#{short_new_revision}:#{link}"]
+        when :deleted
+          command = "show"
+          args = ["#{short_old_revision}:#{link}"]
+        when :modified
+          command = "diff"
+          args = [short_old_revision, short_new_revision, "--", link]
+        when :renamed
+          command = "diff"
+          args = ["-C","--diff-filter=R",
+                  short_old_revision, short_new_revision, "--",
+                  from_file, to_file]
+        when :copied
+          command = "diff"
+          args = ["-C","--diff-filter=C",
+                  short_old_revision, short_new_revision, "--",
+                  from_file, to_file]
+        else
+          raise "unknown diff type: #{type}"
+        end
+
+        command += " #{args.join(' ')}" unless args.empty?
+        "    % git #{command}\n"
+      end
+
+      def format_file_mode
+        case type
+        when :added
+          " #{new_file_mode}"
+        when :deleted
+          " #{deleted_file_mode}"
+        else
+          ""
+        end
+     end
+
+     def format_similarity_index
+        if type == :renamed or type == :copied
+          " #{similarity_index}%"
+        else
+          ""
+        end
+      end
     end
 
     attr_reader :revision
@@ -543,64 +591,15 @@ INFO
       result
     end
 
-    def git_command(diff)
-      case diff.type
-      when :added
-        command = "show"
-        args = ["#{diff.short_new_revision}:#{diff.link}"]
-      when :deleted
-        command = "show"
-        args = ["#{diff.short_old_revision}:#{diff.link}"]
-      when :modified
-        command = "diff"
-        args = [diff.short_old_revision, diff.short_new_revision, "--",
-                diff.link]
-      when :renamed
-        command = "diff"
-        args = ["-C","--diff-filter=R",
-                diff.short_old_revision, diff.short_new_revision, "--",
-                diff.from_file, diff.to_file]
-      when :copied
-        command = "diff"
-        args = ["-C","--diff-filter=C",
-                diff.short_old_revision, diff.short_new_revision, "--",
-                diff.from_file, diff.to_file]
-      else
-        raise "unknown diff type: #{diff.type}"
-      end
-
-      command += " #{args.join(' ')}" unless args.empty?
-      "    % git #{command}\n"
-    end
-
     def diff_separator
       "#{"=" * 67}\n"
-    end
-
-    def file_mode(diff)
-      case diff.type
-      when :added
-        " #{diff.new_file_mode}"
-      when :deleted
-        " #{diff.deleted_file_mode}"
-      else
-        ""
-      end
-   end
-
-   def similarity_index(diff)
-      if diff.type == :renamed or diff.type == :copied
-        " #{diff.similarity_index}%"
-      else
-        ""
-      end
     end
 
     def diff_info
       diffs.collect do |diff|
         desc =  "  #{CHANGED_TYPE[diff.type]}: #{diff.file} " +
                 "(+#{diff.added_line} -#{diff.deleted_line})" +
-                "#{file_mode(diff)}#{similarity_index(diff)}\n"
+                "#{diff.format_file_mode}#{diff.format_similarity_index}\n"
         if diff.mode_changed?
           desc << "  Mode: #{diff.old_mode} -> #{diff.new_mode}\n"
         end
@@ -609,7 +608,7 @@ INFO
         if @mailer.add_diff?
           desc << diff.value
         else
-          desc << git_command(diff)
+          desc << diff.git_command
         end
         desc
       end
