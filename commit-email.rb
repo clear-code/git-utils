@@ -520,7 +520,7 @@ INFO
       changed_files("Renamed", renamed_files) do |rv, files|
         rv << files.collect do |from_file, to_file|
           <<-INFO
-      #{to_file}
+    #{to_file}
       (from #{from_file})
 INFO
         end.join("")
