@@ -1,0 +1,33 @@
+X-Git-Author: User Name
+X-Git-Revision: ****************************************
+X-Git-Repository: XXX
+X-Git-Commit-Id: ****************************************
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+From: User Name <user@example.com>
+To: to@example
+Subject: sample-repo [master] copied a file
+Date: ***, ** *** **** **:**:** +****
+
+User Name	****-**-** **:**:** +**** (***, ** *** ****)
+
+  New Revision: ****************************************
+
+  Log:
+    copied a file
+
+  Copied files:
+    copied.txt
+      (from sample_file)
+  Modified files:
+    sample_file
+
+  Copied: copied.txt (+1 -0) 94%
+===================================================================
+    % git diff -C --diff-filter=C ******* ******* -- sample_file copied.txt
+
+  Modified: sample_file (+1 -0)
+===================================================================
+    % git diff ******* ******* -- sample_file
+
