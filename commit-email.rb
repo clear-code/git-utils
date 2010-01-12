@@ -543,61 +543,74 @@ INFO
       result
     end
 
+    def git_command(diff)
+      case diff.type
+      when :added
+        command = "show"
+        args = ["#{diff.short_new_revision}:#{diff.link}"]
+      when :deleted
+        command = "show"
+        args = ["#{diff.short_old_revision}:#{diff.link}"]
+      when :modified
+        command = "diff"
+        args = [diff.short_old_revision, diff.short_new_revision, "--",
+                diff.link]
+      when :renamed
+        command = "diff"
+        args = ["-C","--diff-filter=R",
+                diff.short_old_revision, diff.short_new_revision, "--",
+                diff.from_file, diff.to_file]
+      when :copied
+        command = "diff"
+        args = ["-C","--diff-filter=C",
+                diff.short_old_revision, diff.short_new_revision, "--",
+                diff.from_file, diff.to_file]
+      else
+        raise "unknown diff type: #{diff.type}"
+      end
+
+      command += " #{args.join(' ')}" unless args.empty?
+      "    % git #{command}\n"
+    end
+
+    def diff_separator
+      "#{"=" * 67}\n"
+    end
+
+    def file_mode(diff)
+      case diff.type
+      when :added
+        " #{diff.new_file_mode}"
+      when :deleted
+        " #{diff.deleted_file_mode}"
+      else
+        ""
+      end
+   end
+
+   def similarity_index(diff)
+      if diff.type == :renamed or diff.type == :copied
+        " #{diff.similarity_index}%"
+      else
+        ""
+      end
+    end
+
     def diff_info
       diffs.collect do |diff|
-        args = []
-        short_revision = diff.short_new_revision
-        similarity_index = ""
-        file_mode = ""
-        case diff.type
-        when :added
-          command = "show"
-          file_mode = " #{diff.new_file_mode}"
-        when :deleted
-          command = "show"
-          file_mode = " #{diff.deleted_file_mode}"
-          short_revision = diff.short_old_revision
-        when :modified
-          command = "diff"
-          args.concat([diff.short_old_revision, diff.short_new_revision, "--",
-                       diff.link])
-        when :renamed
-          command = "diff"
-          args.concat(["-C","--diff-filter=R",
-                       diff.short_old_revision, diff.short_new_revision, "--",
-                       diff.from_file, diff.to_file])
-          similarity_index = " #{diff.similarity_index}%"
-        when :copied
-          command = "diff"
-          args.concat(["-C","--diff-filter=C",
-                       diff.short_old_revision, diff.short_new_revision, "--",
-                       diff.from_file, diff.to_file])
-          similarity_index = " #{diff.similarity_index}%"
-        else
-          raise "unknown diff type: #{diff.type}"
-        end
-        if command == "show"
-          args.concat(["#{short_revision}:#{diff.link}"])
-        end
-
-        command += " #{args.join(' ')}" unless args.empty?
-
-        line_info = "+#{diff.added_line} -#{diff.deleted_line}"
-        desc =  "  #{CHANGED_TYPE[diff.type]}: #{diff.file} (#{line_info})"
-        desc << "#{file_mode}#{similarity_index}\n"
+        desc =  "  #{CHANGED_TYPE[diff.type]}: #{diff.file} " +
+                "(+#{diff.added_line} -#{diff.deleted_line})" +
+                "#{file_mode(diff)}#{similarity_index(diff)}\n"
         if diff.mode_changed?
           desc << "  Mode: #{diff.old_mode} -> #{diff.new_mode}\n"
         end
-        desc << "#{"=" * 67}\n"
+        desc << diff_separator
 
         if @mailer.add_diff?
           desc << diff.value
         else
-          desc << <<-CONTENT
-    % git #{command}
-CONTENT
+          desc << git_command(diff)
         end
-
         desc
       end
     end
