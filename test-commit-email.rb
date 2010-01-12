@@ -165,6 +165,10 @@ END_OF_CONTENT
                  @working_tree_directory + copied_file_name)
   end
 
+  def remove_file(file_name)
+    FileUtils.rm(@working_tree_directory + file_name)
+  end
+
   def create_file(file_name, content)
     File.open(expand_path(file_name), 'w') do |file|
       file.puts(content)
@@ -267,12 +271,13 @@ END_OF_CONTENT
     read_from_fixture_directory(file)
   end
 
+  @@header_regexp = /^(.|\n)*?\n\n/
   def header_section(mail)
-    mail[/^(.|\n)*\n\n/]
+    mail[@@header_regexp]
   end
 
   def body_section(mail)
-    mail.sub(/^(.|\n)*\n\n/, '')
+    mail.sub(@@header_regexp, '')
   end
 
   def assert_mail(expected_mail_file_name, tested_mail)
@@ -429,6 +434,20 @@ END_OF_CONTENT
     _, commit_mails = last_mails
 
     assert_mail('test_copy', commit_mails.shift)
+  end
+
+  def test_remove
+    create_default_mailer
+
+    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
+    git 'push'
+
+    remove_file(DEFAULT_FILE)
+    git "commit -a -m %s" % Shellwords.escape("removed a file")
+    git 'push'
+    _, commit_mails = last_mails
+
+    assert_mail('test_remove', commit_mails.shift)
   end
 
   def test_copy_with_modification
