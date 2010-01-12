@@ -366,12 +366,16 @@ END_OF_CONTENT
     assert_mail('test_show_path', commit_mails.first)
   end
 
-  def test_no_diff
+  def create_mailer_with_no_diff_option
     create_mailer("--repository=#{@origin_repository_directory} " +
                   "--name=sample-repo " +
                   "--from from@example.com " +
                   "--error-to error@example.com to@example " +
                   "--no-diff")
+  end
+
+  def test_no_diff
+    create_mailer_with_no_diff_option
 
     git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
 
@@ -383,6 +387,21 @@ END_OF_CONTENT
 
     assert_mail('test_no_diff.1', commit_mails.shift)
     assert_mail('test_no_diff.2', commit_mails.shift)
+  end
+
+  def test_no_diff_rename
+    create_mailer_with_no_diff_option
+
+    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
+    git 'push'
+
+    move_file(DEFAULT_FILE, "renamed.txt")
+    git "add ."
+    git "commit -a -m %s" % Shellwords.escape("renamed a file")
+
+    git 'push'
+    _, commit_mails = last_mails
+    assert_mail('test_no_diff_rename', commit_mails.shift)
   end
 
   def test_rename
