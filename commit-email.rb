@@ -366,7 +366,7 @@ class GitCommitMailer
     end
 
     def initialize_by_getting_records
-      author, author_email, date, subject, commit_id, parent_revisions = 
+      author, author_email, date, subject, commit_id, parent_revisions =
         get_records(["%an", "%an <%ae>", "%at", "%s", "%H", "%P"])
       @author = author
       @author_email = author_email
