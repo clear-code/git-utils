@@ -1,0 +1,28 @@
+X-Git-Author: User Name
+X-Git-Revision: ****************************************
+X-Git-Repository: XXX
+X-Git-Commit-Id: ****************************************
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+From: User Name <user@example.com>
+To: to@example
+Subject: sample-repo [master] changed a file mode
+Date: ***, ** *** **** **:**:** +****
+
+User Name	****-**-** **:**:** +**** (***, ** *** ****)
+
+  New Revision: ****************************************
+
+  Log:
+    changed a file mode
+
+  Modified files:
+    sample_file
+
+  Modified: sample_file (+0 -0)
+  Mode: 100644 -> 100755
+===================================================================
+--- sample_file    ****-**-** **:**:** +****
++++ sample_file    ****-**-** **:**:** +****
+
