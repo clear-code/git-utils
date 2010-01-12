@@ -287,6 +287,22 @@ class GitCommitMailer
         GitCommitMailer.short_revision(@new_revision)
       end
 
+      def format_blob(blob)
+        if blob
+          " (#{blob})"
+        else
+          ""
+        end
+      end
+
+      def format_new_blob
+        format_blob(@new_blob)
+      end
+
+      def format_old_blob
+        format_blob(@old_blob)
+      end
+
       def header
          unless @is_binary
            if @similarity_index == 100 && (@type == :renamed || @type == :copied)
@@ -296,13 +312,13 @@ class GitCommitMailer
            case @type
            when :added
              "--- /dev/null\n" +
-             "+++ #{@to_file}    #{format_time(@new_date)} (#{@new_blob})\n"
+             "+++ #{@to_file}    #{format_time(@new_date)}#{format_new_blob}\n"
            when :deleted
-             "--- #{@from_file}    #{format_time(@old_date)} (#{@old_blob})\n" +
+             "--- #{@from_file}    #{format_time(@old_date)}#{format_old_blob}\n" +
              "+++ /dev/null\n"
            else
-             "--- #{@from_file}    #{format_time(@old_date)} (#{@old_blob})\n" +
-             "+++ #{@to_file}    #{format_time(@new_date)} (#{@new_blob})\n"
+             "--- #{@from_file}    #{format_time(@old_date)}#{format_old_blob}\n" +
+             "+++ #{@to_file}    #{format_time(@new_date)}#{format_new_blob}\n"
            end
          else
            "(Binary files differ)\n"
