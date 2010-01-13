@@ -578,19 +578,19 @@ class GitCommitMailer
       changed_items(title, "files", files, &block)
     end
 
-    def mail_added_files
+    def format_added_files
       changed_files("Added", added_files)
     end
 
-    def mail_deleted_files
+    def format_deleted_files
       changed_files("Removed", deleted_files)
     end
 
-    def mail_modified_files
+    def format_modified_files
       changed_files("Modified", updated_files)
     end
 
-    def mail_copied_files
+    def format_copied_files
       changed_files("Copied", copied_files) do |rv, files|
         rv << files.collect do |from_file, to_file|
           <<-INFO
@@ -601,7 +601,7 @@ INFO
       end
     end
 
-    def mail_renamed_files
+    def format_renamed_files
       changed_files("Renamed", renamed_files) do |rv, files|
         rv << files.collect do |from_file, to_file|
           <<-INFO
@@ -640,11 +640,11 @@ INFO
         body << "    #{line}"
       end
       body << "\n\n"
-      body << mail_added_files
-      body << mail_copied_files
-      body << mail_deleted_files
-      body << mail_modified_files
-      body << mail_renamed_files
+      body << format_added_files
+      body << format_copied_files
+      body << format_deleted_files
+      body << format_modified_files
+      body << format_renamed_files
 
       body << "\n"
       formatted_diff = format_diffs.join("\n")
