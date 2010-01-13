@@ -86,7 +86,7 @@ class GitCommitMailer
       author, author_email = get_records(["%an", "%an <%ae>"])
       @author = author
       @author_email = author_email
-      @date = Time.now
+      @date = @mailer.date
       @change_type = change_type
       @commits = commits || []
     end
@@ -751,6 +751,7 @@ INFO
       mailer.use_utf7 = options.use_utf7
       mailer.server = options.server
       mailer.port = options.port
+      mailer.date = options.date
     end
 
     def parse_size(size)
@@ -787,6 +788,7 @@ INFO
       options.use_utf7 = false
       options.server = "localhost"
       options.port = Net::SMTP.default_port
+      options.date = nil
       options
     end
 
@@ -914,6 +916,11 @@ INFO
               "of UTF-8 (#{options.use_utf7})") do |use_utf7|
         options.use_utf7 = use_utf7
       end
+
+      opts.on("--date=DATE",
+              "Use DATE as date of push mails (Time.parse is used)") do |date|
+        options.date = Time.parse(date)
+      end
     end
 
     def add_rss_options(opts, options)
@@ -942,7 +949,7 @@ INFO
 
   attr_reader :reference, :old_revision, :new_revision, :to
   attr_writer :from, :add_diff, :show_path, :send_push_mail, :use_utf7
-  attr_writer :repository
+  attr_writer :repository, :date
   attr_accessor :from_domain, :max_size, :repository_uri
   attr_accessor :rss_path, :rss_uri, :name, :server, :port
 
@@ -977,6 +984,10 @@ INFO
 
   def repository
     @repository || Dir.pwd
+  end
+
+  def date
+    @date || Time.now
   end
 
   def short_new_revision
