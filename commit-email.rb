@@ -325,7 +325,7 @@ class GitCommitMailer
          end
       end
 
-      def value
+      def format_diff
          header + body
       end
 
@@ -622,7 +622,7 @@ INFO
         desc << diff_separator
 
         if @mailer.add_diff?
-          desc << diff.value
+          desc << diff.format_diff
         else
           desc << diff.git_command
         end
