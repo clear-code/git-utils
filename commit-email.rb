@@ -159,9 +159,8 @@ class GitCommitMailer
 
     class DiffPerFile
       attr_reader :old_revision, :new_revision, :from_file, :to_file
-      attr_reader :added_line, :deleted_line, :body, :type
+      attr_reader :added_line, :deleted_line, :type
       attr_reader :deleted_file_mode, :new_file_mode, :old_mode, :new_mode
-      attr_reader :similarity_index
       def initialize(mailer, lines, revision)
         @mailer = mailer
         @metadata = []
@@ -326,7 +325,7 @@ class GitCommitMailer
       end
 
       def format_diff
-         header + body
+         header + @body
       end
 
       def file
@@ -383,7 +382,7 @@ class GitCommitMailer
 
      def format_similarity_index
         if type == :renamed or type == :copied
-          " #{similarity_index}%"
+          " #{@similarity_index}%"
         else
           ""
         end
