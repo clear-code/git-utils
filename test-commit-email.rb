@@ -219,16 +219,17 @@ END_OF_CONTENT
     create_file(file_name, content)
   end
 
-  def create_mailer(argv)
+  def create_mailer(*arguments)
     p argv.split if ENV['DEBUG']
-    @mailer = GitCommitMailer.parse_options_and_create(argv.split)
+    @mailer = GitCommitMailer.parse_options_and_create(arguments)
   end
 
   def create_default_mailer
-    create_mailer("--repository=#{@origin_repository_directory} " +
-                  "--name=sample-repo " +
-                  "--from from@example.com " +
-                  "--error-to error@example.com to@example")
+    create_mailer("--repository=#{@origin_repository_directory}",
+                  "--name=sample-repo",
+                  "--from=from@example.com",
+                  "--error-to=error@example.com",
+                  "to@example")
   end
 
   def each_reference_change
@@ -344,13 +345,14 @@ END_OF_CONTENT
 
   def test_rss
     rss_file_path = "#{@test_directory}sample-repo.rss"
-    create_mailer("--repository=#{@origin_repository_directory} " +
-                  "--name=sample-repo " +
-                  "--from from@example.com " +
-                  "--error-to error@example.com to@example " +
-                  "--repository-uri http://git.example.com/sample-repo.git " +
-                  "--rss-uri file://#{@origin_repository_directory} " +
-                  "--rss-path #{rss_file_path}")
+    create_mailer("--repository=#{@origin_repository_directory}",
+                  "--name=sample-repo",
+                  "--from=from@example.com",
+                  "--error-to=error@example.com",
+                  "--repository-uri=http://git.example.com/sample-repo.git",
+                  "--rss-uri=file://#{@origin_repository_directory}",
+                  "--rss-path=#{rss_file_path}",
+                  "to@example")
 
     git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
     git 'push'
@@ -363,11 +365,12 @@ END_OF_CONTENT
   end
 
   def test_show_path
-    create_mailer("--repository=#{@origin_repository_directory} " +
-                  "--name=sample-repo " +
-                  "--from from@example.com " +
-                  "--error-to error@example.com to@example " +
-                  "--show-path")
+    create_mailer("--repository=#{@origin_repository_directory}",
+                  "--name=sample-repo",
+                  "--from=from@example.com",
+                  "--error-to=error@example.com",
+                  "--show-path",
+                  "to@example")
 
     create_directory("mm")
     create_file("mm/memory.c", "/* memory related code goes here */")
@@ -386,11 +389,12 @@ END_OF_CONTENT
   end
 
   def create_mailer_with_no_diff_option
-    create_mailer("--repository=#{@origin_repository_directory} " +
-                  "--name=sample-repo " +
-                  "--from from@example.com " +
-                  "--error-to error@example.com to@example " +
-                  "--no-diff")
+    create_mailer("--repository=#{@origin_repository_directory}",
+                  "--name=sample-repo",
+                  "--from=from@example.com",
+                  "--error-to=error@example.com",
+                  "--no-diff",
+                  "to@example")
   end
 
   def test_no_diff
@@ -553,11 +557,12 @@ END_OF_CONTENT
   end
 
   def test_max_size
-    create_mailer("--repository=#{@origin_repository_directory} " +
-                  "--name=sample-repo " +
-                  "--from from@example.com " +
-                  "--error-to error@example.com to@example " +
-                  "--max-size=100B")
+    create_mailer("--repository=#{@origin_repository_directory}",
+                  "--name=sample-repo",
+                  "--from=from@example.com",
+                  "--error-to=error@example.com",
+                  "--max-size=100B",
+                  "to@example")
 
     git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
     git 'push'
