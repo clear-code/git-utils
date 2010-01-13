@@ -198,10 +198,6 @@ class GitCommitMailer
         #@old_revision = @mailer.parent_commit(revision)
       end
 
-      def mode_changed?
-        @is_mode_changed
-      end
-
       def parse_extended_headers(lines)
         @type = :modified
         @is_binary = false
@@ -389,9 +385,7 @@ class GitCommitMailer
         desc =  "  #{CHANGED_TYPE[@type]}: #{@to_file} " +
                 "(+#{@added_line} -#{@deleted_line})" +
                 "#{format_file_mode}#{format_similarity_index}\n"
-        if mode_changed?
-          desc << "  Mode: #{@old_mode} -> #{@new_mode}\n"
-        end
+        desc << "  Mode: #{@old_mode} -> #{@new_mode}\n" if @is_mode_changed
         desc << diff_separator
 
         if @mailer.add_diff?
