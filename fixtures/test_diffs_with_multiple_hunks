@@ -1,18 +1,18 @@
 X-Git-Author: User Name
-X-Git-Revision: ****************************************
+X-Git-Revision: 12137d4ff3fdb1d5f1123054558cf1c9ec45bbd7
 X-Git-Repository: XXX
-X-Git-Commit-Id: ****************************************
+X-Git-Commit-Id: 12137d4ff3fdb1d5f1123054558cf1c9ec45bbd7
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: 8bit
 From: User Name <user@example.com>
 To: to@example
 Subject: sample-repo [master] edited to happen multiple hunks
-Date: ***, ** *** **** **:**:** +****
+Date: Wed, 13 Jan 2010 15:15:44 +0900
 
-User Name	****-**-** **:**:** +**** (***, ** *** ****)
+User Name	2010-01-13 15:15:44 +0900 (Wed, 13 Jan 2010)
 
-  New Revision: ****************************************
+  New Revision: 12137d4ff3fdb1d5f1123054558cf1c9ec45bbd7
 
   Log:
     edited to happen multiple hunks
@@ -22,8 +22,8 @@ User Name	****-**-** **:**:** +**** (***, ** *** ****)
 
   Modified: sample_file (+2 -0)
 ===================================================================
---- sample_file    ****-**-** **:**:** +**** (*******)
-+++ sample_file    ****-**-** **:**:** +**** (*******)
+--- sample_file    2010-01-13 15:15:43 +0900 (a853b5a)
++++ sample_file    2010-01-13 15:15:44 +0900 (a62aeb3)
 @@ -1,3 +1,4 @@
 +a prepended line
  This is a sample text file.

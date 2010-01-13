@@ -1,18 +1,18 @@
 X-Git-Author: User Name
-X-Git-Revision: ****************************************
+X-Git-Revision: e3f45cf65f9c5f3456575c95140bde67a7a7b7c6
 X-Git-Repository: XXX
-X-Git-Commit-Id: ****************************************
+X-Git-Commit-Id: e3f45cf65f9c5f3456575c95140bde67a7a7b7c6
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: 8bit
 From: User Name <user@example.com>
 To: to@example
 Subject: sample-repo [master (mm)] added malloc declaration
-Date: ***, ** *** **** **:**:** +****
+Date: Wed, 13 Jan 2010 15:15:44 +0900
 
-User Name	****-**-** **:**:** +**** (***, ** *** ****)
+User Name	2010-01-13 15:15:44 +0900 (Wed, 13 Jan 2010)
 
-  New Revision: ****************************************
+  New Revision: e3f45cf65f9c5f3456575c95140bde67a7a7b7c6
 
   Log:
     added malloc declaration
@@ -22,8 +22,8 @@ User Name	****-**-** **:**:** +**** (***, ** *** ****)
 
   Modified: mm/memory.c (+1 -0)
 ===================================================================
---- mm/memory.c    ****-**-** **:**:** +**** (*******)
-+++ mm/memory.c    ****-**-** **:**:** +**** (*******)
+--- mm/memory.c    2010-01-13 15:15:43 +0900 (ec10b53)
++++ mm/memory.c    2010-01-13 15:15:44 +0900 (c30638b)
 @@ -1 +1,2 @@
  /* memory related code goes here */
 +void *malloc(size_t size);

@@ -1,18 +1,18 @@
 X-Git-Author: User Name
-X-Git-Revision: ****************************************
+X-Git-Revision: cfadf1b6c9fb4f5d11ae6ed3b999999f86c7342a
 X-Git-Repository: XXX
-X-Git-Commit-Id: ****************************************
+X-Git-Commit-Id: cfadf1b6c9fb4f5d11ae6ed3b999999f86c7342a
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: 8bit
 From: User Name <user@example.com>
 To: to@example
 Subject: sample-repo [master] changed a file mode
-Date: ***, ** *** **** **:**:** +****
+Date: Wed, 13 Jan 2010 15:15:44 +0900
 
-User Name	****-**-** **:**:** +**** (***, ** *** ****)
+User Name	2010-01-13 15:15:44 +0900 (Wed, 13 Jan 2010)
 
-  New Revision: ****************************************
+  New Revision: cfadf1b6c9fb4f5d11ae6ed3b999999f86c7342a
 
   Log:
     changed a file mode
@@ -23,6 +23,6 @@ User Name	****-**-** **:**:** +**** (***, ** *** ****)
   Modified: sample_file (+0 -0)
   Mode: 100644 -> 100755
 ===================================================================
---- sample_file    ****-**-** **:**:** +****
-+++ sample_file    ****-**-** **:**:** +****
+--- sample_file    2010-01-13 15:15:43 +0900
++++ sample_file    2010-01-13 15:15:44 +0900
 

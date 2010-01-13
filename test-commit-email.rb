@@ -29,6 +29,8 @@ class GitCommitMailerTest < Test::Unit::TestCase
 This is a sample text file.
 This file will be modified to make commits.
 END_OF_CONTENT
+  DATE = Time.at(1263363342)
+  DATE_OPTION = "--date=#{DATE.to_s}"
 
   def execute(command, directory=@working_tree_directory)
     GitCommitMailer.execute(command, directory)
@@ -157,7 +159,7 @@ END_OF_CONTENT
                                 'GIT_COMMITTER_NAME',
                                 'GIT_COMMITTER_EMAIL',
                                 'EMAIL'])
-    @timestamp = Time.now.utc
+    @timestamp = DATE
     create_repositories
   end
 
@@ -229,6 +231,7 @@ END_OF_CONTENT
                   "--name=sample-repo",
                   "--from=from@example.com",
                   "--error-to=error@example.com",
+                  DATE_OPTION,
                   "to@example")
   end
 
@@ -257,28 +260,6 @@ END_OF_CONTENT
     [push_mail, commit_mails]
   end
 
-  def black_out_sha1(string)
-    string.gsub(/[0-9a-fA-F]{40}/, "*" * 40).
-           gsub(/[0-9a-fA-F]{7}/, "*" * 7)
-  end
-
-  def black_out_date(string)
-    date_format1 = '20[0-9][0-9]-[01][0-9]-[0-3][0-9] [0-2][0-9]:[0-5][0-9]:[0-5][0-9] ' +
-                   '[+-][0-9]{4} \([A-Z][a-z][a-z], [0-3][0-9] [A-Z][a-z][a-z] 20..\)'
-    date_format2 = '20[0-9][0-9]-[01][0-9]-[0-3][0-9] [0-2][0-9]:[0-5][0-9]:[0-5][0-9] ' +
-                   '[+-][0-9]{4}'
-    date_format3 = '^Date: [A-Z][a-z][a-z], [0-3][0-9] [A-Z][a-z][a-z] 20[0-9][0-9] ' +
-                   '[0-2][0-9]:[0-5][0-9]:[0-5][0-9] [+-][0-9]{4}'
-    string.gsub(Regexp.new(date_format1), '****-**-** **:**:** +**** (***, ** *** ****)').
-           gsub(Regexp.new(date_format2), '****-**-** **:**:** +****').
-           gsub(Regexp.new(date_format3), 'Date: ***, ** *** **** **:**:** +****')
-  end
-
-  def black_out_mail(mail)
-    mail = black_out_sha1(mail)
-    mail = black_out_date(mail)
-  end
-
   def read_from_fixture_directory(file)
     IO.read('fixtures/' + file)
   end
@@ -302,9 +283,9 @@ END_OF_CONTENT
 
   def assert_mail(expected_mail_file_name, tested_mail)
     assert_equal(header_section(expected_mail(expected_mail_file_name)),
-                 header_section(black_out_mail(tested_mail)))
+                 header_section(tested_mail))
     assert_equal(body_section(expected_mail(expected_mail_file_name)),
-                 body_section(black_out_mail(tested_mail)))
+                 body_section(tested_mail))
   end
 
   def assert_rss(expected_rss_file_path, actual_rss_file_path)
@@ -369,6 +350,7 @@ END_OF_CONTENT
                   "--name=sample-repo",
                   "--from=from@example.com",
                   "--error-to=error@example.com",
+                  DATE_OPTION,
                   "--show-path",
                   "to@example")
 
@@ -393,6 +375,7 @@ END_OF_CONTENT
                   "--name=sample-repo",
                   "--from=from@example.com",
                   "--error-to=error@example.com",
+                  DATE_OPTION,
                   "--no-diff",
                   "to@example")
   end
@@ -561,6 +544,7 @@ END_OF_CONTENT
                   "--name=sample-repo",
                   "--from=from@example.com",
                   "--error-to=error@example.com",
+                  DATE_OPTION,
                   "--max-size=100B",
                   "to@example")
 

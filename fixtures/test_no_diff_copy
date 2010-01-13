@@ -1,18 +1,18 @@
 X-Git-Author: User Name
-X-Git-Revision: ****************************************
+X-Git-Revision: b563cfd684626d47086f6c6829e642f87720cb48
 X-Git-Repository: XXX
-X-Git-Commit-Id: ****************************************
+X-Git-Commit-Id: b563cfd684626d47086f6c6829e642f87720cb48
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: 8bit
 From: User Name <user@example.com>
 To: to@example
 Subject: sample-repo [master] copied a file
-Date: ***, ** *** **** **:**:** +****
+Date: Wed, 13 Jan 2010 15:15:44 +0900
 
-User Name	****-**-** **:**:** +**** (***, ** *** ****)
+User Name	2010-01-13 15:15:44 +0900 (Wed, 13 Jan 2010)
 
-  New Revision: ****************************************
+  New Revision: b563cfd684626d47086f6c6829e642f87720cb48
 
   Log:
     copied a file
@@ -25,9 +25,9 @@ User Name	****-**-** **:**:** +**** (***, ** *** ****)
 
   Copied: copied.txt (+1 -0) 94%
 ===================================================================
-    % git diff -C --diff-filter=C ******* ******* -- sample_file copied.txt
+    % git diff -C --diff-filter=C cf105ee b563cfd -- sample_file copied.txt
 
   Modified: sample_file (+1 -0)
 ===================================================================
-    % git diff ******* ******* -- sample_file
+    % git diff cf105ee b563cfd -- sample_file
 

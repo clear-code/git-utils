@@ -1,5 +1,5 @@
-X-Git-OldRev: ****************************************
-X-Git-NewRev: ****************************************
+X-Git-OldRev: bd612f94dc1e6e12d413b5a3570bbc48214e9edf
+X-Git-NewRev: 0000000000000000000000000000000000000000
 X-Git-Refname: refs/tags/v0.0.1
 X-Git-Reftype: annotated tag
 MIME-Version: 1.0
@@ -8,19 +8,19 @@ Content-Transfer-Encoding: 8bit
 From: User Name <user@example.com>
 To: to@example
 Subject: sample-repo (push) annotated tag (v0.0.1) is deleted.
-Date: ***, ** *** **** **:**:** +****
+Date: Wed, 13 Jan 2010 15:15:42 +0900
 
-User Name	****-**-** **:**:** +**** (***, ** *** ****)
+User Name	2010-01-13 15:15:42 +0900 (Wed, 13 Jan 2010)
 
 New Push:
 
   Log:
     Annotated tag (refs/tags/v0.0.1) is deleted.
-           was  ****************************************
+           was  bd612f94dc1e6e12d413b5a3570bbc48214e9edf
     
     tag v0.0.1
     
     
     sample tag
-    **************************************** sample commit
+    46d38cc3b2f05ce15f0dd2f10992ca5ec4ffc103 sample commit
 

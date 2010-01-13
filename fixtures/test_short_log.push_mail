@@ -1,5 +1,5 @@
-X-Git-OldRev: ****************************************
-X-Git-NewRev: ****************************************
+X-Git-OldRev: 0000000000000000000000000000000000000000
+X-Git-NewRev: 6fc8ba99b8833bbdbfd4ecbf999fe22e1d9589a1
 X-Git-Refname: refs/tags/v0.0.2
 X-Git-Reftype: annotated tag
 MIME-Version: 1.0
@@ -8,19 +8,19 @@ Content-Transfer-Encoding: 8bit
 From: User Name <user@example.com>
 To: to@example
 Subject: sample-repo (push) annotated tag (v0.0.2) is created.
-Date: ***, ** *** **** **:**:** +****
+Date: Wed, 13 Jan 2010 15:15:42 +0900
 
-User Name	****-**-** **:**:** +**** (***, ** *** ****)
+User Name	2010-01-13 15:15:42 +0900 (Wed, 13 Jan 2010)
 
 New Push:
 
   Log:
     Annotated tag (refs/tags/v0.0.2) is created.
-            at  **************************************** (tag)
-       tagging  **************************************** (commit)
+            at  6fc8ba99b8833bbdbfd4ecbf999fe22e1d9589a1 (tag)
+       tagging  8103e6b4c49236c1bd1c08a3605796641be2242b (commit)
       replaces  v0.0.1
      tagged by  User Name
-            on  ****-**-** **:**:** +**** (***, ** *** ****)
+            on  2010-01-13 15:15:48 +0900 (Wed, 13 Jan 2010)
     
     sample tag (v0.0.2)
     User Name (2):
