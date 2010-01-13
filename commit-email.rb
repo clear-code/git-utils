@@ -168,6 +168,34 @@ class GitCommitMailer
         parse_body(lines)
       end
 
+      def file
+        @to_file # the new file entity when copied and renamed
+      end
+
+      def link
+        file
+      end
+
+      def file_path
+        file
+      end
+
+      def format_diff
+        desc =  "  #{CHANGED_TYPE[@type]}: #{@to_file} " +
+                "(+#{@added_line} -#{@deleted_line})" +
+                "#{format_file_mode}#{format_similarity_index}\n"
+        desc << "  Mode: #{@old_mode} -> #{@new_mode}\n" if @is_mode_changed
+        desc << diff_separator
+
+        if @mailer.add_diff?
+          desc << header + @body
+        else
+          desc << git_command
+        end
+        desc
+      end
+
+      private
       def extract_file_path(file_path)
         case CommitInfo.unescape_file_path(file_path)
         when /\A[ab]\/(.*)\z/
@@ -317,18 +345,6 @@ class GitCommitMailer
          end
       end
 
-      def file
-        @to_file # the new file entity when copied and renamed
-      end
-
-      def link
-        file
-      end
-
-      def file_path
-        file
-      end
-
       def git_command
         case @type
         when :added
@@ -379,21 +395,6 @@ class GitCommitMailer
 
       def diff_separator
         "#{"=" * 67}\n"
-      end
-
-      def format_diff
-        desc =  "  #{CHANGED_TYPE[@type]}: #{@to_file} " +
-                "(+#{@added_line} -#{@deleted_line})" +
-                "#{format_file_mode}#{format_similarity_index}\n"
-        desc << "  Mode: #{@old_mode} -> #{@new_mode}\n" if @is_mode_changed
-        desc << diff_separator
-
-        if @mailer.add_diff?
-          desc << header + @body
-        else
-          desc << git_command
-        end
-        desc
       end
     end
 
