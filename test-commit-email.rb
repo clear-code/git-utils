@@ -222,7 +222,7 @@ END_OF_CONTENT
   end
 
   def create_mailer(*arguments)
-    p argv.split if ENV['DEBUG']
+    p arguments if ENV['DEBUG']
     @mailer = GitCommitMailer.parse_options_and_create(arguments)
   end
 
