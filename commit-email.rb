@@ -324,10 +324,6 @@ class GitCommitMailer
          end
       end
 
-      def format_diff
-         header + @body
-      end
-
       def file
         @to_file # the new file entity when copied and renamed
       end
@@ -386,6 +382,27 @@ class GitCommitMailer
         else
           ""
         end
+      end
+
+      def diff_separator
+        "#{"=" * 67}\n"
+      end
+
+      def format_diff
+        desc =  "  #{CHANGED_TYPE[@type]}: #{@to_file} " +
+                "(+#{@added_line} -#{@deleted_line})" +
+                "#{format_file_mode}#{format_similarity_index}\n"
+        if mode_changed?
+          desc << "  Mode: #{@old_mode} -> #{@new_mode}\n"
+        end
+        desc << diff_separator
+
+        if @mailer.add_diff?
+          desc << header + @body
+        else
+          desc << git_command
+        end
+        desc
       end
     end
 
@@ -598,34 +615,9 @@ INFO
       :renamed => "Renamed",
     }
 
-    def change_info
-      result = ""
-      diff_info.each do |desc|
-        result << "#{desc}\n"
-      end
-      result
-    end
-
-    def diff_separator
-      "#{"=" * 67}\n"
-    end
-
-    def diff_info
+    def format_diffs
       diffs.collect do |diff|
-        desc =  "  #{CHANGED_TYPE[diff.type]}: #{diff.file} " +
-                "(+#{diff.added_line} -#{diff.deleted_line})" +
-                "#{diff.format_file_mode}#{diff.format_similarity_index}\n"
-        if diff.mode_changed?
-          desc << "  Mode: #{diff.old_mode} -> #{diff.new_mode}\n"
-        end
-        desc << diff_separator
-
-        if @mailer.add_diff?
-          desc << diff.format_diff
-        else
-          desc << diff.git_command
-        end
-        desc
+        diff.format_diff
       end
     end
 
@@ -650,7 +642,10 @@ INFO
       body << mail_renamed_files
 
       body << "\n"
-      body << change_info
+      formatted_diff = format_diffs.join("\n")
+      body << formatted_diff
+      body << "\n" unless formatted_diff.empty?
+      body
     end
     alias :rss_content :mail_body
   end
@@ -1701,7 +1696,7 @@ EOF
       end
 
       @commit_infos.each do |info|
-        info.diff_info.each do |description|
+        info.format_diffs.each do |description|
           item = maker.items.new_item
           item.title = info.rss_title
           item.description = info.log
