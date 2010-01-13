@@ -180,7 +180,7 @@ class GitCommitMailer
         desc << diff_separator
 
         if @mailer.add_diff?
-          desc << header + @body
+          desc << headers + @body
         else
           desc << git_command
         end
@@ -287,8 +287,16 @@ class GitCommitMailer
         end
       end
 
-      def format_time(time)
-        time.strftime('%Y-%m-%d %X %z')
+      def format_date(date)
+        date.strftime('%Y-%m-%d %X %z')
+      end
+
+      def format_old_date
+        format_date(@old_date)
+      end
+
+      def format_new_date
+        format_date(@new_date)
       end
 
       def short_old_revision
@@ -315,7 +323,23 @@ class GitCommitMailer
         format_blob(@old_blob)
       end
 
-      def header
+      def format_old_date_and_blob
+        format_old_date + format_old_blob
+      end
+
+      def format_new_date_and_blob
+        format_new_date + format_new_blob
+      end
+
+      def from_header
+        "--- #{@from_file}    #{format_old_date_and_blob}\n"
+      end
+
+      def to_header
+        "+++ #{@to_file}    #{format_new_date_and_blob}\n"
+      end
+
+      def headers
          unless @is_binary
            if @similarity_index == 100 && (@type == :renamed || @type == :copied)
              return ""
@@ -323,14 +347,11 @@ class GitCommitMailer
 
            case @type
            when :added
-             "--- /dev/null\n" +
-             "+++ #{@to_file}    #{format_time(@new_date)}#{format_new_blob}\n"
+             "--- /dev/null\n" + to_header
            when :deleted
-             "--- #{@from_file}    #{format_time(@old_date)}#{format_old_blob}\n" +
-             "+++ /dev/null\n"
+             from_header + "+++ /dev/null\n"
            else
-             "--- #{@from_file}    #{format_time(@old_date)}#{format_old_blob}\n" +
-             "+++ #{@to_file}    #{format_time(@new_date)}#{format_new_blob}\n"
+             from_header + to_header
            end
          else
            "(Binary files differ)\n"
