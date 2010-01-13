@@ -378,9 +378,9 @@ class GitCommitMailer
         else
           ""
         end
-     end
+      end
 
-     def format_similarity_index
+      def format_similarity_index
         if type == :renamed or type == :copied
           " #{@similarity_index}%"
         else
