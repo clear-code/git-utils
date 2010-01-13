@@ -168,16 +168,8 @@ class GitCommitMailer
         parse_body(lines)
       end
 
-      def file
-        @to_file # the new file entity when copied and renamed
-      end
-
-      def link
-        file
-      end
-
       def file_path
-        file
+        @to_file
       end
 
       def format_diff
@@ -201,7 +193,7 @@ class GitCommitMailer
         when /\A[ab]\/(.*)\z/
           $1
         else
-          raise 'unknown file path format'
+          raise "unknown file path format: #{@to_file}"
         end
       end
 
@@ -349,13 +341,13 @@ class GitCommitMailer
         case @type
         when :added
           command = "show"
-          args = ["#{short_new_revision}:#{link}"]
+          args = ["#{short_new_revision}:#{@to_file}"]
         when :deleted
           command = "show"
-          args = ["#{short_old_revision}:#{link}"]
+          args = ["#{short_old_revision}:#{@to_file}"]
         when :modified
           command = "diff"
-          args = [short_old_revision, short_new_revision, "--", link]
+          args = [short_old_revision, short_new_revision, "--", @to_file]
         when :renamed
           command = "diff"
           args = ["-C","--diff-filter=R",
