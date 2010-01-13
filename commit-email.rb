@@ -158,9 +158,6 @@ class GitCommitMailer
     end
 
     class DiffPerFile
-      attr_reader :old_revision, :new_revision, :from_file, :to_file
-      attr_reader :added_line, :deleted_line, :type
-      attr_reader :deleted_file_mode, :new_file_mode, :old_mode, :new_mode
       def initialize(mailer, lines, revision)
         @mailer = mailer
         @metadata = []
@@ -337,7 +334,7 @@ class GitCommitMailer
       end
 
       def git_command
-        case type
+        case @type
         when :added
           command = "show"
           args = ["#{short_new_revision}:#{link}"]
@@ -351,14 +348,14 @@ class GitCommitMailer
           command = "diff"
           args = ["-C","--diff-filter=R",
                   short_old_revision, short_new_revision, "--",
-                  from_file, to_file]
+                  @from_file, @to_file]
         when :copied
           command = "diff"
           args = ["-C","--diff-filter=C",
                   short_old_revision, short_new_revision, "--",
-                  from_file, to_file]
+                  @from_file, @to_file]
         else
-          raise "unknown diff type: #{type}"
+          raise "unknown diff type: #{@type}"
         end
 
         command += " #{args.join(' ')}" unless args.empty?
@@ -366,18 +363,18 @@ class GitCommitMailer
       end
 
       def format_file_mode
-        case type
+        case @type
         when :added
-          " #{new_file_mode}"
+          " #{@new_file_mode}"
         when :deleted
-          " #{deleted_file_mode}"
+          " #{@deleted_file_mode}"
         else
           ""
         end
       end
 
       def format_similarity_index
-        if type == :renamed or type == :copied
+        if @type == :renamed or @type == :copied
           " #{@similarity_index}%"
         else
           ""
