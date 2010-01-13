@@ -1580,6 +1580,10 @@ EOF
       body = truncate_body(body, !utf7_body.nil?)
     end
 
+    #obviously utf-8 is superset of utf-7
+    if !utf7_body.nil? and body.respond_to?(:encoding)
+      body.force_encoding("utf-8")
+    end
     make_header(encoding, bit, info) + "\n" + body
   end
 

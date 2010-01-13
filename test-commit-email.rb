@@ -345,6 +345,25 @@ END_OF_CONTENT
     assert_rss('test_rss.rss', rss_file_path)
   end
 
+
+  def test_utf7
+    create_mailer("--repository=#{@origin_repository_directory}",
+                  "--name=sample-repo",
+                  "--from=from@example.com",
+                  "--error-to=error@example.com",
+                  DATE_OPTION,
+                  "--utf7",
+                  "to@example")
+    
+    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
+    git 'push'
+
+    push_mail, commit_mails = last_mails
+
+    assert_mail('test_utf7.push_mail', push_mail)
+    assert_mail('test_utf7', commit_mails.first)
+  end
+
   def test_show_path
     create_mailer("--repository=#{@origin_repository_directory}",
                   "--name=sample-repo",
