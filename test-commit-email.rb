@@ -118,7 +118,8 @@ END_OF_CONTENT
   def temporary_name
     prefix = 'git-'
     t = Time.now.strftime("%Y%m%d")
-    path = "#{prefix}#{t}-#{format('%05d',$$)}-#{rand(36**10).to_s(36)}"
+    path = "#{prefix}#{t}-#{format('%05d',$$)}-" +
+           "#{10.times.collect{rand(36).to_s(36)}.join}"
   end
 
   def make_test_directory
@@ -291,24 +292,15 @@ END_OF_CONTENT
   def assert_rss(expected_rss_file_path, actual_rss_file_path)
     expected = expected_rss(expected_rss_file_path)
     actual = IO.read(actual_rss_file_path) + "\n"
-    dc_date = '(<dc:date>20[0-9]{2}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.)' +
-              '([0-9]{0,6})(\+09:00<\/dc:date>)'
-    actual.gsub!(Regexp.new(dc_date)) do
-      $1 + format('%06d', $2.to_i) + $3
+
+    channel_regexp = '<channel rdf:about="file:///tmp/git-[0-9]{8}-[0-9]{5}-' +
+                     '[0-9a-z]{10}/origin/">'
+    [expected, actual].each do |rss|
+      rss.sub!(/<rdf:RDF(([ \n]|xmlns[^ \n]*)*)>/, '<rdf:RDF>')
+      rss.sub!(/<dc:date>.*?<\/dc:date>/, '<dc:date/>')
+      rss.sub!(/#{channel_regexp}/,
+               '<channel rdf:about="file:///tmp/.../origin/">')
     end
-    actual.sub!(/<rdf:RDF(([ \n]|xmlns[^ \n]*)*)>/, '<rdf:RDF>')
-
-    index = 0
-    actual = actual.scan(/(.|\n)/).collect do |character|
-      expected_character = expected[index].chr
-      index += 1
-      if expected_character == '*'
-        expected_character
-      else
-        character
-      end
-    end.join
-
     assert_equal(expected, actual)
   end
 

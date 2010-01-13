@@ -1,25 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rdf:RDF>
-  <channel rdf:about="file:///tmp/git-********-*****-**********/origin/">
+<rdf:RDF xmlns:slash="http://purl.org/rss/1.0/modules/slash/"
+  xmlns:image="http://purl.org/rss/1.0/modules/image/"
+  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+  xmlns:taxo="http://purl.org/rss/1.0/modules/taxonomy/"
+  xmlns:sy="http://purl.org/rss/1.0/modules/syndication/"
+  xmlns:content="http://purl.org/rss/1.0/modules/content/"
+  xmlns:dc="http://purl.org/dc/elements/1.1/"
+  xmlns:trackback="http://madskills.com/public/xml/rss/module/trackback/"
+  xmlns="http://purl.org/rss/1.0/">
+  <channel rdf:about="file:///tmp/git-20100113-03797-amtzs3tzey/origin/">
     <title>Repository of sample-repo</title>
     <link>http://git.example.com/sample-repo.git</link>
     <description>Repository of sample-repo</description>
     <items>
       <rdf:Seq>
-        <rdf:li resource="http://git.example.com/sample-repo.git/commit/?id=****************************************"/>
+        <rdf:li resource="http://git.example.com/sample-repo.git/commit/?id=cf105ee52d4d97efd8f97915b9cf7d6ab2eb79b1"/>
       </rdf:Seq>
     </items>
-    <dc:date>20**-**-**T**:**:**.*********:**</dc:date>
+    <dc:date>2010-01-13T16:51:21.205637+09:00</dc:date>
   </channel>
-  <item rdf:about="http://git.example.com/sample-repo.git/commit/?id=****************************************">
+  <item rdf:about="http://git.example.com/sample-repo.git/commit/?id=cf105ee52d4d97efd8f97915b9cf7d6ab2eb79b1">
     <title>[master] an initial commit</title>
-    <link>http://git.example.com/sample-repo.git/commit/?id=****************************************</link>
+    <link>http://git.example.com/sample-repo.git/commit/?id=cf105ee52d4d97efd8f97915b9cf7d6ab2eb79b1</link>
     <description>an initial commit
 
 </description>
-    <content:encoded>&lt;pre&gt;User Name	20**-**-** **:**:** ***** (***, ** *** ****)
+    <content:encoded>&lt;pre&gt;User Name	2010-01-13 15:15:43 +0900 (Wed, 13 Jan 2010)
 
-  New Revision: ****************************************
+  New Revision: cf105ee52d4d97efd8f97915b9cf7d6ab2eb79b1
 
   Log:
     an initial commit
@@ -30,13 +38,13 @@
   Added: sample_file (+2 -0) 100644
 ===================================================================
 --- /dev/null
-+++ sample_file    20**-**-** **:**:** ***** (6fbd589)
++++ sample_file    2010-01-13 15:15:43 +0900 (6fbd589)
 @@ -0,0 +1,2 @@
 +This is a sample text file.
 +This file will be modified to make commits.
 
 &lt;/pre&gt;</content:encoded>
     <dc:creator>User Name</dc:creator>
-    <dc:date>20**-**-**T**:**:*****:**</dc:date>
+    <dc:date>2010-01-13T15:15:43+09:00</dc:date>
   </item>
 </rdf:RDF>
