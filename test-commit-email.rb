@@ -300,10 +300,15 @@ END_OF_ERROR_MESSAGE
   end
 
   def assert_mail(expected_mail_file_name, tested_mail)
-    assert_equal(header_section(expected_mail(expected_mail_file_name)),
-                 header_section(tested_mail))
-    assert_equal(body_section(expected_mail(expected_mail_file_name)),
-                 body_section(tested_mail))
+    begin
+      assert_equal(header_section(expected_mail(expected_mail_file_name)),
+                   header_section(tested_mail))
+      assert_equal(body_section(expected_mail(expected_mail_file_name)),
+                   body_section(tested_mail))
+    rescue
+      puts tested_mail if ENV['DEBUG']
+      raise 
+    end
   end
 
   def assert_rss(expected_rss_file_path, actual_rss_file_path)
