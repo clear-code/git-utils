@@ -1264,7 +1264,9 @@ EOF
   def process_delete_annotated_tag
     "Annotated tag (#@reference) is deleted.\n" +
     "       was  #@old_revision\n\n" +
-    git("show -s --pretty=oneline #@old_revision").gsub(/\n{2,}/, "\n\n")
+    git("show -s --pretty=oneline #@old_revision").sub(/^Tagger.*$/, '').
+                                                   sub(/^Date.*$/, '').
+                                                   sub(/\n{2,}/, "\n\n")
   end
 
   def short_log(revision_specifier)
