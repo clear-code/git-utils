@@ -1,0 +1,29 @@
+X-Git-Author: User Name
+X-Git-Revision: 347ce41bca5852e9c791f13614205bb1cb898930
+X-Git-Repository: XXX
+X-Git-Commit-Id: 347ce41bca5852e9c791f13614205bb1cb898930
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+From: User Name <user@example.com>
+To: to@example
+Subject: sample-repo [master] =?ISO-2022-JP?B?GyRCJVUlISUkJWskckRJMkMbKEI=?=
+Date: Wed, 13 Jan 2010 15:15:43 +0900
+
+User Name	2010-01-13 15:15:43 +0900 (Wed, 13 Jan 2010)
+
+  New Revision: 347ce41bca5852e9c791f13614205bb1cb898930
+
+  Log:
+    ファイルを追加
+
+  Added files:
+    日本語.txt
+
+  Added: 日本語.txt (+1 -0) 100644
+===================================================================
+--- /dev/null
++++ 日本語.txt    2010-01-13 15:15:43 +0900 (9e2a613)
+@@ -0,0 +1 @@
++日本語の文章です。
+

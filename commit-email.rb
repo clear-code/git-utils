@@ -1627,7 +1627,18 @@ EOF
   end
 
   def mime_encoded_word(string)
-    encoded_string = NKF.nkf("-wWM", string)
+    #XXX "-MWw" didn't work in some versions of Ruby 1.9.
+    #    giving up to stick with UTF-8... ;)
+    encoded_string = NKF.nkf("-MWj", string)
+
+    #XXX The actual MIME encoded-word's string representaion is US-ASCII,
+    #    which, in turn, can be UTF-8. In spite of this fact, in some versions
+    #    of Ruby 1.9, encoded_string.encoding is incorrectly set as ISO-2022-JP.
+    #    Fortunately, as we just said, we can just safely override them with
+    #    "UTF-8" to work around this bug.
+    if encoded_string.respond_to?(:force_encoding)
+      encoded_string.force_encoding("UTF-8")
+    end
 
     #XXX work around NKF's bug of gratuitously wrapping long ascii words with
     #    MIME encoded-word syntax's header and footer, while not actually
