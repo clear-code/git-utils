@@ -56,8 +56,8 @@ END_OF_ERROR_MESSAGE
   end
 
   def reset_timestamp
-    ENV["GIT_AUTHOR_DATE"] = nil
-    ENV["GIT_COMMITTER_DATE"] = nil
+    ENV.delete("GIT_AUTHOR_DATE")
+    ENV.delete("GIT_COMMITTER_DATE")
   end
 
   def git(command, repository_directory=@repository_directory)
@@ -158,13 +158,13 @@ END_OF_ERROR_MESSAGE
     @saved_environment_variables = {}
     names.each do |name|
       @saved_environment_variables[name] = ENV[name]
-      ENV[name] = nil
+      ENV.delete(name)
     end
   end
 
   def restore_environment_variables
     @saved_environment_variables.each do |name, value|
-      ENV[name] = value
+      ENV[name] = value unless value.nil?
     end
   end
 
