@@ -1,0 +1,27 @@
+X-Git-Author: User Name
+X-Git-Revision: 4afa60131316ba9ccf07b951908f9f29c6f7cb45
+X-Git-Repository: XXX
+X-Git-Commit-Id: 4afa60131316ba9ccf07b951908f9f29c6f7cb45
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+From: User Name <user@example.com>
+To: to@example
+Subject: sample-repo [master] =?ISO-2022-JP?B?GyRCRnxLXDhsGyhCLnR4dA==?= -> 
+ =?ISO-2022-JP?B?GyRCRnxLXDhsJEckORsoQi50eHQ=?=
+Date: Wed, 13 Jan 2010 15:15:44 +0900
+
+User Name	2010-01-13 15:15:44 +0900 (Wed, 13 Jan 2010)
+
+  New Revision: 4afa60131316ba9ccf07b951908f9f29c6f7cb45
+
+  Log:
+    日本語.txt -> 日本語です.txt
+
+  Renamed files:
+    日本語です.txt
+      (from 日本語.txt)
+
+  Renamed: 日本語です.txt (+0 -0) 100%
+===================================================================
+

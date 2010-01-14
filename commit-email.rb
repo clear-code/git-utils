@@ -504,8 +504,8 @@ class GitCommitMailer
           end
         elsif line =~ /\A([^\t]*?)\t([^\t]*?)\t([^\t]*?)\z/
           status = $1
-          from_file = $2
-          to_file = $3
+          from_file = CommitInfo.unescape_file_path($2)
+          to_file = CommitInfo.unescape_file_path($3)
 
           case status
           when /^R/ # Renamed

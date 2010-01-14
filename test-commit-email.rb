@@ -796,6 +796,20 @@ EOF
     assert_mail('test_non_ascii_commit_subject', commit_mails[0])
   end
 
+  def test_move_non_ascii_file
+    create_default_mailer
+    git_commit_new_file("日本語.txt", "日本語の文章です。", "added a file with japanese file name")
+    git "push"
+    move_file("日本語.txt", "日本語です.txt")
+    git "add ."
+    git "commit -a -m \"日本語.txt -> 日本語です.txt\""
+    git "push"
+
+    push_mail, commit_mails = last_mails
+
+    assert_mail('test_move_non_ascii_file', commit_mails[0])
+  end
+
   def test_long_word_in_commit_subject
     create_default_mailer
     git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "x" * 60)
