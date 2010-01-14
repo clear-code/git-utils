@@ -561,55 +561,28 @@ class GitCommitMailer
     end
     alias :rss_title :mail_subject
 
-    def changed_items(title, type, items)
+    def format_files(title, items)
       rv = ""
       unless items.empty?
-        rv << "  #{title} #{type}:\n"
-        if block_given?
-          yield(rv, items)
-        else
-          rv << items.collect {|item| "    #{item}\n"}.join('')
-        end
+        rv << "  #{title} files:\n"
+        rv << items.collect do |item_name, new_item_name|
+           if new_item_name.nil?
+             "    #{item_name}\n"
+           else
+             "    #{new_item_name}\n" +
+             "      (from #{item_name})\n"
+           end
+        end.join
       end
       rv
     end
 
-    def changed_files(title, files, &block)
-      changed_items(title, "files", files, &block)
-    end
-
-    def format_added_files
-      changed_files("Added", added_files)
-    end
-
-    def format_deleted_files
-      changed_files("Removed", deleted_files)
-    end
-
-    def format_modified_files
-      changed_files("Modified", updated_files)
-    end
-
-    def format_copied_files
-      changed_files("Copied", copied_files) do |rv, files|
-        rv << files.collect do |from_file, to_file|
-          <<-INFO
-    #{to_file}
-      (from #{from_file})
-INFO
-        end.join("")
-      end
-    end
-
-    def format_renamed_files
-      changed_files("Renamed", renamed_files) do |rv, files|
-        rv << files.collect do |from_file, to_file|
-          <<-INFO
-    #{to_file}
-      (from #{from_file})
-INFO
-        end.join("")
-      end
+    def format_changed_files
+      format_files("Added", added_files) +
+      format_files("Copied", copied_files) +
+      format_files("Removed", deleted_files) +
+      format_files("Modified", updated_files) +
+      format_files("Renamed", renamed_files)
     end
 
     CHANGED_TYPE = {
@@ -640,11 +613,7 @@ INFO
         body << "    #{line}"
       end
       body << "\n\n"
-      body << format_added_files
-      body << format_copied_files
-      body << format_deleted_files
-      body << format_modified_files
-      body << format_renamed_files
+      body << format_changed_files
 
       body << "\n"
       formatted_diff = format_diffs.join("\n")
