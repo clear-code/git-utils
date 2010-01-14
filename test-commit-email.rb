@@ -31,6 +31,12 @@ This file will be modified to make commits.
 END_OF_CONTENT
   DATE = Time.at(1263363342)
   DATE_OPTION = "--date=#{DATE.to_s}"
+  PUSH_ERROR_MESSAGE = Regexp.new(<<END_OF_ERROR_MESSAGE)
+No refs in common and none specified; doing nothing.
+Perhaps you should specify a branch such as 'master'.
+fatal: The remote end hung up unexpectedly
+error: failed to push some refs to '/tmp/git-[0-9]{8}-[0-9]{5}-[0-9a-z]{10}/origin/'
+END_OF_ERROR_MESSAGE
 
   def execute(command, directory=@working_tree_directory)
     GitCommitMailer.execute(command, directory)
@@ -64,7 +70,16 @@ END_OF_CONTENT
       end
       delete_output_from_hook if command =~ /\Apush/
 
-      execute "git --git-dir=#{repository_directory} #{command}"
+      begin
+        execute "git --git-dir=#{repository_directory} #{command}"
+      rescue Exception => exception
+        if command == "push" and exception.message =~ PUSH_ERROR_MESSAGE
+          command += " origin master"
+          retry
+        else
+          raise
+        end
+      end
       reset_timestamp
     end
   end

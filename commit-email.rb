@@ -642,9 +642,9 @@ class GitCommitMailer
       if block_given?
         IO.popen(script, "w+", &block)
       else
-        result = `#{script}`
+        result = `#{script} 2>&1`
       end
-      raise "execute failed: #{command}" unless $?.exitstatus.zero?
+      raise "execute failed: #{command}\n#{result}" unless $?.exitstatus.zero?
       result
     end
 
