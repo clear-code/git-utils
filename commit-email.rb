@@ -648,16 +648,16 @@ class GitCommitMailer
       result
     end
 
-    def git(repository, command, &block)
-      execute("git --git-dir=#{Shellwords.escape(repository)} #{command}", &block)
+    def git(git_bin_path, repository, command, &block)
+      execute("#{git_bin_path} --git-dir=#{Shellwords.escape(repository)} #{command}", &block)
     end
 
-    def get_record(repository, revision, record)
-      git(repository, "log -n 1 --pretty=format:'#{record}' #{revision}").strip
+    def get_record(git_bin_path, repository, revision, record)
+      git(git_bin_path, repository, "log -n 1 --pretty=format:'#{record}' #{revision}").strip
     end
 
-    def get_records(repository, revision, records)
-      git(repository,
+    def get_records(git_bin_path, repository, revision, records)
+      git(git_bin_path, repository,
           "log -n 1 --pretty=format:'#{records.join('%n')}%n' #{revision}").
             lines.collect do |line|
         line.strip
@@ -742,6 +742,7 @@ class GitCommitMailer
       mailer.server = options.server
       mailer.port = options.port
       mailer.date = options.date
+      mailer.git_bin_path = options.git_bin_path
     end
 
     def parse_size(size)
@@ -779,6 +780,7 @@ class GitCommitMailer
       options.server = "localhost"
       options.port = Net::SMTP.default_port
       options.date = nil
+      options.git_bin_path = "git"
       options
     end
 
@@ -911,6 +913,11 @@ class GitCommitMailer
               "Use DATE as date of push mails (Time.parse is used)") do |date|
         options.date = Time.parse(date)
       end
+
+      opts.on("--git-bin-path=GIT_BIN_PATH",
+              "Use GIT_BIN_PATH command instead of default \"git\"") do |git_bin_path|
+        options.git_bin_path = git_bin_path
+      end
     end
 
     def add_rss_options(opts, options)
@@ -939,7 +946,7 @@ class GitCommitMailer
 
   attr_reader :reference, :old_revision, :new_revision, :to
   attr_writer :from, :add_diff, :show_path, :send_push_mail, :use_utf7
-  attr_writer :repository, :date
+  attr_writer :repository, :date, :git_bin_path
   attr_accessor :from_domain, :max_size, :repository_uri
   attr_accessor :rss_path, :rss_uri, :name, :server, :port
 
@@ -956,15 +963,15 @@ class GitCommitMailer
   end
 
   def git(command, &block)
-    GitCommitMailer.git(@repository, command, &block)
+    GitCommitMailer.git(git_bin_path, @repository, command, &block)
   end
 
   def get_record(revision, record)
-    GitCommitMailer.get_record(@repository, revision, record)
+    GitCommitMailer.get_record(git_bin_path, @repository, revision, record)
   end
 
   def get_records(revision, records)
-    GitCommitMailer.get_records(@repository, revision, records)
+    GitCommitMailer.get_records(git_bin_path, @repository, revision, records)
   end
 
   def from(info)
@@ -978,6 +985,10 @@ class GitCommitMailer
 
   def date
     @date || Time.now
+  end
+
+  def git_bin_path
+    ENV['GIT_BIN_PATH'] || @git_bin_path
   end
 
   def short_new_revision
