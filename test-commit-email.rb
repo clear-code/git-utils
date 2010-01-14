@@ -134,9 +134,8 @@ END_OF_ERROR_MESSAGE
   end
 
   def temporary_name
-    prefix = 'git-'
-    t = Time.now.strftime("%Y%m%d")
-    path = "#{prefix}#{t}-#{format('%05d',$$)}-" +
+    time = Time.now.strftime("%Y%m%d")
+    path = "git-#{time}-#{format('%05d', $$)}-" +
            "#{10.times.collect{rand(36).to_s(36)}.join}"
   end
 

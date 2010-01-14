@@ -68,7 +68,7 @@ class GitCommitMailer
     end
 
     def short_reference
-       @reference.sub(/\A.*\/.*\//,'');
+       @reference.sub(/\A.*\/.*\//, '');
     end
   end
 
@@ -145,8 +145,8 @@ class GitCommitMailer
         else
           encoding = nil
         end
-        unescaped_file_path = escaped_file_path.gsub(/\\\\/,'\\').
-                                                gsub(/\\\"/,'"').
+        unescaped_file_path = escaped_file_path.gsub(/\\\\/, '\\').
+                                                gsub(/\\\"/, '"').
                                                 gsub(/\\([0-9]{1,3})/) do
           $1.to_i(8).chr
         end
@@ -371,12 +371,12 @@ class GitCommitMailer
           args = [short_old_revision, short_new_revision, "--", @to_file]
         when :renamed
           command = "diff"
-          args = ["-C","--diff-filter=R",
+          args = ["-C", "--diff-filter=R",
                   short_old_revision, short_new_revision, "--",
                   @from_file, @to_file]
         when :copied
           command = "diff"
-          args = ["-C","--diff-filter=C",
+          args = ["-C", "--diff-filter=C",
                   short_old_revision, short_new_revision, "--",
                   @from_file, @to_file]
         else
@@ -653,7 +653,7 @@ class GitCommitMailer
     end
 
     def short_revision(revision)
-      revision[0,7]
+      revision[0, 7]
     end
 
     def extract_email_address(address)
@@ -1104,11 +1104,11 @@ class GitCommitMailer
       revision.strip!
       short_revision = GitCommitMailer.short_revision(revision)
       commits << revision
-      subject = get_record(revision,'%s')
+      subject = get_record(revision, '%s')
       commit_list << "     via  #{short_revision} #{subject}\n"
     end
     if commit_list.length > 0
-      commit_list[-1].sub!(/\A     via  /,'     at   ')
+      commit_list[-1].sub!(/\A     via  /, '     at   ')
       message << commit_list.join
     end
 
@@ -1162,7 +1162,7 @@ EOF
     end
     unless revision
       fast_forward = true
-      subject = get_record(old_revision,'%s')
+      subject = get_record(old_revision, '%s')
       commits_summary << "    from  #{short_old_revision} #{subject}\n"
     end
     [fast_forward, commits_summary]
@@ -1387,7 +1387,7 @@ EOF
     begin
       name = git("name-rev --name-only --refs refs/heads/* #{revision}").strip
       revision = parent_commit(revision)
-    end until name.sub(/([~^][0-9]+)*\z/,'') == name
+    end until name.sub(/([~^][0-9]+)*\z/, '') == name
     name
   end
 
