@@ -17,7 +17,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 require 'rubygems'
-gem 'test-unit'
+begin
+  gem 'test-unit'
+rescue LoadError
+end
 require 'test/unit'
 require 'tempfile'
 
