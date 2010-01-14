@@ -364,7 +364,7 @@ END_OF_ERROR_MESSAGE
                   DATE_OPTION,
                   "--utf7",
                   "to@example")
-    
+
     git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
     git 'push'
 
