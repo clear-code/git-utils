@@ -652,18 +652,6 @@ class GitCommitMailer
       execute("#{git_bin_path} --git-dir=#{Shellwords.escape(repository)} #{command}", &block)
     end
 
-    def get_record(git_bin_path, repository, revision, record)
-      git(git_bin_path, repository, "log -n 1 --pretty=format:'#{record}' #{revision}").strip
-    end
-
-    def get_records(git_bin_path, repository, revision, records)
-      git(git_bin_path, repository,
-          "log -n 1 --pretty=format:'#{records.join('%n')}%n' #{revision}").
-            lines.collect do |line|
-        line.strip
-      end
-    end
-
     def short_revision(revision)
       revision[0,7]
     end
@@ -967,11 +955,15 @@ class GitCommitMailer
   end
 
   def get_record(revision, record)
-    GitCommitMailer.get_record(git_bin_path, @repository, revision, record)
+    get_records(revision, [record]).first
   end
 
   def get_records(revision, records)
-    GitCommitMailer.get_records(git_bin_path, @repository, revision, records)
+    GitCommitMailer.git(git_bin_path, @repository,
+                       "log -n 1 --pretty=format:'#{records.join('%n')}%n' " +
+                       "#{revision}").lines.collect do |line|
+      line.strip
+    end
   end
 
   def from(info)
