@@ -202,23 +202,21 @@ END_OF_ERROR_MESSAGE
   end
 
   def move_file(old_file_name, new_file_name)
-    FileUtils.mv(@working_tree_directory + old_file_name,
-                 @working_tree_directory + new_file_name)
+    FileUtils.mv(expand_path(old_file_name), expand_path(new_file_name))
     git "add %s" % escape(new_file_name)
   end
 
   def copy_file(file_name, copied_file_name)
-    FileUtils.cp(@working_tree_directory + file_name,
-                 @working_tree_directory + copied_file_name)
+    FileUtils.cp(expand_path(file_name), expand_path(copied_file_name))
     git "add %s" % escape(copied_file_name)
   end
 
   def remove_file(file_name)
-    FileUtils.rm(@working_tree_directory + file_name)
+    FileUtils.rm(expand_path(file_name))
   end
 
   def change_file_mode(file_mode, file_name)
-    FileUtils.chmod(file_mode, @working_tree_directory + file_name)
+    FileUtils.chmod(file_mode, expand_path(file_name))
   end
 
   def create_file(file_name, content)
