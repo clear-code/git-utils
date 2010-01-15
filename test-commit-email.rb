@@ -342,7 +342,7 @@ END_OF_ERROR_MESSAGE
     create_default_mailer
     git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
 
-    git 'push origin master'
+    git 'push'
 
     push_mail, commit_mails = get_mails_of_last_push
 
@@ -658,7 +658,7 @@ This file will be modified to make commits.
 In the above line, I intentionally left some spaces.
 EOF
     git_commit_new_file(DEFAULT_FILE, file_content, "added a sample file")
-    git 'push origin master'
+    git 'push'
 
     edit_file(DEFAULT_FILE) do |lines|
       lines.collect do |line|
@@ -691,7 +691,7 @@ some filler text to make two hunks with diff
 some filler text to make two hunks with diff
 EOF
     git_commit_new_file(DEFAULT_FILE, file_content, "added a sample file")
-    git 'push origin master'
+    git 'push'
 
     prepend_line(DEFAULT_FILE, 'a prepended line')
     append_line(DEFAULT_FILE, 'an appended line')
@@ -715,7 +715,7 @@ EOF
       git "add #{file_name}"
     end
     git "commit -a -m 'added multiple files'"
-    git 'push origin master'
+    git 'push'
 
     push_mail, commit_mails = get_mails_of_last_push
 
@@ -733,7 +733,7 @@ This file will be modified to make commits.
 This line is needed to assist the auto-merge algorithm.
 EOF
     git_commit_new_file(DEFAULT_FILE, file_content, "added a sample file")
-    git 'push origin master'
+    git 'push'
 
     git "branch #{first_branch}"
     git "checkout #{first_branch}"
@@ -784,7 +784,7 @@ EOF
   def test_non_ascii_file_name
     create_default_mailer
     git_commit_new_file("日本語.txt", "日本語の文章です。", "added a file with japanese file name")
-    git "push origin master"
+    git "push"
 
     push_mail, commit_mails = get_mails_of_last_push
 
@@ -818,7 +818,7 @@ EOF
     create_default_mailer
     git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "x" * 60)
 
-    git 'push origin master'
+    git 'push'
 
     push_mail, commit_mails = get_mails_of_last_push
 
