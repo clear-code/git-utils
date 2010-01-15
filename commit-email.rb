@@ -117,12 +117,12 @@ class GitCommitMailer
       :delete => "deleted",
     }
 
-    def mail_subject
+    def format_mail_subject
       "(push) #{PushInfo::REFERENCE_TYPE[reference_type]} "+
       "(#{short_reference}) is #{PushInfo::CHANGE_TYPE[change_type]}."
     end
 
-    def mail_body
+    def format_mail_body
       body = ""
       body << "#{author}\t#{@mailer.format_time(date)}\n"
       body << "\n"
@@ -591,7 +591,7 @@ class GitCommitMailer
       paths.uniq
     end
 
-    def mail_subject
+    def format_mail_subject
       affected_path_info = ""
       if @mailer.show_path?
         _affected_paths = affected_paths
@@ -602,7 +602,7 @@ class GitCommitMailer
 
       "[#{short_reference}#{affected_path_info}] " + subject
     end
-    alias :rss_title :mail_subject
+    alias :rss_title :format_mail_subject
 
     def format_files(title, items)
       rv = ""
@@ -642,7 +642,7 @@ class GitCommitMailer
       end
     end
 
-    def mail_body
+    def format_mail_body
       body = ""
       body << "#{author}\t#{@mailer.format_time(date)}\n"
       body << "\n"
@@ -664,7 +664,7 @@ class GitCommitMailer
       body << "\n" unless formatted_diff.empty?
       body
     end
-    alias :rss_content :mail_body
+    alias rss_content format_mail_body
   end
 
   class << self
@@ -1601,7 +1601,7 @@ EOF
   end
 
   def make_mail(info)
-    utf8_body = info.mail_body
+    utf8_body = info.format_mail_body
     utf7_body = nil
     utf7_body = utf8_to_utf7(utf8_body) if use_utf7?
     if utf7_body
@@ -1643,7 +1643,7 @@ EOF
 
   def make_header(body_encoding, body_encoding_bit, info)
     subject = "#{(name + ' ') if name}" +
-              mime_encoded_word("#{info.mail_subject}")
+              mime_encoded_word("#{info.format_mail_subject}")
     headers = []
     headers += info.headers
     headers << "MIME-Version: 1.0"
