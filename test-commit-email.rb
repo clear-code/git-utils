@@ -26,7 +26,7 @@ require 'tempfile'
 
 require 'commit-email'
 
-class GitCommitMailerTest < Test::Unit::TestCase
+module GitCommitMailerTestUtils
   DEFAULT_FILE = 'sample_file'
   DEFAULT_FILE_CONTENT = <<END_OF_CONTENT
 This is a sample text file.
@@ -319,7 +319,7 @@ END_OF_ERROR_MESSAGE
                    body_section(tested_mail))
     rescue
       puts tested_mail if ENV['DEBUG']
-      raise 
+      raise
     end
   end
 
@@ -337,8 +337,88 @@ END_OF_ERROR_MESSAGE
     end
     assert_equal(expected, actual)
   end
+end
 
-  def test_single_commit
+class GitCommitMailerDiffTest < Test::Unit::TestCase
+  include GitCommitMailerTestUtils
+  def test_trailing_spaces
+    create_default_mailer
+
+    file_content = <<EOF
+This is a sample text file.
+This file will be modified to make commits.
+    
+In the above line, I intentionally left some spaces.
+EOF
+    git_commit_new_file(DEFAULT_FILE, file_content, "added a sample file")
+    git 'push'
+
+    edit_file(DEFAULT_FILE) do |lines|
+      lines.collect do |line|
+        line.rstrip + "\n"
+      end
+    end
+    git 'commit -a -m "removed trailing spaces"'
+
+    git 'push'
+
+    push_mail, commit_mails = get_mails_of_last_push
+
+    assert_mail('test_diffs_with_trailing_spaces', commit_mails[0])
+  end
+
+  def test_multiple_hunks
+    create_default_mailer
+
+    file_content = <<EOF
+This is a sample text file.
+This file will be modified to make commits.
+
+In the above line, I intentionally left some spaces.
+some filler text to make two hunks with diff
+some filler text to make two hunks with diff
+some filler text to make two hunks with diff
+some filler text to make two hunks with diff
+some filler text to make two hunks with diff
+some filler text to make two hunks with diff
+some filler text to make two hunks with diff
+EOF
+    git_commit_new_file(DEFAULT_FILE, file_content, "added a sample file")
+    git 'push'
+
+    prepend_line(DEFAULT_FILE, 'a prepended line')
+    append_line(DEFAULT_FILE, 'an appended line')
+    git 'commit -a -m "edited to happen multiple hunks"'
+
+    git 'push'
+
+    push_mail, commit_mails = get_mails_of_last_push
+
+    assert_mail('test_diffs_with_multiple_hunks', commit_mails[0])
+  end
+
+  def test_multiple_files
+    create_default_mailer
+
+    2.times do |i|
+      file_name = "file_#{i.to_s}"
+      file_content = "text in #{file_name}"
+      commit_log = "added #{file_name}"
+      create_file(file_name, file_content)
+      git "add #{file_name}"
+    end
+    git "commit -a -m 'added multiple files'"
+    git 'push'
+
+    push_mail, commit_mails = get_mails_of_last_push
+
+    assert_mail('test_diffs_with_multiple_files', commit_mails[0])
+  end
+end
+
+class GitCommitMailerFileManipulation < Test::Unit::TestCase
+  include GitCommitMailerTestUtils
+  def test_edit
     create_default_mailer
     git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
 
@@ -348,153 +428,6 @@ END_OF_ERROR_MESSAGE
 
     assert_mail('test_single_commit.push_mail', push_mail)
     assert_mail('test_single_commit', commit_mails[0])
-  end
-
-  def test_rss
-    rss_file_path = "#{@test_directory}sample-repo.rss"
-    create_mailer("--repository=#{@origin_repository_directory}",
-                  "--name=sample-repo",
-                  "--from=from@example.com",
-                  "--error-to=error@example.com",
-                  "--repository-uri=http://git.example.com/sample-repo.git",
-                  "--rss-uri=file://#{@origin_repository_directory}",
-                  "--rss-path=#{rss_file_path}",
-                  "to@example")
-
-    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
-    git 'push'
-
-    each_reference_change do |old_revision, new_revision, reference|
-      process_reference_change(old_revision, new_revision, reference)
-    end
-
-    assert_rss('test_rss.rss', rss_file_path)
-  end
-
-
-  def test_utf7
-    create_mailer("--repository=#{@origin_repository_directory}",
-                  "--name=sample-repo",
-                  "--from=from@example.com",
-                  "--error-to=error@example.com",
-                  DATE_OPTION,
-                  "--utf7",
-                  "to@example")
-
-    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
-    git 'push'
-
-    push_mail, commit_mails = get_mails_of_last_push
-
-    assert_mail('test_utf7.push_mail', push_mail)
-    assert_mail('test_utf7', commit_mails.first)
-  end
-
-  def test_show_path
-    create_mailer("--repository=#{@origin_repository_directory}",
-                  "--name=sample-repo",
-                  "--from=from@example.com",
-                  "--error-to=error@example.com",
-                  DATE_OPTION,
-                  "--show-path",
-                  "to@example")
-
-    create_directory("mm")
-    create_file("mm/memory.c", "/* memory related code goes here */")
-    create_directory("drivers")
-    create_file("drivers/PLACEHOLDER", "just to make git recognize drivers directory")
-    git "commit -m %s" % escape("added mm and drivers directory")
-    git "push"
-
-    append_line("mm/memory.c", "void *malloc(size_t size);")
-    git "commit -a -m %s" % escape("added malloc declaration")
-    git "push"
-
-    _, commit_mails = get_mails_of_last_push
-    assert_mail('test_show_path', commit_mails.first)
-  end
-
-  def create_mailer_with_no_diff_option
-    create_mailer("--repository=#{@origin_repository_directory}",
-                  "--name=sample-repo",
-                  "--from=from@example.com",
-                  "--error-to=error@example.com",
-                  DATE_OPTION,
-                  "--no-diff",
-                  "to@example")
-  end
-
-  def test_no_diff
-    create_mailer_with_no_diff_option
-
-    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
-
-    append_line(DEFAULT_FILE, "an appended line.")
-    git "commit -a -m %s" % escape("appended a line")
-
-    git 'push'
-    _, commit_mails = get_mails_of_last_push
-
-    assert_mail('test_no_diff.1', commit_mails.shift)
-    assert_mail('test_no_diff.2', commit_mails.shift)
-  end
-
-  def test_no_diff_rename
-    create_mailer_with_no_diff_option
-
-    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
-    git 'push'
-
-    move_file(DEFAULT_FILE, "renamed.txt")
-    git "commit -a -m %s" % escape("renamed a file")
-
-    git 'push'
-    _, commit_mails = get_mails_of_last_push
-    assert_mail('test_no_diff_rename', commit_mails.shift)
-  end
-
-  def test_no_diff_copy
-    create_mailer_with_no_diff_option
-
-    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
-    git 'push'
-
-    append_line(DEFAULT_FILE, "hi.")
-    copy_file(DEFAULT_FILE, "copied.txt")
-    git "commit -a -m %s" % escape("copied a file")
-
-    git 'push'
-    _, commit_mails = get_mails_of_last_push
-    assert_mail('test_no_diff_copy', commit_mails.shift)
-  end
-
-  def test_no_diff_remove
-    create_mailer_with_no_diff_option
-
-    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
-    git 'push'
-
-    remove_file(DEFAULT_FILE)
-    git "commit -a -m %s" % escape("removed a file")
-    git 'push'
-    _, commit_mails = get_mails_of_last_push
-
-    assert_mail('test_no_diff_remove', commit_mails.shift)
-  end
-
-  def test_file_mode
-    create_default_mailer
-
-    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
-    git 'push'
-
-    change_file_mode(0777, DEFAULT_FILE)
-    git "commit -a -m %s" % escape("changed a file mode")
-
-    git 'push'
-    _, commit_mails = get_mails_of_last_push
-
-    assert_mail('test_file_mode', commit_mails.shift)
   end
 
   def test_rename
@@ -577,23 +510,205 @@ END_OF_ERROR_MESSAGE
     assert_mail('test_remove', commit_mails.shift)
   end
 
-  def test_max_size
+  def test_file_mode
+    create_default_mailer
+
+    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
+    git 'push'
+
+    change_file_mode(0777, DEFAULT_FILE)
+    git "commit -a -m %s" % escape("changed a file mode")
+
+    git 'push'
+    _, commit_mails = get_mails_of_last_push
+
+    assert_mail('test_file_mode', commit_mails.shift)
+  end
+end
+
+class GitCommitMailerNoDiffTest < Test::Unit::TestCase
+  include GitCommitMailerTestUtils
+  def create_default_mailer
     create_mailer("--repository=#{@origin_repository_directory}",
                   "--name=sample-repo",
                   "--from=from@example.com",
                   "--error-to=error@example.com",
                   DATE_OPTION,
-                  "--max-size=100B",
+                  "--no-diff",
                   "to@example")
+  end
+
+  def test_edit
+    create_default_mailer
+
+    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
+
+    append_line(DEFAULT_FILE, "an appended line.")
+    git "commit -a -m %s" % escape("appended a line")
+
+    git 'push'
+    _, commit_mails = get_mails_of_last_push
+
+    assert_mail('test_no_diff.1', commit_mails.shift)
+    assert_mail('test_no_diff.2', commit_mails.shift)
+  end
+
+  def test_rename
+    create_default_mailer
 
     git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
     git 'push'
 
-    push_mail, _ = get_mails_of_last_push
+    move_file(DEFAULT_FILE, "renamed.txt")
+    git "commit -a -m %s" % escape("renamed a file")
 
-    assert_mail('test_max_size.push_mail', push_mail)
+    git 'push'
+    _, commit_mails = get_mails_of_last_push
+    assert_mail('test_no_diff_rename', commit_mails.shift)
   end
 
+  def test_copy
+    create_default_mailer
+
+    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
+    git 'push'
+
+    append_line(DEFAULT_FILE, "hi.")
+    copy_file(DEFAULT_FILE, "copied.txt")
+    git "commit -a -m %s" % escape("copied a file")
+
+    git 'push'
+    _, commit_mails = get_mails_of_last_push
+    assert_mail('test_no_diff_copy', commit_mails.shift)
+  end
+
+  def test_remove
+    create_default_mailer
+
+    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
+    git 'push'
+
+    remove_file(DEFAULT_FILE)
+    git "commit -a -m %s" % escape("removed a file")
+    git 'push'
+    _, commit_mails = get_mails_of_last_push
+
+    assert_mail('test_no_diff_remove', commit_mails.shift)
+  end
+end
+
+class GitCommitMailerTagTest < Test::Unit::TestCase
+  include GitCommitMailerTestUtils
+  def prepare_to_tag
+    create_default_mailer
+    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "sample commit")
+    git "push"
+  end
+
+  def test_create_annotated_tag
+    prepare_to_tag
+
+    git "tag -a -m \'sample tag\' v0.0.1"
+    git "push --tags"
+
+    push_mail, commit_mails = get_mails_of_last_push
+
+    assert_mail('test_create_annotated_tag.push_mail', push_mail)
+  end
+
+  def test_update_annotated_tag
+    prepare_to_tag
+
+    git "tag -a -m \'sample tag\' v0.0.1"
+    git "push --tags"
+    git "tag -a -f -m \'sample tag\' v0.0.1"
+    git "push --tags"
+
+    push_mail, commit_mails = get_mails_of_last_push
+
+    assert_not_nil(push_mail)
+    assert_mail('test_update_annotated_tag.push_mail', push_mail)
+  end
+
+  def test_delete_annotated_tag
+    prepare_to_tag
+
+    git "tag -a -m \'sample tag\' v0.0.1"
+    git "push --tags"
+    git "tag -d v0.0.1"
+    git "push --tags origin :refs/tags/v0.0.1"
+
+    push_mail, commit_mails = get_mails_of_last_push
+
+    assert_not_nil(push_mail)
+    assert_mail('test_delete_annotated_tag.push_mail', push_mail)
+  end
+
+  def test_create_unannotated_tag
+    prepare_to_tag
+
+    git "tag v0.0.1"
+    git "push --tags"
+
+    push_mail, commit_mails = get_mails_of_last_push
+
+    assert_mail('test_create_unannotated_tag.push_mail', push_mail)
+  end
+
+  def test_update_unannotated_tag
+    prepare_to_tag
+
+    git "tag v0.0.1"
+    git "push --tags"
+    append_line(DEFAULT_FILE, 'a line')
+    git "commit -m 'new commit' -a"
+    git "tag -f v0.0.1"
+    git "push --tags"
+
+    push_mail, commit_mails = get_mails_of_last_push
+
+    assert_mail('test_update_unannotated_tag.push_mail', push_mail)
+  end
+
+  def test_delete_unannotated_tag
+    prepare_to_tag
+
+    git "tag v0.0.1"
+    git "push --tags"
+    git "tag -d v0.0.1"
+    git "push --tags origin :refs/tags/v0.0.1"
+
+    push_mail, commit_mails = get_mails_of_last_push
+
+    assert_not_nil(push_mail)
+    assert_mail('test_delete_unannotated_tag.push_mail', push_mail)
+  end
+
+  def test_short_log
+    prepare_to_tag
+
+    append_line(DEFAULT_FILE, 'a line')
+    git "commit -m 'release v0.0.1' -a"
+    git "push"
+    git "tag -a -m \'sample tag (v0.0.1)\' v0.0.1"
+    git "push --tags"
+    append_line(DEFAULT_FILE, 'a line')
+    git "commit -m 'last tweaks' -a"
+    append_line(DEFAULT_FILE, 'a line')
+    git "commit -m 'release v0.0.2' -a"
+    git "push"
+    git "tag -a -f -m \'sample tag (v0.0.2)\' v0.0.2"
+    git "push --tags"
+
+    push_mail, commit_mails = get_mails_of_last_push
+
+    assert_not_nil(push_mail)
+    assert_mail('test_short_log.push_mail', push_mail)
+  end
+end
+
+class GitCommitMailerMergeTest < Test::Unit::TestCase
+  include GitCommitMailerTestUtils
   def test_push_with_merge
     create_default_mailer
     sample_branch = 'sample_branch'
@@ -646,80 +761,6 @@ EOF
     assert_mail('test_push_with_merge.1', master_commit_mails[0])
     assert_mail('test_push_with_merge.2', master_commit_mails[1])
     assert_mail('test_push_with_merge.3', master_commit_mails[2])
-  end
-
-  def test_diffs_with_trailing_spaces
-    create_default_mailer
-
-    file_content = <<EOF
-This is a sample text file.
-This file will be modified to make commits.
-    
-In the above line, I intentionally left some spaces.
-EOF
-    git_commit_new_file(DEFAULT_FILE, file_content, "added a sample file")
-    git 'push'
-
-    edit_file(DEFAULT_FILE) do |lines|
-      lines.collect do |line|
-        line.rstrip + "\n"
-      end
-    end
-    git 'commit -a -m "removed trailing spaces"'
-
-    git 'push'
-
-    push_mail, commit_mails = get_mails_of_last_push
-
-    assert_mail('test_diffs_with_trailing_spaces', commit_mails[0])
-  end
-
-  def test_diffs_with_multiple_hunks
-    create_default_mailer
-
-    file_content = <<EOF
-This is a sample text file.
-This file will be modified to make commits.
-
-In the above line, I intentionally left some spaces.
-some filler text to make two hunks with diff
-some filler text to make two hunks with diff
-some filler text to make two hunks with diff
-some filler text to make two hunks with diff
-some filler text to make two hunks with diff
-some filler text to make two hunks with diff
-some filler text to make two hunks with diff
-EOF
-    git_commit_new_file(DEFAULT_FILE, file_content, "added a sample file")
-    git 'push'
-
-    prepend_line(DEFAULT_FILE, 'a prepended line')
-    append_line(DEFAULT_FILE, 'an appended line')
-    git 'commit -a -m "edited to happen multiple hunks"'
-
-    git 'push'
-
-    push_mail, commit_mails = get_mails_of_last_push
-
-    assert_mail('test_diffs_with_multiple_hunks', commit_mails[0])
-  end
-
-  def test_diffs_with_multiple_files
-    create_default_mailer
-
-    2.times do |i|
-      file_name = "file_#{i.to_s}"
-      file_content = "text in #{file_name}"
-      commit_log = "added #{file_name}"
-      create_file(file_name, file_content)
-      git "add #{file_name}"
-    end
-    git "commit -a -m 'added multiple files'"
-    git 'push'
-
-    push_mail, commit_mails = get_mails_of_last_push
-
-    assert_mail('test_diffs_with_multiple_files', commit_mails[0])
   end
 
   def test_nested_merges
@@ -780,8 +821,11 @@ EOF
     assert_mail('test_nested_merges.4', commit_mails[3])
     assert_mail('test_nested_merges.5', commit_mails[4])
   end
+end
 
-  def test_non_ascii_file_name
+class GitCommitMaierNonAsciiTest < Test::Unit::TestCase
+  include GitCommitMailerTestUtils
+  def test_file_name
     create_default_mailer
     git_commit_new_file("日本語.txt", "日本語の文章です。", "added a file with japanese file name")
     git "push"
@@ -791,7 +835,7 @@ EOF
     assert_mail('test_non_ascii_file_name', commit_mails[0])
   end
 
-  def test_non_ascii_commit_subject
+  def test_commit_subject
     create_default_mailer
     git_commit_new_file("日本語.txt", "日本語の文章です。", "ファイルを追加")
     git "push"
@@ -801,7 +845,7 @@ EOF
     assert_mail('test_non_ascii_commit_subject', commit_mails[0])
   end
 
-  def test_move_non_ascii_file
+  def test_move_file
     create_default_mailer
     git_commit_new_file("日本語.txt", "日本語の文章です。", "added a file with japanese file name")
     git "push"
@@ -824,111 +868,88 @@ EOF
 
     assert_mail('test_long_word_in_commit_subject', commit_mails[0])
   end
+end
 
-  def prepare_to_tag
-    create_default_mailer
-    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "sample commit")
+class GitCommitMailerOptionTest < Test::Unit::TestCase
+  include GitCommitMailerTestUtils
+  def test_rss
+    rss_file_path = "#{@test_directory}sample-repo.rss"
+    create_mailer("--repository=#{@origin_repository_directory}",
+                  "--name=sample-repo",
+                  "--from=from@example.com",
+                  "--error-to=error@example.com",
+                  "--repository-uri=http://git.example.com/sample-repo.git",
+                  "--rss-uri=file://#{@origin_repository_directory}",
+                  "--rss-path=#{rss_file_path}",
+                  "to@example")
+
+    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
+    git 'push'
+
+    each_reference_change do |old_revision, new_revision, reference|
+      process_reference_change(old_revision, new_revision, reference)
+    end
+
+    assert_rss('test_rss.rss', rss_file_path)
+  end
+
+
+  def test_utf7
+    create_mailer("--repository=#{@origin_repository_directory}",
+                  "--name=sample-repo",
+                  "--from=from@example.com",
+                  "--error-to=error@example.com",
+                  DATE_OPTION,
+                  "--utf7",
+                  "to@example")
+
+    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
+    git 'push'
+
+    push_mail, commit_mails = get_mails_of_last_push
+
+    assert_mail('test_utf7.push_mail', push_mail)
+    assert_mail('test_utf7', commit_mails.first)
+  end
+
+  def test_show_path
+    create_mailer("--repository=#{@origin_repository_directory}",
+                  "--name=sample-repo",
+                  "--from=from@example.com",
+                  "--error-to=error@example.com",
+                  DATE_OPTION,
+                  "--show-path",
+                  "to@example")
+
+    create_directory("mm")
+    create_file("mm/memory.c", "/* memory related code goes here */")
+    create_directory("drivers")
+    create_file("drivers/PLACEHOLDER", "just to make git recognize drivers directory")
+    git "commit -m %s" % escape("added mm and drivers directory")
     git "push"
-  end
 
-  def test_create_annotated_tag
-    prepare_to_tag
-
-    git "tag -a -m \'sample tag\' v0.0.1"
-    git "push --tags"
-
-    push_mail, commit_mails = get_mails_of_last_push
-
-    assert_mail('test_create_annotated_tag.push_mail', push_mail)
-  end
-
-  def test_update_annotated_tag
-    prepare_to_tag
-
-    git "tag -a -m \'sample tag\' v0.0.1"
-    git "push --tags"
-    git "tag -a -f -m \'sample tag\' v0.0.1"
-    git "push --tags"
-
-    push_mail, commit_mails = get_mails_of_last_push
-
-    assert_not_nil(push_mail)
-    assert_mail('test_update_annotated_tag.push_mail', push_mail)
-  end
-
-  def test_short_log
-    prepare_to_tag
-
-    append_line(DEFAULT_FILE, 'a line')
-    git "commit -m 'release v0.0.1' -a"
+    append_line("mm/memory.c", "void *malloc(size_t size);")
+    git "commit -a -m %s" % escape("added malloc declaration")
     git "push"
-    git "tag -a -m \'sample tag (v0.0.1)\' v0.0.1"
-    git "push --tags"
-    append_line(DEFAULT_FILE, 'a line')
-    git "commit -m 'last tweaks' -a"
-    append_line(DEFAULT_FILE, 'a line')
-    git "commit -m 'release v0.0.2' -a"
-    git "push"
-    git "tag -a -f -m \'sample tag (v0.0.2)\' v0.0.2"
-    git "push --tags"
 
-    push_mail, commit_mails = get_mails_of_last_push
-
-    assert_not_nil(push_mail)
-    assert_mail('test_short_log.push_mail', push_mail)
+    _, commit_mails = get_mails_of_last_push
+    assert_mail('test_show_path', commit_mails.first)
   end
 
-  def test_delete_annotated_tag
-    prepare_to_tag
+  def test_max_size
+    create_mailer("--repository=#{@origin_repository_directory}",
+                  "--name=sample-repo",
+                  "--from=from@example.com",
+                  "--error-to=error@example.com",
+                  DATE_OPTION,
+                  "--max-size=100B",
+                  "to@example")
 
-    git "tag -a -m \'sample tag\' v0.0.1"
-    git "push --tags"
-    git "tag -d v0.0.1"
-    git "push --tags origin :refs/tags/v0.0.1"
+    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
+    git 'push'
 
-    push_mail, commit_mails = get_mails_of_last_push
+    push_mail, _ = get_mails_of_last_push
 
-    assert_not_nil(push_mail)
-    assert_mail('test_delete_annotated_tag.push_mail', push_mail)
-  end
-
-  def test_create_unannotated_tag
-    prepare_to_tag
-
-    git "tag v0.0.1"
-    git "push --tags"
-
-    push_mail, commit_mails = get_mails_of_last_push
-
-    assert_mail('test_create_unannotated_tag.push_mail', push_mail)
-  end
-
-  def test_update_unannotated_tag
-    prepare_to_tag
-
-    git "tag v0.0.1"
-    git "push --tags"
-    append_line(DEFAULT_FILE, 'a line')
-    git "commit -m 'new commit' -a"
-    git "tag -f v0.0.1"
-    git "push --tags"
-
-    push_mail, commit_mails = get_mails_of_last_push
-
-    assert_mail('test_update_unannotated_tag.push_mail', push_mail)
-  end
-
-  def test_delete_unannotated_tag
-    prepare_to_tag
-
-    git "tag v0.0.1"
-    git "push --tags"
-    git "tag -d v0.0.1"
-    git "push --tags origin :refs/tags/v0.0.1"
-
-    push_mail, commit_mails = get_mails_of_last_push
-
-    assert_not_nil(push_mail)
-    assert_mail('test_delete_unannotated_tag.push_mail', push_mail)
+    assert_mail('test_max_size.push_mail', push_mail)
   end
 end
