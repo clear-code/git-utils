@@ -539,20 +539,6 @@ END_OF_ERROR_MESSAGE
     assert_mail('test_copy', commit_mails.shift)
   end
 
-  def test_remove
-    create_default_mailer
-
-    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
-    git 'push'
-
-    remove_file(DEFAULT_FILE)
-    git "commit -a -m %s" % Shellwords.escape("removed a file")
-    git 'push'
-    _, commit_mails = last_mails
-
-    assert_mail('test_remove', commit_mails.shift)
-  end
-
   def test_copy_with_modification
     create_default_mailer
 
@@ -570,6 +556,20 @@ END_OF_ERROR_MESSAGE
     _, commit_mails = last_mails
 
     assert_mail('test_copy_with_modification', commit_mails.shift)
+  end
+
+  def test_remove
+    create_default_mailer
+
+    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
+    git 'push'
+
+    remove_file(DEFAULT_FILE)
+    git "commit -a -m %s" % Shellwords.escape("removed a file")
+    git 'push'
+    _, commit_mails = last_mails
+
+    assert_mail('test_remove', commit_mails.shift)
   end
 
   def test_max_size
