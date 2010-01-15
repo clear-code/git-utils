@@ -536,7 +536,7 @@ END_OF_ERROR_MESSAGE
     git 'push'
     append_line(DEFAULT_FILE, "hi.")
 
-    copy_file(DEFAULT_FILE, "renamed.txt")
+    copy_file(DEFAULT_FILE, "copied.txt")
     git "commit -a -m %s" % escape("copied a file")
 
     git 'push'
