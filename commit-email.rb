@@ -160,8 +160,11 @@ class GitCommitMailer
     class DiffPerFile
       def initialize(mailer, lines, revision)
         @mailer = mailer
-        @metadata = []
         @body = ''
+
+        @type = :modified
+        @is_binary = false
+        @is_mode_changed = false
 
         parse_header(lines, revision)
         parse_extended_headers(lines)
@@ -218,44 +221,69 @@ class GitCommitMailer
         #@old_revision = @mailer.parent_commit(revision)
       end
 
-      def parse_extended_headers(lines)
-        @type = :modified
-        @is_binary = false
-        @is_mode_changed = false
-
-        line = lines.shift
-        while line != nil and not line =~ /\A@@/
-          case line
+      def parse_ordinary_change(line)
+        case line
           when /\A--- (a\/.*|"a\/.*"|\/dev\/null)\z/
             @minus_file = CommitInfo.unescape_file_path($1)
             @type = :added if $1 == '/dev/null'
           when /\A\+\+\+ (b\/.*|"b\/.*"|\/dev\/null)\z/
             @plus_file = CommitInfo.unescape_file_path($1)
             @type = :deleted if $1 == '/dev/null'
+          when /\Aindex ([0-9a-f]{7})\.\.([0-9a-f]{7})/
+            @old_blob = $1
+            @new_blob = $2
+          else
+            return false
+        end
+        true
+      end
+
+      def parse_add_and_remove(line)
+        case line
           when /\Anew file mode (.*)\z/
             @type = :added
             @new_file_mode = $1
           when /\Adeleted file mode (.*)\z/
             @type = :deleted
             @deleted_file_mode = $1
-          when /\ABinary files (.*) and (.*) differ\z/
-            @is_binary = true
-            if $1 == '/dev/null'
-              @type = :added
-            elsif $2 == '/dev/null'
-              @type = :deleted
-            else
-              @type = :modified
-            end
-          when /\Aindex ([0-9a-f]{7})\.\.([0-9a-f]{7})/
-            @old_blob = $1
-            @new_blob = $2
+          else
+            return false
+        end
+        true
+      end
+
+      def parse_copy_and_rename(line)
+        case line
           when /\Arename (from|to) (.*)\z/
             @type = :renamed
           when /\Acopy (from|to) (.*)\z/
             @type = :copied
           when /\Asimilarity index (.*)%\z/
             @similarity_index = $1.to_i
+          else
+            return false
+        end
+        true
+      end
+
+      def parse_binary_file_change(line)
+        if line =~ /\ABinary files (.*) and (.*) differ\z/
+          @is_binary = true
+          if $1 == '/dev/null'
+            @type = :added
+          elsif $2 == '/dev/null'
+            @type = :deleted
+          else
+            @type = :modified
+          end
+          true
+        else
+          false
+        end
+      end
+
+      def parse_mode_change(line)
+        case line
           when /\Aold mode (.*)\z/
             @old_mode = $1
             @is_mode_changed = true
@@ -263,8 +291,23 @@ class GitCommitMailer
             @new_mode = $1
             @is_mode_changed = true
           else
-            puts "needs to parse: " + line
-            @metadata << line #need to parse
+            return false
+        end
+        true
+      end
+
+      def parse_extended_headers(lines)
+        line = lines.shift
+        while line != nil and not line =~ /\A@@/
+          is_parsed = false
+          is_parsed ||= parse_ordinary_change(line)
+          is_parsed ||= parse_add_and_remove(line)
+          is_parsed ||= parse_copy_and_rename(line)
+          is_parsed ||= parse_binary_file_change(line)
+          is_parsed ||= parse_mode_change(line)
+          is_parsed ||= parse_exended_headers(line)
+          unless is_parsed
+            raise "unexpected extended line header: " + line
           end
 
           line = lines.shift
