@@ -282,7 +282,7 @@ END_OF_ERROR_MESSAGE
     @push_mail, @commit_mails = @mailer.process_reference_change(*args)
   end
 
-  def last_mails
+  def get_mails_of_last_push
     push_mail, commit_mails = nil, []
     each_reference_change do |old_revision, new_revision, reference|
       push_mail, commit_mails = process_reference_change(old_revision, new_revision, reference)
@@ -344,7 +344,7 @@ END_OF_ERROR_MESSAGE
 
     git 'push origin master'
 
-    push_mail, commit_mails = last_mails
+    push_mail, commit_mails = get_mails_of_last_push
 
     assert_mail('test_single_commit.push_mail', push_mail)
     assert_mail('test_single_commit', commit_mails[0])
@@ -384,7 +384,7 @@ END_OF_ERROR_MESSAGE
     git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
     git 'push'
 
-    push_mail, commit_mails = last_mails
+    push_mail, commit_mails = get_mails_of_last_push
 
     assert_mail('test_utf7.push_mail', push_mail)
     assert_mail('test_utf7', commit_mails.first)
@@ -410,7 +410,7 @@ END_OF_ERROR_MESSAGE
     git "commit -a -m %s" % escape("added malloc declaration")
     git "push"
 
-    _, commit_mails = last_mails
+    _, commit_mails = get_mails_of_last_push
     assert_mail('test_show_path', commit_mails.first)
   end
 
@@ -433,7 +433,7 @@ END_OF_ERROR_MESSAGE
     git "commit -a -m %s" % escape("appended a line")
 
     git 'push'
-    _, commit_mails = last_mails
+    _, commit_mails = get_mails_of_last_push
 
     assert_mail('test_no_diff.1', commit_mails.shift)
     assert_mail('test_no_diff.2', commit_mails.shift)
@@ -449,7 +449,7 @@ END_OF_ERROR_MESSAGE
     git "commit -a -m %s" % escape("renamed a file")
 
     git 'push'
-    _, commit_mails = last_mails
+    _, commit_mails = get_mails_of_last_push
     assert_mail('test_no_diff_rename', commit_mails.shift)
   end
 
@@ -464,7 +464,7 @@ END_OF_ERROR_MESSAGE
     git "commit -a -m %s" % escape("copied a file")
 
     git 'push'
-    _, commit_mails = last_mails
+    _, commit_mails = get_mails_of_last_push
     assert_mail('test_no_diff_copy', commit_mails.shift)
   end
 
@@ -477,7 +477,7 @@ END_OF_ERROR_MESSAGE
     remove_file(DEFAULT_FILE)
     git "commit -a -m %s" % escape("removed a file")
     git 'push'
-    _, commit_mails = last_mails
+    _, commit_mails = get_mails_of_last_push
 
     assert_mail('test_no_diff_remove', commit_mails.shift)
   end
@@ -492,7 +492,7 @@ END_OF_ERROR_MESSAGE
     git "commit -a -m %s" % escape("changed a file mode")
 
     git 'push'
-    _, commit_mails = last_mails
+    _, commit_mails = get_mails_of_last_push
 
     assert_mail('test_file_mode', commit_mails.shift)
   end
@@ -507,7 +507,7 @@ END_OF_ERROR_MESSAGE
     git "commit -a -m %s" % escape("renamed a file")
 
     git 'push'
-    _, commit_mails = last_mails
+    _, commit_mails = get_mails_of_last_push
 
     assert_mail('test_rename', commit_mails.shift)
   end
@@ -524,7 +524,7 @@ END_OF_ERROR_MESSAGE
     git "commit -a -m %s" % escape("renamed a file")
 
     git 'push'
-    _, commit_mails = last_mails
+    _, commit_mails = get_mails_of_last_push
 
     assert_mail('test_rename_with_modification', commit_mails.shift)
   end
@@ -540,7 +540,7 @@ END_OF_ERROR_MESSAGE
     git "commit -a -m %s" % escape("copied a file")
 
     git 'push'
-    _, commit_mails = last_mails
+    _, commit_mails = get_mails_of_last_push
 
     assert_mail('test_copy', commit_mails.shift)
   end
@@ -558,7 +558,7 @@ END_OF_ERROR_MESSAGE
     git "commit -a -m %s" % escape("copied a file")
 
     git 'push'
-    _, commit_mails = last_mails
+    _, commit_mails = get_mails_of_last_push
 
     assert_mail('test_copy_with_modification', commit_mails.shift)
   end
@@ -572,7 +572,7 @@ END_OF_ERROR_MESSAGE
     remove_file(DEFAULT_FILE)
     git "commit -a -m %s" % escape("removed a file")
     git 'push'
-    _, commit_mails = last_mails
+    _, commit_mails = get_mails_of_last_push
 
     assert_mail('test_remove', commit_mails.shift)
   end
@@ -589,7 +589,7 @@ END_OF_ERROR_MESSAGE
     git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
     git 'push'
 
-    push_mail, _ = last_mails
+    push_mail, _ = get_mails_of_last_push
 
     assert_mail('test_max_size.push_mail', push_mail)
   end
@@ -669,7 +669,7 @@ EOF
 
     git 'push'
 
-    push_mail, commit_mails = last_mails
+    push_mail, commit_mails = get_mails_of_last_push
 
     assert_mail('test_diffs_with_trailing_spaces', commit_mails[0])
   end
@@ -699,7 +699,7 @@ EOF
 
     git 'push'
 
-    push_mail, commit_mails = last_mails
+    push_mail, commit_mails = get_mails_of_last_push
 
     assert_mail('test_diffs_with_multiple_hunks', commit_mails[0])
   end
@@ -717,7 +717,7 @@ EOF
     git "commit -a -m 'added multiple files'"
     git 'push origin master'
 
-    push_mail, commit_mails = last_mails
+    push_mail, commit_mails = get_mails_of_last_push
 
     assert_mail('test_diffs_with_multiple_files', commit_mails[0])
   end
@@ -771,7 +771,7 @@ EOF
     git "merge #{first_branch}"
     git "push"
 
-    push_mail, commit_mails = last_mails
+    push_mail, commit_mails = get_mails_of_last_push
 
     assert_mail('test_nested_merges.push_mail', push_mail)
     assert_mail('test_nested_merges.1', commit_mails[0])
@@ -786,7 +786,7 @@ EOF
     git_commit_new_file("日本語.txt", "日本語の文章です。", "added a file with japanese file name")
     git "push origin master"
 
-    push_mail, commit_mails = last_mails
+    push_mail, commit_mails = get_mails_of_last_push
 
     assert_mail('test_non_ascii_file_name', commit_mails[0])
   end
@@ -796,7 +796,7 @@ EOF
     git_commit_new_file("日本語.txt", "日本語の文章です。", "ファイルを追加")
     git "push"
 
-    push_mail, commit_mails = last_mails
+    push_mail, commit_mails = get_mails_of_last_push
 
     assert_mail('test_non_ascii_commit_subject', commit_mails[0])
   end
@@ -809,7 +809,7 @@ EOF
     git "commit -a -m \"日本語.txt -> 日本語です.txt\""
     git "push"
 
-    push_mail, commit_mails = last_mails
+    push_mail, commit_mails = get_mails_of_last_push
 
     assert_mail('test_move_non_ascii_file', commit_mails[0])
   end
@@ -820,7 +820,7 @@ EOF
 
     git 'push origin master'
 
-    push_mail, commit_mails = last_mails
+    push_mail, commit_mails = get_mails_of_last_push
 
     assert_mail('test_long_word_in_commit_subject', commit_mails[0])
   end
@@ -837,7 +837,7 @@ EOF
     git "tag -a -m \'sample tag\' v0.0.1"
     git "push --tags"
 
-    push_mail, commit_mails = last_mails
+    push_mail, commit_mails = get_mails_of_last_push
 
     assert_mail('test_create_annotated_tag.push_mail', push_mail)
   end
@@ -850,7 +850,7 @@ EOF
     git "tag -a -f -m \'sample tag\' v0.0.1"
     git "push --tags"
 
-    push_mail, commit_mails = last_mails
+    push_mail, commit_mails = get_mails_of_last_push
 
     assert_not_nil(push_mail)
     assert_mail('test_update_annotated_tag.push_mail', push_mail)
@@ -872,7 +872,7 @@ EOF
     git "tag -a -f -m \'sample tag (v0.0.2)\' v0.0.2"
     git "push --tags"
 
-    push_mail, commit_mails = last_mails
+    push_mail, commit_mails = get_mails_of_last_push
 
     assert_not_nil(push_mail)
     assert_mail('test_short_log.push_mail', push_mail)
@@ -886,7 +886,7 @@ EOF
     git "tag -d v0.0.1"
     git "push --tags origin :refs/tags/v0.0.1"
 
-    push_mail, commit_mails = last_mails
+    push_mail, commit_mails = get_mails_of_last_push
 
     assert_not_nil(push_mail)
     assert_mail('test_delete_annotated_tag.push_mail', push_mail)
@@ -898,7 +898,7 @@ EOF
     git "tag v0.0.1"
     git "push --tags"
 
-    push_mail, commit_mails = last_mails
+    push_mail, commit_mails = get_mails_of_last_push
 
     assert_mail('test_create_unannotated_tag.push_mail', push_mail)
   end
@@ -913,7 +913,7 @@ EOF
     git "tag -f v0.0.1"
     git "push --tags"
 
-    push_mail, commit_mails = last_mails
+    push_mail, commit_mails = get_mails_of_last_push
 
     assert_mail('test_update_unannotated_tag.push_mail', push_mail)
   end
@@ -926,7 +926,7 @@ EOF
     git "tag -d v0.0.1"
     git "push --tags origin :refs/tags/v0.0.1"
 
-    push_mail, commit_mails = last_mails
+    push_mail, commit_mails = get_mails_of_last_push
 
     assert_not_nil(push_mail)
     assert_mail('test_delete_unannotated_tag.push_mail', push_mail)
