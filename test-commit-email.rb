@@ -204,11 +204,13 @@ END_OF_ERROR_MESSAGE
   def move_file(old_file_name, new_file_name)
     FileUtils.mv(@working_tree_directory + old_file_name,
                  @working_tree_directory + new_file_name)
+    git "add %s" % escape(new_file_name)
   end
 
   def copy_file(file_name, copied_file_name)
     FileUtils.cp(@working_tree_directory + file_name,
                  @working_tree_directory + copied_file_name)
+    git "add %s" % escape(copied_file_name)
   end
 
   def remove_file(file_name)
@@ -223,6 +225,7 @@ END_OF_ERROR_MESSAGE
     File.open(expand_path(file_name), 'w') do |file|
       file.puts(content)
     end
+    git "add %s" % escape(file_name)
   end
 
   def create_directory(directory_name)
@@ -402,7 +405,6 @@ END_OF_ERROR_MESSAGE
     create_file("mm/memory.c", "/* memory related code goes here */")
     create_directory("drivers")
     create_file("drivers/PLACEHOLDER", "just to make git recognize drivers directory")
-    git "add ."
     git "commit -m %s" % escape("added mm and drivers directory")
     git "push"
 
@@ -446,7 +448,6 @@ END_OF_ERROR_MESSAGE
     git 'push'
 
     move_file(DEFAULT_FILE, "renamed.txt")
-    git "add ."
     git "commit -a -m %s" % escape("renamed a file")
 
     git 'push'
@@ -462,7 +463,6 @@ END_OF_ERROR_MESSAGE
 
     append_line(DEFAULT_FILE, "hi.")
     copy_file(DEFAULT_FILE, "copied.txt")
-    git "add ."
     git "commit -a -m %s" % escape("copied a file")
 
     git 'push'
@@ -506,7 +506,6 @@ END_OF_ERROR_MESSAGE
     git 'push'
 
     move_file(DEFAULT_FILE, "renamed.txt")
-    git "add ."
     git "commit -a -m %s" % escape("renamed a file")
 
     git 'push'
@@ -524,7 +523,6 @@ END_OF_ERROR_MESSAGE
     renamed_file_name = "renamed.txt"
     move_file(DEFAULT_FILE, renamed_file_name)
     append_line(renamed_file_name, "Hello.")
-    git "add ."
     git "commit -a -m %s" % escape("renamed a file")
 
     git 'push'
@@ -541,7 +539,6 @@ END_OF_ERROR_MESSAGE
     append_line(DEFAULT_FILE, "hi.")
 
     copy_file(DEFAULT_FILE, "renamed.txt")
-    git "add ."
     git "commit -a -m %s" % escape("copied a file")
 
     git 'push'
@@ -560,7 +557,6 @@ END_OF_ERROR_MESSAGE
     copied_file_name = "copied.txt"
     copy_file(DEFAULT_FILE, copied_file_name)
     append_line(copied_file_name, "Hello.")
-    git "add ."
     git "commit -a -m %s" % escape("copied a file")
 
     git 'push'
@@ -812,7 +808,6 @@ EOF
     git_commit_new_file("日本語.txt", "日本語の文章です。", "added a file with japanese file name")
     git "push"
     move_file("日本語.txt", "日本語です.txt")
-    git "add ."
     git "commit -a -m \"日本語.txt -> 日本語です.txt\""
     git "push"
 
