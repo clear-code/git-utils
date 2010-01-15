@@ -186,6 +186,17 @@ END_OF_ERROR_MESSAGE
     restore_environment_variables
   end
 
+  def escape(string)
+    # To suppress warnings from Shellwords::escape.
+    if string.respond_to? :force_encoding
+      bytes = string.dup.force_encoding("ascii-8bit")
+    else
+      bytes = string
+    end
+
+    Shellwords.escape(bytes)
+  end
+
   def expand_path(file_name)
     @working_tree_directory + file_name
   end
@@ -392,11 +403,11 @@ END_OF_ERROR_MESSAGE
     create_directory("drivers")
     create_file("drivers/PLACEHOLDER", "just to make git recognize drivers directory")
     git "add ."
-    git "commit -m %s" % Shellwords.escape("added mm and drivers directory")
+    git "commit -m %s" % escape("added mm and drivers directory")
     git "push"
 
     append_line("mm/memory.c", "void *malloc(size_t size);")
-    git "commit -a -m %s" % Shellwords.escape("added malloc declaration")
+    git "commit -a -m %s" % escape("added malloc declaration")
     git "push"
 
     _, commit_mails = last_mails
@@ -419,7 +430,7 @@ END_OF_ERROR_MESSAGE
     git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
 
     append_line(DEFAULT_FILE, "an appended line.")
-    git "commit -a -m %s" % Shellwords.escape("appended a line")
+    git "commit -a -m %s" % escape("appended a line")
 
     git 'push'
     _, commit_mails = last_mails
@@ -436,7 +447,7 @@ END_OF_ERROR_MESSAGE
 
     move_file(DEFAULT_FILE, "renamed.txt")
     git "add ."
-    git "commit -a -m %s" % Shellwords.escape("renamed a file")
+    git "commit -a -m %s" % escape("renamed a file")
 
     git 'push'
     _, commit_mails = last_mails
@@ -452,7 +463,7 @@ END_OF_ERROR_MESSAGE
     append_line(DEFAULT_FILE, "hi.")
     copy_file(DEFAULT_FILE, "copied.txt")
     git "add ."
-    git "commit -a -m %s" % Shellwords.escape("copied a file")
+    git "commit -a -m %s" % escape("copied a file")
 
     git 'push'
     _, commit_mails = last_mails
@@ -466,7 +477,7 @@ END_OF_ERROR_MESSAGE
     git 'push'
 
     remove_file(DEFAULT_FILE)
-    git "commit -a -m %s" % Shellwords.escape("removed a file")
+    git "commit -a -m %s" % escape("removed a file")
     git 'push'
     _, commit_mails = last_mails
 
@@ -480,7 +491,7 @@ END_OF_ERROR_MESSAGE
     git 'push'
 
     change_file_mode(0777, DEFAULT_FILE)
-    git "commit -a -m %s" % Shellwords.escape("changed a file mode")
+    git "commit -a -m %s" % escape("changed a file mode")
 
     git 'push'
     _, commit_mails = last_mails
@@ -496,7 +507,7 @@ END_OF_ERROR_MESSAGE
 
     move_file(DEFAULT_FILE, "renamed.txt")
     git "add ."
-    git "commit -a -m %s" % Shellwords.escape("renamed a file")
+    git "commit -a -m %s" % escape("renamed a file")
 
     git 'push'
     _, commit_mails = last_mails
@@ -514,7 +525,7 @@ END_OF_ERROR_MESSAGE
     move_file(DEFAULT_FILE, renamed_file_name)
     append_line(renamed_file_name, "Hello.")
     git "add ."
-    git "commit -a -m %s" % Shellwords.escape("renamed a file")
+    git "commit -a -m %s" % escape("renamed a file")
 
     git 'push'
     _, commit_mails = last_mails
@@ -531,7 +542,7 @@ END_OF_ERROR_MESSAGE
 
     copy_file(DEFAULT_FILE, "renamed.txt")
     git "add ."
-    git "commit -a -m %s" % Shellwords.escape("copied a file")
+    git "commit -a -m %s" % escape("copied a file")
 
     git 'push'
     _, commit_mails = last_mails
@@ -550,7 +561,7 @@ END_OF_ERROR_MESSAGE
     copy_file(DEFAULT_FILE, copied_file_name)
     append_line(copied_file_name, "Hello.")
     git "add ."
-    git "commit -a -m %s" % Shellwords.escape("copied a file")
+    git "commit -a -m %s" % escape("copied a file")
 
     git 'push'
     _, commit_mails = last_mails
@@ -565,7 +576,7 @@ END_OF_ERROR_MESSAGE
     git 'push'
 
     remove_file(DEFAULT_FILE)
-    git "commit -a -m %s" % Shellwords.escape("removed a file")
+    git "commit -a -m %s" % escape("removed a file")
     git 'push'
     _, commit_mails = last_mails
 
