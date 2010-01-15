@@ -454,11 +454,10 @@ class GitCommitMailer
       end
     end
 
-    attr_reader :revision
-    attr_reader :author, :date, :subject, :log, :commit_id
-    attr_reader :author_email, :diffs, :added_files, :copied_files
-    attr_reader :deleted_files, :updated_files, :renamed_files
-    attr_accessor :reference, :merge_status
+    attr_reader :revision, :reference
+    attr_reader :subject, :author, :author_email, :date, :summary
+    attr_accessor :merge_status
+    attr_writer :reference
     def initialize(mailer, reference, revision)
       @mailer = mailer
       @reference = reference
@@ -470,17 +469,85 @@ class GitCommitMailer
       @updated_files = []
       @renamed_files = []
 
-      initialize_by_getting_records
+      set_records
       parse_diff
       parse_file_status
 
       @merge_status = []
     end
 
+    def first_parent
+      return nil if @parent_revisions.length.zero?
+
+      @parent_revisions[0]
+    end
+
+    def other_parents
+      return [] if @parent_revisions.length.zero?
+
+      @parent_revisions[1..-1]
+    end
+
+    def merge?
+      @parent_revisions.length >= 2
+    end
+
+    def headers
+      [ "X-Git-Author: #{@author}",
+        "X-Git-Revision: #{@revision}",
+        # "X-Git-Repository: #{path}",
+        "X-Git-Repository: XXX",
+        "X-Git-Commit-Id: #{@revision}" ]
+    end
+
+    def format_mail_subject
+      affected_path_info = ""
+      if @mailer.show_path?
+        _affected_paths = affected_paths
+        unless _affected_paths.empty?
+          affected_path_info = " (#{_affected_paths.join(',')})"
+        end
+      end
+
+      "[#{short_reference}#{affected_path_info}] " + subject
+    end
+    alias :rss_title :format_mail_subject
+
+    def format_mail_body
+      body = ""
+      body << "#{author}\t#{@mailer.format_time(date)}\n"
+      body << "\n"
+      body << "  New Revision: #{revision}\n"
+      body << "\n"
+      unless @merge_status.length.zero?
+        body << "  #{@merge_status.join("\n  ")}\n\n"
+      end
+      body << "  Log:\n"
+      @summary.rstrip.each_line do |line|
+        body << "    #{line}"
+      end
+      body << "\n\n"
+      body << format_changed_files
+
+      body << "\n"
+      formatted_diff = format_diffs.join("\n")
+      body << formatted_diff
+      body << "\n" unless formatted_diff.empty?
+      body
+    end
+    alias rss_content format_mail_body
+
+    def format_diffs
+      @diffs.collect do |diff|
+        diff.format_diff
+      end
+    end
+
     def short_revision
       GitCommitMailer.short_revision(@revision)
     end
 
+    private
     def sub_paths(prefix)
       prefixes = prefix.split(/\/+/)
       results = []
@@ -493,16 +560,22 @@ class GitCommitMailer
       results
     end
 
-    def initialize_by_getting_records
-      author, author_email, date, subject, commit_id, parent_revisions =
-        get_records(["%an", "%an <%ae>", "%at", "%s", "%H", "%P"])
+    def affected_paths
+      paths = []
+      sub_paths = sub_paths('')
+      paths.concat(sub_paths)
+      paths.uniq
+    end
+
+    def set_records
+      author, author_email, date, subject, parent_revisions =
+        get_records(["%an", "%an <%ae>", "%at", "%s", "%P"])
       @author = author
       @author_email = author_email
       @date = Time.at(date.to_i)
       @subject = subject
-      @commit_id = commit_id
       @parent_revisions = parent_revisions.split
-      @log = git("log -n 1 --pretty=format:%s%n%n%b #{@revision}")
+      @summary = git("log -n 1 --pretty=format:%s%n%n%b #{@revision}")
     end
 
     def parse_diff
@@ -560,50 +633,6 @@ class GitCommitMailer
       end
     end
 
-    def first_parent
-      return nil if @parent_revisions.length.zero?
-
-      @parent_revisions[0]
-    end
-
-    def other_parents
-      return [] if @parent_revisions.length.zero?
-
-      @parent_revisions[1..-1]
-    end
-
-    def merge?
-      @parent_revisions.length >= 2
-    end
-
-    def headers
-      [ "X-Git-Author: #{author}",
-        "X-Git-Revision: #{revision}",
-        # "X-Git-Repository: #{path}",
-        "X-Git-Repository: XXX",
-        "X-Git-Commit-Id: #{commit_id}" ]
-    end
-
-    def affected_paths
-      paths = []
-      sub_paths = sub_paths('')
-      paths.concat(sub_paths)
-      paths.uniq
-    end
-
-    def format_mail_subject
-      affected_path_info = ""
-      if @mailer.show_path?
-        _affected_paths = affected_paths
-        unless _affected_paths.empty?
-          affected_path_info = " (#{_affected_paths.join(',')})"
-        end
-      end
-
-      "[#{short_reference}#{affected_path_info}] " + subject
-    end
-    alias :rss_title :format_mail_subject
-
     def format_files(title, items)
       rv = ""
       unless items.empty?
@@ -621,11 +650,11 @@ class GitCommitMailer
     end
 
     def format_changed_files
-      format_files("Added", added_files) +
-      format_files("Copied", copied_files) +
-      format_files("Removed", deleted_files) +
-      format_files("Modified", updated_files) +
-      format_files("Renamed", renamed_files)
+      format_files("Added", @added_files) +
+      format_files("Copied", @copied_files) +
+      format_files("Removed", @deleted_files) +
+      format_files("Modified", @updated_files) +
+      format_files("Renamed", @renamed_files)
     end
 
     CHANGED_TYPE = {
@@ -635,36 +664,6 @@ class GitCommitMailer
       :copied => "Copied",
       :renamed => "Renamed",
     }
-
-    def format_diffs
-      diffs.collect do |diff|
-        diff.format_diff
-      end
-    end
-
-    def format_mail_body
-      body = ""
-      body << "#{author}\t#{@mailer.format_time(date)}\n"
-      body << "\n"
-      body << "  New Revision: #{revision}\n"
-      body << "\n"
-      unless merge_status.length.zero?
-        body << "  #{merge_status.join("\n  ")}\n\n"
-      end
-      body << "  Log:\n"
-      log.rstrip.each_line do |line|
-        body << "    #{line}"
-      end
-      body << "\n\n"
-      body << format_changed_files
-
-      body << "\n"
-      formatted_diff = format_diffs.join("\n")
-      body << formatted_diff
-      body << "\n" unless formatted_diff.empty?
-      body
-    end
-    alias rss_content format_mail_body
   end
 
   class << self
@@ -1747,7 +1746,7 @@ EOF
         info.format_diffs.each do |description|
           item = maker.items.new_item
           item.title = info.rss_title
-          item.description = info.log
+          item.description = info.summary
           item.content_encoded = "<pre>#{RSS::Utils.html_escape(info.rss_content)}</pre>"
           item.link = "#{@repository_uri}/commit/?id=#{info.revision}"
           item.dc_date = info.date
