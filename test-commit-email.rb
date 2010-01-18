@@ -417,7 +417,7 @@ EOF
   end
 end
 
-class GitCommitMailerFileManipulation < Test::Unit::TestCase
+class GitCommitMailerFileManipulationTest < Test::Unit::TestCase
   include GitCommitMailerTestUtils
   def test_edit
     create_default_mailer
@@ -840,7 +840,7 @@ EOF
   end
 end
 
-class GitCommitMaierNonAsciiTest < Test::Unit::TestCase
+class GitCommitMailerNonAsciiTest < Test::Unit::TestCase
   include GitCommitMailerTestUtils
   def test_file_name
     create_default_mailer
