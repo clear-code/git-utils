@@ -524,6 +524,22 @@ class GitCommitMailerFileManipulation < Test::Unit::TestCase
 
     assert_mail('test_file_mode', commit_mails.shift)
   end
+
+  def test_file_type_change
+    create_default_mailer
+
+    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
+    git 'push'
+
+    FileUtils.rm_r(expand_path(DEFAULT_FILE))
+    FileUtils.ln_s("../../referenced.txt", expand_path(DEFAULT_FILE))
+    git "commit -a -m %s" % escape("changed a file type")
+    git 'push'
+
+    _, commit_mails = get_mails_of_last_push
+
+    assert_mail('test_file_type_change', commit_mails.shift)
+  end
 end
 
 class GitCommitMailerNoDiffTest < Test::Unit::TestCase

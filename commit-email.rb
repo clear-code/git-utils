@@ -468,6 +468,7 @@ class GitCommitMailer
       @deleted_files = []
       @updated_files = []
       @renamed_files = []
+      @type_changed_files = []
 
       set_records
       parse_diff
@@ -606,6 +607,7 @@ class GitCommitMailer
       git("log -n 1 --pretty=format:'' -C --name-status #{@revision}").
       lines.each do |line|
         line.rstrip!
+        next if line.empty?
         if line =~ /\A([^\t]*?)\t([^\t]*?)\z/
           status = $1
           file = CommitInfo.unescape_file_path($2)
@@ -617,6 +619,10 @@ class GitCommitMailer
             @updated_files << file
           when /^D/ # Deleted
             @deleted_files << file
+          when /^T/ # File Type Changed
+            @type_changed_files << file
+          else
+            raise "unsupported status type: #{line.inspect}"
           end
         elsif line =~ /\A([^\t]*?)\t([^\t]*?)\t([^\t]*?)\z/
           status = $1
@@ -628,7 +634,11 @@ class GitCommitMailer
             @renamed_files << [from_file, to_file]
           when /^C/ # Copied
             @copied_files << [from_file, to_file]
+          else
+            raise "unsupported status type: #{line.inspect}"
           end
+        else
+          raise "unsupported status type: #{line.inspect}"
         end
       end
     end
@@ -654,7 +664,8 @@ class GitCommitMailer
       format_files("Copied", @copied_files) +
       format_files("Removed", @deleted_files) +
       format_files("Modified", @updated_files) +
-      format_files("Renamed", @renamed_files)
+      format_files("Renamed", @renamed_files) +
+      format_files("Type Changed", @type_changed_files)
     end
 
     CHANGED_TYPE = {
