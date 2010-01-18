@@ -971,7 +971,9 @@ class GitCommitMailerOptionTest < Test::Unit::TestCase
   end
 end
 
-class GitCommitMailerTrackRemoteTest < Test::Unit::TestCase
+module TrackRemoteTest
+
+module GitCommitMailerTrackRemoteTestUtils
   include GitCommitMailerTestUtils
   alias old_git git
   def git(command, *args)
@@ -1026,16 +1028,42 @@ class GitCommitMailerTrackRemoteTest < Test::Unit::TestCase
                                     'refs/remotes/origin/master'),
                  actual_body)
   end
+end
 
-  def test_edit
-    create_default_mailer
-    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
-
-    git 'push'
-
-    push_mail, commit_mails = get_mails_of_last_push
-
-    assert_mail('test_single_commit.push_mail', push_mail)
-    assert_mail('test_single_commit', commit_mails[0])
+#XXX this monkey patching is a bit dangerous???
+class << Test::Unit::TestCase
+  alias old_collect_test_names collect_test_names
+  def collect_test_names_even_from_superclass(*args)
+    public_instance_methods(true).collect do |name|
+      name.to_s
+    end.find_all do |method_name|
+      method_name =~ /^test./
+    end.each do |method|
+      send(:alias_method, "old_#{method}", method)
+      send(:define_method , method) do
+        send("old_#{method}")
+      end
+    end
+    old_collect_test_names(*args)
   end
+end
+
+class GitCommitMailerDiffTest < ::GitCommitMailerDiffTest
+  include GitCommitMailerTrackRemoteTestUtils
+  class << self
+    def collect_test_names(*args)
+      collect_test_names_even_from_superclass(*args)
+    end
+  end
+end
+
+class GitCommitMailerFileManipulationTest < ::GitCommitMailerFileManipulationTest
+  include GitCommitMailerTrackRemoteTestUtils
+  class << self
+    def collect_test_names(*args)
+      collect_test_names_even_from_superclass(*args)
+    end
+  end
+end
+
 end
