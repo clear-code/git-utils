@@ -1066,4 +1066,24 @@ class GitCommitMailerFileManipulationTest < ::GitCommitMailerFileManipulationTes
   end
 end
 
+class GitCommitMailerNoDiffTest < ::GitCommitMailerNoDiffTest
+  include GitCommitMailerTrackRemoteTestUtils
+  def create_default_mailer
+    create_mailer("--repository=#{@remote_tracking_repository}",
+                  "--name=sample-repo",
+                  "--from=from@example.com",
+                  "--error-to=error@example.com",
+                  DATE_OPTION,
+                  "--track-remote",
+                  "--no-diff",
+                  "to@example")
+  end
+
+  class << self
+    def collect_test_names(*args)
+      collect_test_names_even_from_superclass(*args)
+    end
+  end
+end
+
 end
