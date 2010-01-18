@@ -795,6 +795,7 @@ class GitCommitMailer
       mailer.port = options.port
       mailer.date = options.date
       mailer.git_bin_path = options.git_bin_path
+      mailer.track_remote = options.track_remote
     end
 
     def parse_size(size)
@@ -833,6 +834,7 @@ class GitCommitMailer
       options.port = Net::SMTP.default_port
       options.date = nil
       options.git_bin_path = "git"
+      options.track_remote = false
       options
     end
 
@@ -970,6 +972,11 @@ class GitCommitMailer
               "Use GIT_BIN_PATH command instead of default \"git\"") do |git_bin_path|
         options.git_bin_path = git_bin_path
       end
+
+      opts.on("--track-remote",
+              "Fetch new commits from repository's origin and send mails") do
+        options.track_remote = true
+      end
     end
 
     def add_rss_options(opts, options)
@@ -998,7 +1005,7 @@ class GitCommitMailer
 
   attr_reader :reference, :old_revision, :new_revision, :to
   attr_writer :from, :add_diff, :show_path, :send_push_mail, :use_utf7
-  attr_writer :repository, :date, :git_bin_path
+  attr_writer :repository, :date, :git_bin_path, :track_remote
   attr_accessor :from_domain, :max_size, :repository_uri
   attr_accessor :rss_path, :rss_uri, :name, :server, :port
 
@@ -1047,12 +1054,45 @@ class GitCommitMailer
     ENV['GIT_BIN_PATH'] || @git_bin_path
   end
 
+  def track_remote?
+    @track_remote
+  end
+
   def short_new_revision
     GitCommitMailer.short_revision(@new_revision)
   end
 
   def short_old_revision
     GitCommitMailer.short_revision(@old_revision)
+  end
+
+  def origin_references
+    references = Hash.new("0" * 40)
+    git("rev-parse --symbolic-full-name --tags --remotes").lines.each do |reference|
+      reference.rstrip!
+      next if reference =~ /\Arefs\/remotes/ and reference !~ /\Arefs\/remotes\/origin/
+      references[reference] = git("rev-parse %s" % GitCommitMailer.shell_escape(reference)).rstrip
+    end
+    references
+  end
+
+  def fetch
+    updated_references = []
+    old_references = origin_references
+    git("fetch")
+    new_references = origin_references
+
+    old_references.each do |reference, revision|
+      if revision != new_references[reference]
+        updated_references << [revision, new_references[reference], reference]
+      end
+    end
+    new_references.each do |reference, revision|
+      if revision != old_references[reference]#.sub(/remotes\/origin/, 'heads')
+        updated_references << [old_references[reference], revision, reference]
+      end
+    end
+    updated_references.sort.uniq
   end
 
   def detect_change_type
@@ -1091,7 +1131,7 @@ class GitCommitMailer
       #  recipients="$announcerecipients"
       #fi
       :annotated_tag
-    elsif reference =~ /refs\/heads\/.*/ and revision_type == "commit"
+    elsif reference =~ /refs\/(heads|remotes\/origin)\/.*/ and revision_type == "commit"
       :branch
     elsif reference =~ /refs\/remotes\/.*/ and revision_type == "commit"
       # tracking branch
@@ -1150,7 +1190,7 @@ class GitCommitMailer
      # refer to the long comment located at the top of this file for the
      # explanation of this command.
      current_reference_revision = git("rev-parse #@reference").strip
-     git("rev-parse --not --branches").lines.find_all do |line|
+     git("rev-parse --not --branches --remotes").lines.find_all do |line|
        line.strip!
        not line.index(current_reference_revision)
      end.collect do |line|
@@ -1790,10 +1830,18 @@ if __FILE__ == $0
   begin
     mailer = GitCommitMailer.parse_options_and_create(argv)
 
-    while line = STDIN.gets
-      old_revision, new_revision, reference = line.split
-      mailer.process_reference_change(old_revision, new_revision, reference)
-      mailer.send_all_mails
+    if not mailer.track_remote?
+      while line = STDIN.gets
+        old_revision, new_revision, reference = line.split
+        mailer.process_reference_change(old_revision, new_revision, reference)
+        mailer.send_all_mails
+      end
+    else
+      reference_changes = mailer.fetch
+      reference_changes.each do |old_revision, new_revision, reference|
+        mailer.process_reference_change(old_revision, new_revision, reference)
+        mailer.send_all_mails
+      end
     end
   rescue Exception => error
     require 'net/smtp'
