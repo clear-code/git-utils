@@ -80,6 +80,11 @@ class GitCommitMailer
       @mailer = mailer
       @old_revision = old_revision
       @new_revision = new_revision
+      if @new_revision != '0' * 40 #XXX well, i need to properly fix this bug later.
+        @revision = @new_revision
+      else
+        @revision = @old_revision
+      end
       @reference = reference
       @reference_type = reference_type
       @log = log

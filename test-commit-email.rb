@@ -304,12 +304,20 @@ END_OF_ERROR_MESSAGE
     mail.sub(@@header_regexp, '')
   end
 
+  def assert_header(expected_header, actual_header)
+    assert_equal(expected_header, actual_header)
+  end
+
+  def assert_body(expected_body, actual_body)
+    assert_equal(expected_body, actual_body)
+  end
+
   def assert_mail(expected_mail_file_name, tested_mail)
     begin
-      assert_equal(header_section(expected_mail(expected_mail_file_name)),
-                   header_section(tested_mail))
-      assert_equal(body_section(expected_mail(expected_mail_file_name)),
-                   body_section(tested_mail))
+      assert_header(header_section(expected_mail(expected_mail_file_name)),
+                    header_section(tested_mail))
+      assert_body(body_section(expected_mail(expected_mail_file_name)),
+                  body_section(tested_mail))
     rescue
       puts tested_mail if ENV['DEBUG']
       raise
@@ -960,5 +968,74 @@ class GitCommitMailerOptionTest < Test::Unit::TestCase
     push_mail, _ = get_mails_of_last_push
 
     assert_mail('test_max_size.push_mail', push_mail)
+  end
+end
+
+class GitCommitMailerTrackRemoteTest < Test::Unit::TestCase
+  include GitCommitMailerTestUtils
+  alias old_git git
+  def git(command, *args)
+    if command =~ /\Apush/
+      git "fetch", @remote_tracking_repository
+    end
+    old_git(command, *args)
+  end
+
+  def create_remote_tracking_repository
+    @remote_tracking_repository = @test_directory + 'remote-tracking-repo/'
+    FileUtils.mkdir @remote_tracking_repository
+    git 'init --bare', @remote_tracking_repository
+    git "remote add origin #{@origin_repository_directory}", @remote_tracking_repository
+  end
+
+  alias old_create_repositories create_repositories
+  def create_repositories
+    old_create_repositories
+    create_remote_tracking_repository
+  end
+
+  def create_default_mailer
+    create_mailer("--repository=#{@remote_tracking_repository}",
+                  "--name=sample-repo",
+                  "--from=from@example.com",
+                  "--error-to=error@example.com",
+                  DATE_OPTION,
+                  "--track-remote",
+                  "to@example")
+  end
+
+  def get_mails_of_last_push
+    push_mail, commit_mails = nil, []
+
+    reference_changes = @mailer.fetch
+    reference_changes.each do |old_revision, new_revision, reference|
+      push_mail, commit_mails = process_reference_change(old_revision, new_revision, reference)
+    end
+
+    [push_mail, commit_mails]
+  end
+
+  def assert_header(expected_header, actual_header)
+    assert_equal(expected_header.gsub(/^X-Git-Refname: refs\/heads\/master$/,
+                                      'X-Git-Refname: refs/remotes/origin/master'),
+                 actual_header)
+  end
+
+  def assert_body(expected_body, actual_body)
+    assert_equal(expected_body.gsub(/refs\/heads\/master/,
+                                    'refs/remotes/origin/master'),
+                 actual_body)
+  end
+
+  def test_edit
+    create_default_mailer
+    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
+
+    git 'push'
+
+    push_mail, commit_mails = get_mails_of_last_push
+
+    assert_mail('test_single_commit.push_mail', push_mail)
+    assert_mail('test_single_commit', commit_mails[0])
   end
 end
