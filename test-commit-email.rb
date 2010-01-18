@@ -978,7 +978,7 @@ module GitCommitMailerTrackRemoteTestUtils
   alias old_git git
   def git(command, *args)
     if command =~ /\Apush/
-      git "fetch", @remote_tracking_repository
+      git "fetch --force", @remote_tracking_repository
     end
     old_git(command, *args)
   end
@@ -1079,6 +1079,15 @@ class GitCommitMailerNoDiffTest < ::GitCommitMailerNoDiffTest
                   "to@example")
   end
 
+  class << self
+    def collect_test_names(*args)
+      collect_test_names_even_from_superclass(*args)
+    end
+  end
+end
+
+class GitCommitMailerTagTest < ::GitCommitMailerTagTest
+  include GitCommitMailerTrackRemoteTestUtils
   class << self
     def collect_test_names(*args)
       collect_test_names_even_from_superclass(*args)

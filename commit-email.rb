@@ -1081,10 +1081,19 @@ class GitCommitMailer
     references
   end
 
+  def delete_tags
+    git("rev-parse --symbolic --tags").lines.each do |reference|
+      reference.rstrip!
+      git("tag -d %s" % GitCommitMailer.shell_escape(reference))
+    end
+  end
+
   def fetch
     updated_references = []
     old_references = origin_references
-    git("fetch")
+    delete_tags
+    git("fetch --force --tags")
+    git("fetch --force")
     new_references = origin_references
 
     old_references.each do |reference, revision|
