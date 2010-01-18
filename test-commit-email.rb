@@ -45,6 +45,10 @@ END_OF_ERROR_MESSAGE
     GitCommitMailer.execute(command, directory)
   end
 
+  def shell_escape(string)
+    GitCommitMailer.shell_escape(string)
+  end
+
   def advance_timestamp
     @timestamp = @timestamp.succ
   end
@@ -186,29 +190,18 @@ END_OF_ERROR_MESSAGE
     restore_environment_variables
   end
 
-  def escape(string)
-    # To suppress warnings from Shellwords::escape.
-    if string.respond_to? :force_encoding
-      bytes = string.dup.force_encoding("ascii-8bit")
-    else
-      bytes = string
-    end
-
-    Shellwords.escape(bytes)
-  end
-
   def expand_path(file_name)
     @working_tree_directory + file_name
   end
 
   def move_file(old_file_name, new_file_name)
     FileUtils.mv(expand_path(old_file_name), expand_path(new_file_name))
-    git "add %s" % escape(new_file_name)
+    git "add %s" % shell_escape(new_file_name)
   end
 
   def copy_file(file_name, copied_file_name)
     FileUtils.cp(expand_path(file_name), expand_path(copied_file_name))
-    git "add %s" % escape(copied_file_name)
+    git "add %s" % shell_escape(copied_file_name)
   end
 
   def remove_file(file_name)
@@ -223,7 +216,7 @@ END_OF_ERROR_MESSAGE
     File.open(expand_path(file_name), 'w') do |file|
       file.puts(content)
     end
-    git "add %s" % escape(file_name)
+    git "add %s" % shell_escape(file_name)
   end
 
   def create_directory(directory_name)
@@ -437,7 +430,7 @@ class GitCommitMailerFileManipulation < Test::Unit::TestCase
     git 'push'
 
     move_file(DEFAULT_FILE, "renamed.txt")
-    git "commit -a -m %s" % escape("renamed a file")
+    git "commit -a -m %s" % shell_escape("renamed a file")
 
     git 'push'
     _, commit_mails = get_mails_of_last_push
@@ -454,7 +447,7 @@ class GitCommitMailerFileManipulation < Test::Unit::TestCase
     renamed_file_name = "renamed.txt"
     move_file(DEFAULT_FILE, renamed_file_name)
     append_line(renamed_file_name, "Hello.")
-    git "commit -a -m %s" % escape("renamed a file")
+    git "commit -a -m %s" % shell_escape("renamed a file")
 
     git 'push'
     _, commit_mails = get_mails_of_last_push
@@ -470,7 +463,7 @@ class GitCommitMailerFileManipulation < Test::Unit::TestCase
     append_line(DEFAULT_FILE, "hi.")
 
     copy_file(DEFAULT_FILE, "copied.txt")
-    git "commit -a -m %s" % escape("copied a file")
+    git "commit -a -m %s" % shell_escape("copied a file")
 
     git 'push'
     _, commit_mails = get_mails_of_last_push
@@ -488,7 +481,7 @@ class GitCommitMailerFileManipulation < Test::Unit::TestCase
     copied_file_name = "copied.txt"
     copy_file(DEFAULT_FILE, copied_file_name)
     append_line(copied_file_name, "Hello.")
-    git "commit -a -m %s" % escape("copied a file")
+    git "commit -a -m %s" % shell_escape("copied a file")
 
     git 'push'
     _, commit_mails = get_mails_of_last_push
@@ -503,7 +496,7 @@ class GitCommitMailerFileManipulation < Test::Unit::TestCase
     git 'push'
 
     remove_file(DEFAULT_FILE)
-    git "commit -a -m %s" % escape("removed a file")
+    git "commit -a -m %s" % shell_escape("removed a file")
     git 'push'
     _, commit_mails = get_mails_of_last_push
 
@@ -517,7 +510,7 @@ class GitCommitMailerFileManipulation < Test::Unit::TestCase
     git 'push'
 
     change_file_mode(0777, DEFAULT_FILE)
-    git "commit -a -m %s" % escape("changed a file mode")
+    git "commit -a -m %s" % shell_escape("changed a file mode")
 
     git 'push'
     _, commit_mails = get_mails_of_last_push
@@ -533,7 +526,7 @@ class GitCommitMailerFileManipulation < Test::Unit::TestCase
 
     FileUtils.rm_r(expand_path(DEFAULT_FILE))
     FileUtils.ln_s("../../referenced.txt", expand_path(DEFAULT_FILE))
-    git "commit -a -m %s" % escape("changed a file type")
+    git "commit -a -m %s" % shell_escape("changed a file type")
     git 'push'
 
     _, commit_mails = get_mails_of_last_push
@@ -560,7 +553,7 @@ class GitCommitMailerNoDiffTest < Test::Unit::TestCase
     git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
 
     append_line(DEFAULT_FILE, "an appended line.")
-    git "commit -a -m %s" % escape("appended a line")
+    git "commit -a -m %s" % shell_escape("appended a line")
 
     git 'push'
     _, commit_mails = get_mails_of_last_push
@@ -576,7 +569,7 @@ class GitCommitMailerNoDiffTest < Test::Unit::TestCase
     git 'push'
 
     move_file(DEFAULT_FILE, "renamed.txt")
-    git "commit -a -m %s" % escape("renamed a file")
+    git "commit -a -m %s" % shell_escape("renamed a file")
 
     git 'push'
     _, commit_mails = get_mails_of_last_push
@@ -591,7 +584,7 @@ class GitCommitMailerNoDiffTest < Test::Unit::TestCase
 
     append_line(DEFAULT_FILE, "hi.")
     copy_file(DEFAULT_FILE, "copied.txt")
-    git "commit -a -m %s" % escape("copied a file")
+    git "commit -a -m %s" % shell_escape("copied a file")
 
     git 'push'
     _, commit_mails = get_mails_of_last_push
@@ -605,7 +598,7 @@ class GitCommitMailerNoDiffTest < Test::Unit::TestCase
     git 'push'
 
     remove_file(DEFAULT_FILE)
-    git "commit -a -m %s" % escape("removed a file")
+    git "commit -a -m %s" % shell_escape("removed a file")
     git 'push'
     _, commit_mails = get_mails_of_last_push
 
@@ -941,11 +934,11 @@ class GitCommitMailerOptionTest < Test::Unit::TestCase
     create_file("mm/memory.c", "/* memory related code goes here */")
     create_directory("drivers")
     create_file("drivers/PLACEHOLDER", "just to make git recognize drivers directory")
-    git "commit -m %s" % escape("added mm and drivers directory")
+    git "commit -m %s" % shell_escape("added mm and drivers directory")
     git "push"
 
     append_line("mm/memory.c", "void *malloc(size_t size);")
-    git "commit -a -m %s" % escape("added malloc declaration")
+    git "commit -a -m %s" % shell_escape("added malloc declaration")
     git "push"
 
     _, commit_mails = get_mails_of_last_push

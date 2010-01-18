@@ -701,8 +701,19 @@ class GitCommitMailer
       result
     end
 
+    def shell_escape(string)
+      # To suppress warnings from Shellwords::escape.
+      if string.respond_to? :force_encoding
+        bytes = string.dup.force_encoding("ascii-8bit")
+      else
+        bytes = string
+      end
+
+      Shellwords.escape(bytes)
+    end
+
     def git(git_bin_path, repository, command, &block)
-      execute("#{git_bin_path} --git-dir=#{Shellwords.escape(repository)} #{command}", &block)
+      execute("#{git_bin_path} --git-dir=#{shell_escape(repository)} #{command}", &block)
     end
 
     def short_revision(revision)
@@ -1143,7 +1154,7 @@ class GitCommitMailer
        line.strip!
        not line.index(current_reference_revision)
      end.collect do |line|
-       Shellwords.escape(line)
+       GitCommitMailer.shell_escape(line)
      end.join(' ')
   end
 
@@ -1326,7 +1337,7 @@ EOF
   end
 
   def short_log(revision_specifier)
-    log = git("rev-list --pretty=short #{Shellwords.escape(revision_specifier)}")
+    log = git("rev-list --pretty=short #{GitCommitMailer.shell_escape(revision_specifier)}")
     git("shortlog") do |git|
       git.write(log)
       git.close_write
