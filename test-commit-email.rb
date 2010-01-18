@@ -1095,4 +1095,13 @@ class GitCommitMailerTagTest < ::GitCommitMailerTagTest
   end
 end
 
+class GitCommitMailerNonAsciiTest < ::GitCommitMailerNonAsciiTest
+  include GitCommitMailerTrackRemoteTestUtils
+  class << self
+    def collect_test_names(*args)
+      collect_test_names_even_from_superclass(*args)
+    end
+  end
+end
+
 end
