@@ -583,14 +583,12 @@ module GitCommitMailerOptionTest
   include Constants
   def test_rss
     rss_file_path = "#{@test_directory}sample-repo.rss"
-    create_mailer("--repository=#{@origin_repository_directory}",
-                  "--name=sample-repo",
-                  "--from=from@example.com",
-                  "--error-to=error@example.com",
-                  "--repository-uri=http://git.example.com/sample-repo.git",
-                  "--rss-uri=file://#{@origin_repository_directory}",
-                  "--rss-path=#{rss_file_path}",
-                  "to@example")
+
+    rss_options = ["--repository-uri=http://git.example.com/sample-repo.git",
+                   "--rss-uri=file://#{@origin_repository_directory}",
+                   "--rss-path=#{rss_file_path}"]
+    set_additional_default_mailer_option(*rss_options)
+    create_default_mailer
 
     git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
     git 'push'
@@ -604,13 +602,8 @@ module GitCommitMailerOptionTest
 
 
   def test_utf7
-    create_mailer("--repository=#{@origin_repository_directory}",
-                  "--name=sample-repo",
-                  "--from=from@example.com",
-                  "--error-to=error@example.com",
-                  DATE_OPTION,
-                  "--utf7",
-                  "to@example")
+    set_additional_default_mailer_option("--utf7")
+    create_default_mailer
 
     git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
     git 'push'
@@ -622,13 +615,8 @@ module GitCommitMailerOptionTest
   end
 
   def test_show_path
-    create_mailer("--repository=#{@origin_repository_directory}",
-                  "--name=sample-repo",
-                  "--from=from@example.com",
-                  "--error-to=error@example.com",
-                  DATE_OPTION,
-                  "--show-path",
-                  "to@example")
+    set_additional_default_mailer_option("--show-path")
+    create_default_mailer
 
     create_directory("mm")
     create_file("mm/memory.c", "/* memory related code goes here */")
@@ -646,13 +634,8 @@ module GitCommitMailerOptionTest
   end
 
   def test_max_size
-    create_mailer("--repository=#{@origin_repository_directory}",
-                  "--name=sample-repo",
-                  "--from=from@example.com",
-                  "--error-to=error@example.com",
-                  DATE_OPTION,
-                  "--max-size=100B",
-                  "to@example")
+    set_additional_default_mailer_option("--max-size=100B")
+    create_default_mailer
 
     git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
     git 'push'
@@ -874,13 +857,17 @@ module HookModeTest
       @mailer = GitCommitMailer.parse_options_and_create(arguments)
     end
 
+    def set_additional_default_mailer_option(*options)
+      @default_mailer_options = options
+    end
+
     def create_default_mailer
       create_mailer("--repository=#{@origin_repository_directory}",
                     "--name=sample-repo",
                     "--from=from@example.com",
                     "--error-to=error@example.com",
                     DATE_OPTION,
-                    "to@example")
+                    "to@example", *@default_mailer_options)
     end
 
     def each_reference_change
@@ -979,14 +966,9 @@ module HookModeTest
     include Utils
     include ::GitCommitMailerNoDiffTest
 
-    def create_default_mailer
-      create_mailer("--repository=#{@origin_repository_directory}",
-                    "--name=sample-repo",
-                    "--from=from@example.com",
-                    "--error-to=error@example.com",
-                    DATE_OPTION,
-                    "--no-diff",
-                    "to@example")
+    def initialize(*args)
+      super(*args)
+      set_additional_default_mailer_option("--no-diff")
     end
   end
 
@@ -1042,7 +1024,7 @@ module TrackRemoteModeTest
                     "--error-to=error@example.com",
                     DATE_OPTION,
                     "--track-remote",
-                    "to@example")
+                    "to@example", *@default_mailer_options)
     end
 
     def get_mails_of_last_push
@@ -1091,15 +1073,9 @@ module TrackRemoteModeTest
     include Utils
     include ::GitCommitMailerNoDiffTest
 
-    def create_default_mailer
-      create_mailer("--repository=#{@remote_tracking_repository}",
-                    "--name=sample-repo",
-                    "--from=from@example.com",
-                    "--error-to=error@example.com",
-                    DATE_OPTION,
-                    "--track-remote",
-                    "--no-diff",
-                    "to@example")
+    def initialize(*args)
+      super(*args)
+      set_additional_default_mailer_option("--no-diff")
     end
   end
 
@@ -1116,5 +1092,10 @@ module TrackRemoteModeTest
   class GitCommitMailerNonAsciiTest < Test::Unit::TestCase
     include Utils
     include ::GitCommitMailerNonAsciiTest
+  end
+
+  class GitCommitMailerOptionTest < Test::Unit::TestCase
+    include Utils
+    include ::GitCommitMailerOptionTest
   end
 end
