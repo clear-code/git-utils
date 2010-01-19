@@ -1036,42 +1036,51 @@ module GitCommitMailerTrackRemoteTestUtils
                                     'refs/remotes/origin/master'),
                  actual_body)
   end
-end
 
-#XXX this monkey patching is a bit dangerous???
-class << Test::Unit::TestCase
-  alias old_collect_test_names collect_test_names
-  def collect_test_names_even_from_superclass(*args)
-    public_instance_methods(true).collect do |name|
-      name.to_s
-    end.find_all do |method_name|
-      method_name =~ /^test./
-    end.each do |method|
-      send(:alias_method, "old_#{method}", method)
-      send(:define_method , method) do
-        send("old_#{method}")
+  def GitCommitMailerTrackRemoteTestUtils.make_superclass_tests_available(klass)
+    #XXX this monkey patching is a bit dangerous???
+    begin
+      class << klass
+        alias old_collect_test_names collect_test_names
+        def collect_test_names_even_from_superclass(*args)
+          public_instance_methods(true).collect do |name|
+            name.to_s
+          end.find_all do |method_name|
+            method_name =~ /^test./
+          end.each do |method|
+            send(:alias_method, "old_#{method}", method)
+            send(:define_method , method) do
+              send("old_#{method}")
+            end
+          end
+          old_collect_test_names(*args)
+        end
+
+        def collect_test_names(*args)
+          collect_test_names_even_from_superclass(*args)
+        end
       end
+    rescue NameError => name_error
+      raise if name_error.message != "undefined method `collect_test_names' for class `Class'"
+
+      # Apparentally, this exception is raised with the standard library's
+      # test-unit, not gem's one.
+      # Foretunately, by default, the standard library's test-unit behaves
+      # as we expect to happen.
     end
-    old_collect_test_names(*args)
+  end
+
+  def GitCommitMailerTrackRemoteTestUtils.included(included_to)
+    make_superclass_tests_available(included_to)
   end
 end
 
 class GitCommitMailerDiffTest < ::GitCommitMailerDiffTest
   include GitCommitMailerTrackRemoteTestUtils
-  class << self
-    def collect_test_names(*args)
-      collect_test_names_even_from_superclass(*args)
-    end
-  end
 end
 
 class GitCommitMailerFileManipulationTest < ::GitCommitMailerFileManipulationTest
   include GitCommitMailerTrackRemoteTestUtils
-  class << self
-    def collect_test_names(*args)
-      collect_test_names_even_from_superclass(*args)
-    end
-  end
 end
 
 class GitCommitMailerNoDiffTest < ::GitCommitMailerNoDiffTest
@@ -1086,39 +1095,18 @@ class GitCommitMailerNoDiffTest < ::GitCommitMailerNoDiffTest
                   "--no-diff",
                   "to@example")
   end
-
-  class << self
-    def collect_test_names(*args)
-      collect_test_names_even_from_superclass(*args)
-    end
-  end
 end
 
 class GitCommitMailerTagTest < ::GitCommitMailerTagTest
   include GitCommitMailerTrackRemoteTestUtils
-  class << self
-    def collect_test_names(*args)
-      collect_test_names_even_from_superclass(*args)
-    end
-  end
 end
 
 class GitCommitMailerNonAsciiTest < ::GitCommitMailerNonAsciiTest
   include GitCommitMailerTrackRemoteTestUtils
-  class << self
-    def collect_test_names(*args)
-      collect_test_names_even_from_superclass(*args)
-    end
-  end
 end
 
 class GitCommitMailerMergeTest < ::GitCommitMailerMergeTest
   include GitCommitMailerTrackRemoteTestUtils
-  class << self
-    def collect_test_names(*args)
-      collect_test_names_even_from_superclass(*args)
-    end
-  end
 end
 
 end
