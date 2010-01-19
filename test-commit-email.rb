@@ -1017,6 +1017,14 @@ module GitCommitMailerTrackRemoteTestUtils
     [push_mail, commit_mails]
   end
 
+  def each_reference_change
+    reference_changes = @mailer.fetch
+    reference_changes.each do |old_revision, new_revision, reference|
+      puts "#{old_revision} #{new_revision} #{reference}" if ENV['DEBUG']
+      yield old_revision, new_revision, reference
+    end
+  end
+
   def assert_header(expected_header, actual_header)
     assert_equal(expected_header.gsub(/^X-Git-Refname: refs\/heads\/master$/,
                                       'X-Git-Refname: refs/remotes/origin/master'),
@@ -1096,6 +1104,15 @@ class GitCommitMailerTagTest < ::GitCommitMailerTagTest
 end
 
 class GitCommitMailerNonAsciiTest < ::GitCommitMailerNonAsciiTest
+  include GitCommitMailerTrackRemoteTestUtils
+  class << self
+    def collect_test_names(*args)
+      collect_test_names_even_from_superclass(*args)
+    end
+  end
+end
+
+class GitCommitMailerMergeTest < ::GitCommitMailerMergeTest
   include GitCommitMailerTrackRemoteTestUtils
   class << self
     def collect_test_names(*args)

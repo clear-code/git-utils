@@ -1106,7 +1106,9 @@ class GitCommitMailer
         updated_references << [old_references[reference], revision, reference]
       end
     end
-    updated_references.sort.uniq
+    updated_references.sort do |reference_change1, reference_change2|
+      reference_change1.last <=> reference_change2.last
+    end.uniq
   end
 
   def detect_change_type
