@@ -26,7 +26,7 @@ require 'tempfile'
 
 require 'commit-email'
 
-module GitCommitMailerTestUtils
+module Constants
   DEFAULT_FILE = 'sample_file'
   DEFAULT_FILE_CONTENT = <<END_OF_CONTENT
 This is a sample text file.
@@ -40,308 +40,10 @@ Perhaps you should specify a branch such as 'master'.
 fatal: The remote end hung up unexpectedly
 error: failed to push some refs to '/tmp/git-[0-9]{8}-[0-9]{5}-[0-9a-z]{10}/origin/'
 END_OF_ERROR_MESSAGE
-
-  def execute(command, directory=@working_tree_directory)
-    GitCommitMailer.execute(command, directory)
-  end
-
-  def shell_escape(string)
-    GitCommitMailer.shell_escape(string)
-  end
-
-  def advance_timestamp
-    @timestamp = @timestamp.succ
-  end
-
-  def delete_output_from_hook
-    FileUtils.rm(@hook_output) if File.exist?(@hook_output)
-  end
-
-  def set_timestamp
-    ENV["GIT_AUTHOR_DATE"] = @timestamp.to_s
-    ENV["GIT_COMMITTER_DATE"] = @timestamp.to_s
-  end
-
-  def reset_timestamp
-    ENV.delete("GIT_AUTHOR_DATE")
-    ENV.delete("GIT_COMMITTER_DATE")
-  end
-
-  def git(command, repository_directory=@repository_directory)
-    if command =~ /\Ainit/
-      execute("git #{command}", repository_directory)
-    else
-      if command =~ /\A(commit|merge|tag) /
-        advance_timestamp
-        set_timestamp
-      end
-      delete_output_from_hook if command =~ /\Apush/
-
-      begin
-        execute "git --git-dir=#{repository_directory} #{command}"
-      rescue Exception => exception
-        if command == "push" and exception.message =~ PUSH_ERROR_MESSAGE
-          command += " origin master"
-          retry
-        else
-          raise
-        end
-      end
-      reset_timestamp
-    end
-  end
-
-  def git_commit_new_file(file_name, content, message=nil)
-    create_file(file_name, content)
-
-    message ||= "This is a auto-generated commit message: added #{file_name}"
-    git "add #{file_name}"
-    git "commit -m \"#{message}\""
-  end
-
-  def enable_hook
-    if File.exist?(@hook + ".sample")
-      FileUtils.mv(@hook + ".sample", @hook)
-    end
-    execute "chmod +x #{@hook}"
-  end
-
-  def grab_hook_output
-    @hook = @origin_repository_directory + 'hooks/post-receive'
-    @hook_output = @hook + '.output'
-    enable_hook
-    File.open(@hook, 'a') do |file|
-      file.puts("cat >> #{@hook_output}")
-    end
-  end
-
-  def create_origin_repository
-    @origin_repository_directory = @test_directory + 'origin/'
-    FileUtils.mkdir @origin_repository_directory
-    git 'init --bare', @origin_repository_directory
-    grab_hook_output
-  end
-
-  def config_user_information
-    git 'config user.name "User Name"'
-    git 'config user.email "user@example.com"'
-  end
-
-  def create_working_repository
-    @working_tree_directory = @test_directory + 'repo/'
-    @repository_directory = @working_tree_directory + '.git/'
-    FileUtils.mkdir @working_tree_directory
-    git 'init', @working_tree_directory
-    config_user_information
-    git "remote add origin #{@origin_repository_directory}"
-    git "config --add push.default current"
-  end
-
-  def temporary_name
-    time = Time.now.strftime("%Y%m%d")
-    path = "git-#{time}-#{format('%05d', $$)}-" +
-           "#{10.times.collect{rand(36).to_s(36)}.join}"
-  end
-
-  def make_test_directory
-    while File.exist?(@test_directory = Dir.tmpdir + "/" + temporary_name + "/")
-    end
-    FileUtils.mkdir @test_directory
-  end
-
-  def create_repositories
-    make_test_directory
-    create_origin_repository
-    create_working_repository
-  end
-
-  def delete_repositories
-    return if ENV['DEBUG'] == 'yes'
-    FileUtils.rm_r @test_directory
-  end
-
-  def save_environment_variables(names)
-    @saved_environment_variables = {}
-    names.each do |name|
-      @saved_environment_variables[name] = ENV[name]
-      ENV.delete(name)
-    end
-  end
-
-  def restore_environment_variables
-    @saved_environment_variables.each do |name, value|
-      ENV[name] = value unless value.nil?
-    end
-  end
-
-  def setup
-    @is_debug_mode = true if ENV['DEBUG'] == 'yes'
-    save_environment_variables(['GIT_AUTHOR_NAME',
-                                'GIT_AUTHOR_EMAIL',
-                                'GIT_COMMITTER_NAME',
-                                'GIT_COMMITTER_EMAIL',
-                                'EMAIL'])
-    @timestamp = DATE
-    create_repositories
-  end
-
-  def teardown
-    delete_repositories
-    restore_environment_variables
-  end
-
-  def expand_path(file_name)
-    @working_tree_directory + file_name
-  end
-
-  def move_file(old_file_name, new_file_name)
-    FileUtils.mv(expand_path(old_file_name), expand_path(new_file_name))
-    git "add %s" % shell_escape(new_file_name)
-  end
-
-  def copy_file(file_name, copied_file_name)
-    FileUtils.cp(expand_path(file_name), expand_path(copied_file_name))
-    git "add %s" % shell_escape(copied_file_name)
-  end
-
-  def remove_file(file_name)
-    FileUtils.rm(expand_path(file_name))
-  end
-
-  def change_file_mode(file_mode, file_name)
-    FileUtils.chmod(file_mode, expand_path(file_name))
-  end
-
-  def create_file(file_name, content)
-    File.open(expand_path(file_name), 'w') do |file|
-      file.puts(content)
-    end
-    git "add %s" % shell_escape(file_name)
-  end
-
-  def create_directory(directory_name)
-    FileUtils.mkdir expand_path(directory_name)
-  end
-
-  def prepend_line(file_name, line)
-    content = line + "\n" + IO.read(expand_path(file_name))
-    create_file(file_name, content)
-  end
-
-  def append_line(file_name, line)
-    content = IO.read(expand_path(file_name)) + line + "\n"
-    create_file(file_name, content)
-  end
-
-  def insert_line(file_name, line, offset)
-    content = IO.readlines(expand_path(file_name)).insert(offset, line + "\n").join
-    create_file(file_name, content)
-  end
-
-  def edit_file(file_name)
-    lines = IO.readlines(expand_path(file_name))
-    content = yield(lines).join
-    create_file(file_name, content)
-  end
-
-  def create_mailer(*arguments)
-    p arguments if ENV['DEBUG']
-    @mailer = GitCommitMailer.parse_options_and_create(arguments)
-  end
-
-  def create_default_mailer
-    create_mailer("--repository=#{@origin_repository_directory}",
-                  "--name=sample-repo",
-                  "--from=from@example.com",
-                  "--error-to=error@example.com",
-                  DATE_OPTION,
-                  "to@example")
-  end
-
-  def each_reference_change
-    begin
-      File.open(@hook_output, 'r') do |file|
-        while line = file.gets
-          old_revision, new_revision, reference = line.split
-          puts "#{old_revision} #{new_revision} #{reference}" if ENV['DEBUG']
-          yield old_revision, new_revision, reference
-        end
-      end
-    rescue Errno::ENOENT
-    end
-  end
-
-  def process_reference_change(*args)
-    @push_mail, @commit_mails = @mailer.process_reference_change(*args)
-  end
-
-  def get_mails_of_last_push
-    push_mail, commit_mails = nil, []
-    each_reference_change do |old_revision, new_revision, reference|
-      push_mail, commit_mails = process_reference_change(old_revision, new_revision, reference)
-    end
-    [push_mail, commit_mails]
-  end
-
-  def read_from_fixture_directory(file)
-    IO.read('fixtures/' + file)
-  end
-
-  def expected_rss(file)
-    read_from_fixture_directory(file)
-  end
-
-  def expected_mail(file)
-    read_from_fixture_directory(file)
-  end
-
-  @@header_regexp = /^(.|\n)*?\n\n/
-  def header_section(mail)
-    mail[@@header_regexp]
-  end
-
-  def body_section(mail)
-    mail.sub(@@header_regexp, '')
-  end
-
-  def assert_header(expected_header, actual_header)
-    assert_equal(expected_header, actual_header)
-  end
-
-  def assert_body(expected_body, actual_body)
-    assert_equal(expected_body, actual_body)
-  end
-
-  def assert_mail(expected_mail_file_name, tested_mail)
-    begin
-      assert_header(header_section(expected_mail(expected_mail_file_name)),
-                    header_section(tested_mail))
-      assert_body(body_section(expected_mail(expected_mail_file_name)),
-                  body_section(tested_mail))
-    rescue
-      puts tested_mail if ENV['DEBUG']
-      raise
-    end
-  end
-
-  def assert_rss(expected_rss_file_path, actual_rss_file_path)
-    expected = expected_rss(expected_rss_file_path)
-    actual = IO.read(actual_rss_file_path) + "\n"
-
-    channel_regexp = '<channel rdf:about="file:///tmp/git-[0-9]{8}-[0-9]{5}-' +
-                     '[0-9a-z]{10}/origin/">'
-    [expected, actual].each do |rss|
-      rss.sub!(/<rdf:RDF(([ \n]|xmlns[^ \n]*)*)>/, '<rdf:RDF>')
-      rss.sub!(/<dc:date>.*?<\/dc:date>/, '<dc:date/>')
-      rss.sub!(/#{channel_regexp}/,
-               '<channel rdf:about="file:///tmp/.../origin/">')
-    end
-    assert_equal(expected, actual)
-  end
 end
 
-class GitCommitMailerDiffTest < Test::Unit::TestCase
-  include GitCommitMailerTestUtils
+module GitCommitMailerDiffTest
+  include Constants
   def test_trailing_spaces
     create_default_mailer
 
@@ -417,8 +119,8 @@ EOF
   end
 end
 
-class GitCommitMailerFileManipulationTest < Test::Unit::TestCase
-  include GitCommitMailerTestUtils
+module GitCommitMailerFileManipulationTest
+  include Constants
   def test_edit
     create_default_mailer
     git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
@@ -543,18 +245,8 @@ class GitCommitMailerFileManipulationTest < Test::Unit::TestCase
   end
 end
 
-class GitCommitMailerNoDiffTest < Test::Unit::TestCase
-  include GitCommitMailerTestUtils
-  def create_default_mailer
-    create_mailer("--repository=#{@origin_repository_directory}",
-                  "--name=sample-repo",
-                  "--from=from@example.com",
-                  "--error-to=error@example.com",
-                  DATE_OPTION,
-                  "--no-diff",
-                  "to@example")
-  end
-
+module GitCommitMailerNoDiffTest
+  include Constants
   def test_edit
     create_default_mailer
 
@@ -614,8 +306,8 @@ class GitCommitMailerNoDiffTest < Test::Unit::TestCase
   end
 end
 
-class GitCommitMailerTagTest < Test::Unit::TestCase
-  include GitCommitMailerTestUtils
+module GitCommitMailerTagTest
+  include Constants
   def prepare_to_tag
     create_default_mailer
     git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "sample commit")
@@ -724,8 +416,8 @@ class GitCommitMailerTagTest < Test::Unit::TestCase
   end
 end
 
-class GitCommitMailerMergeTest < Test::Unit::TestCase
-  include GitCommitMailerTestUtils
+module GitCommitMailerMergeTest
+  include Constants
   def test_push_with_merge
     create_default_mailer
     sample_branch = 'sample_branch'
@@ -840,8 +532,8 @@ EOF
   end
 end
 
-class GitCommitMailerNonAsciiTest < Test::Unit::TestCase
-  include GitCommitMailerTestUtils
+module GitCommitMailerNonAsciiTest
+  include Constants
   def test_file_name
     create_default_mailer
     git_commit_new_file("日本語.txt", "日本語の文章です。", "added a file with japanese file name")
@@ -887,8 +579,8 @@ class GitCommitMailerNonAsciiTest < Test::Unit::TestCase
   end
 end
 
-class GitCommitMailerOptionTest < Test::Unit::TestCase
-  include GitCommitMailerTestUtils
+module GitCommitMailerOptionTest
+  include Constants
   def test_rss
     rss_file_path = "#{@test_directory}sample-repo.rss"
     create_mailer("--repository=#{@origin_repository_directory}",
@@ -971,142 +663,458 @@ class GitCommitMailerOptionTest < Test::Unit::TestCase
   end
 end
 
-module TrackRemoteTest
-
-module GitCommitMailerTrackRemoteTestUtils
-  include GitCommitMailerTestUtils
-  alias old_git git
-  def git(command, *args)
-    if command =~ /\Apush/
-      git "fetch --force", @remote_tracking_repository
-    end
-    old_git(command, *args)
-  end
-
-  def create_remote_tracking_repository
-    @remote_tracking_repository = @test_directory + 'remote-tracking-repo/'
-    FileUtils.mkdir @remote_tracking_repository
-    git 'init --bare', @remote_tracking_repository
-    git "remote add origin #{@origin_repository_directory}", @remote_tracking_repository
-  end
-
-  alias old_create_repositories create_repositories
-  def create_repositories
-    old_create_repositories
-    create_remote_tracking_repository
-  end
-
-  def create_default_mailer
-    create_mailer("--repository=#{@remote_tracking_repository}",
-                  "--name=sample-repo",
-                  "--from=from@example.com",
-                  "--error-to=error@example.com",
-                  DATE_OPTION,
-                  "--track-remote",
-                  "to@example")
-  end
-
-  def get_mails_of_last_push
-    push_mail, commit_mails = nil, []
-
-    reference_changes = @mailer.fetch
-    reference_changes.each do |old_revision, new_revision, reference|
-      push_mail, commit_mails = process_reference_change(old_revision, new_revision, reference)
+module HookModeTest
+  module Utils
+    include Constants
+    def execute(command, directory=@working_tree_directory)
+      GitCommitMailer.execute(command, directory)
     end
 
-    [push_mail, commit_mails]
-  end
-
-  def each_reference_change
-    reference_changes = @mailer.fetch
-    reference_changes.each do |old_revision, new_revision, reference|
-      puts "#{old_revision} #{new_revision} #{reference}" if ENV['DEBUG']
-      yield old_revision, new_revision, reference
+    def shell_escape(string)
+      GitCommitMailer.shell_escape(string)
     end
-  end
 
-  def assert_header(expected_header, actual_header)
-    assert_equal(expected_header.gsub(/^X-Git-Refname: refs\/heads\/master$/,
-                                      'X-Git-Refname: refs/remotes/origin/master'),
-                 actual_header)
-  end
+    def advance_timestamp
+      @timestamp = @timestamp.succ
+    end
 
-  def assert_body(expected_body, actual_body)
-    assert_equal(expected_body.gsub(/refs\/heads\/master/,
-                                    'refs/remotes/origin/master'),
-                 actual_body)
-  end
+    def delete_output_from_hook
+      FileUtils.rm(@hook_output) if File.exist?(@hook_output)
+    end
 
-  def GitCommitMailerTrackRemoteTestUtils.make_superclass_tests_available(klass)
-    #XXX this monkey patching is a bit dangerous???
-    begin
-      class << klass
-        alias old_collect_test_names collect_test_names
-        def collect_test_names_even_from_superclass(*args)
-          public_instance_methods(true).collect do |name|
-            name.to_s
-          end.find_all do |method_name|
-            method_name =~ /^test./
-          end.each do |method|
-            send(:alias_method, "old_#{method}", method)
-            send(:define_method , method) do
-              send("old_#{method}")
-            end
+    def set_timestamp
+      ENV["GIT_AUTHOR_DATE"] = @timestamp.to_s
+      ENV["GIT_COMMITTER_DATE"] = @timestamp.to_s
+    end
+
+    def reset_timestamp
+      ENV.delete("GIT_AUTHOR_DATE")
+      ENV.delete("GIT_COMMITTER_DATE")
+    end
+
+    def git(command, repository_directory=@repository_directory)
+      if command =~ /\Ainit/
+        execute("git #{command}", repository_directory)
+      else
+        if command =~ /\A(commit|merge|tag) /
+          advance_timestamp
+          set_timestamp
+        end
+        delete_output_from_hook if command =~ /\Apush/
+
+        begin
+          execute "git --git-dir=#{repository_directory} #{command}"
+        rescue Exception => exception
+          if command == "push" and exception.message =~ PUSH_ERROR_MESSAGE
+            command += " origin master"
+            retry
+          else
+            raise
           end
-          old_collect_test_names(*args)
         end
-
-        def collect_test_names(*args)
-          collect_test_names_even_from_superclass(*args)
-        end
+        reset_timestamp
       end
-    rescue NameError => name_error
-      raise if name_error.message != "undefined method `collect_test_names' for class `Class'"
+    end
 
-      # Apparentally, this exception is raised with the standard library's
-      # test-unit, not gem's one.
-      # Foretunately, by default, the standard library's test-unit behaves
-      # as we expect to happen.
+    def git_commit_new_file(file_name, content, message=nil)
+      create_file(file_name, content)
+
+      message ||= "This is a auto-generated commit message: added #{file_name}"
+      git "add #{file_name}"
+      git "commit -m \"#{message}\""
+    end
+
+    def enable_hook
+      if File.exist?(@hook + ".sample")
+        FileUtils.mv(@hook + ".sample", @hook)
+      end
+      execute "chmod +x #{@hook}"
+    end
+
+    def grab_hook_output
+      @hook = @origin_repository_directory + 'hooks/post-receive'
+      @hook_output = @hook + '.output'
+      enable_hook
+      File.open(@hook, 'a') do |file|
+        file.puts("cat >> #{@hook_output}")
+      end
+    end
+
+    def create_origin_repository
+      @origin_repository_directory = @test_directory + 'origin/'
+      FileUtils.mkdir @origin_repository_directory
+      git 'init --bare', @origin_repository_directory
+      grab_hook_output
+    end
+
+    def config_user_information
+      git 'config user.name "User Name"'
+      git 'config user.email "user@example.com"'
+    end
+
+    def create_working_repository
+      @working_tree_directory = @test_directory + 'repo/'
+      @repository_directory = @working_tree_directory + '.git/'
+      FileUtils.mkdir @working_tree_directory
+      git 'init', @working_tree_directory
+      config_user_information
+      git "remote add origin #{@origin_repository_directory}"
+      git "config --add push.default current"
+    end
+
+    def temporary_name
+      time = Time.now.strftime("%Y%m%d")
+      path = "git-#{time}-#{format('%05d', $$)}-" +
+             "#{10.times.collect{rand(36).to_s(36)}.join}"
+    end
+
+    def make_test_directory
+      while File.exist?(@test_directory = Dir.tmpdir + "/" + temporary_name + "/")
+      end
+      FileUtils.mkdir @test_directory
+    end
+
+    def create_repositories
+      make_test_directory
+      create_origin_repository
+      create_working_repository
+    end
+
+    def delete_repositories
+      return if ENV['DEBUG'] == 'yes'
+      FileUtils.rm_r @test_directory
+    end
+
+    def save_environment_variables(names)
+      @saved_environment_variables = {}
+      names.each do |name|
+        @saved_environment_variables[name] = ENV[name]
+        ENV.delete(name)
+      end
+    end
+
+    def restore_environment_variables
+      @saved_environment_variables.each do |name, value|
+        ENV[name] = value unless value.nil?
+      end
+    end
+
+    def setup
+      @is_debug_mode = true if ENV['DEBUG'] == 'yes'
+      save_environment_variables(['GIT_AUTHOR_NAME',
+                                  'GIT_AUTHOR_EMAIL',
+                                  'GIT_COMMITTER_NAME',
+                                  'GIT_COMMITTER_EMAIL',
+                                  'EMAIL'])
+      @timestamp = DATE
+      create_repositories
+    end
+
+    def teardown
+      delete_repositories
+      restore_environment_variables
+    end
+
+    def expand_path(file_name)
+      @working_tree_directory + file_name
+    end
+
+    def move_file(old_file_name, new_file_name)
+      FileUtils.mv(expand_path(old_file_name), expand_path(new_file_name))
+      git "add %s" % shell_escape(new_file_name)
+    end
+
+    def copy_file(file_name, copied_file_name)
+      FileUtils.cp(expand_path(file_name), expand_path(copied_file_name))
+      git "add %s" % shell_escape(copied_file_name)
+    end
+
+    def remove_file(file_name)
+      FileUtils.rm(expand_path(file_name))
+    end
+
+    def change_file_mode(file_mode, file_name)
+      FileUtils.chmod(file_mode, expand_path(file_name))
+    end
+
+    def create_file(file_name, content)
+      File.open(expand_path(file_name), 'w') do |file|
+        file.puts(content)
+      end
+      git "add %s" % shell_escape(file_name)
+    end
+
+    def create_directory(directory_name)
+      FileUtils.mkdir expand_path(directory_name)
+    end
+
+    def prepend_line(file_name, line)
+      content = line + "\n" + IO.read(expand_path(file_name))
+      create_file(file_name, content)
+    end
+
+    def append_line(file_name, line)
+      content = IO.read(expand_path(file_name)) + line + "\n"
+      create_file(file_name, content)
+    end
+
+    def insert_line(file_name, line, offset)
+      content = IO.readlines(expand_path(file_name)).insert(offset, line + "\n").join
+      create_file(file_name, content)
+    end
+
+    def edit_file(file_name)
+      lines = IO.readlines(expand_path(file_name))
+      content = yield(lines).join
+      create_file(file_name, content)
+    end
+
+    def create_mailer(*arguments)
+      p arguments if ENV['DEBUG']
+      @mailer = GitCommitMailer.parse_options_and_create(arguments)
+    end
+
+    def create_default_mailer
+      create_mailer("--repository=#{@origin_repository_directory}",
+                    "--name=sample-repo",
+                    "--from=from@example.com",
+                    "--error-to=error@example.com",
+                    DATE_OPTION,
+                    "to@example")
+    end
+
+    def each_reference_change
+      begin
+        File.open(@hook_output, 'r') do |file|
+          while line = file.gets
+            old_revision, new_revision, reference = line.split
+            puts "#{old_revision} #{new_revision} #{reference}" if ENV['DEBUG']
+            yield old_revision, new_revision, reference
+          end
+        end
+      rescue Errno::ENOENT
+      end
+    end
+
+    def process_reference_change(*args)
+      @push_mail, @commit_mails = @mailer.process_reference_change(*args)
+    end
+
+    def get_mails_of_last_push
+      push_mail, commit_mails = nil, []
+      each_reference_change do |old_revision, new_revision, reference|
+        push_mail, commit_mails = process_reference_change(old_revision, new_revision, reference)
+      end
+      [push_mail, commit_mails]
+    end
+
+    def read_from_fixture_directory(file)
+      IO.read('fixtures/' + file)
+    end
+
+    def expected_rss(file)
+      read_from_fixture_directory(file)
+    end
+
+    def expected_mail(file)
+      read_from_fixture_directory(file)
+    end
+
+    @@header_regexp = /^(.|\n)*?\n\n/
+    def header_section(mail)
+      mail[@@header_regexp]
+    end
+
+    def body_section(mail)
+      mail.sub(@@header_regexp, '')
+    end
+
+    def assert_header(expected_header, actual_header)
+      assert_equal(expected_header, actual_header)
+    end
+
+    def assert_body(expected_body, actual_body)
+      assert_equal(expected_body, actual_body)
+    end
+
+    def assert_mail(expected_mail_file_name, tested_mail)
+      begin
+        assert_header(header_section(expected_mail(expected_mail_file_name)),
+                      header_section(tested_mail))
+        assert_body(body_section(expected_mail(expected_mail_file_name)),
+                    body_section(tested_mail))
+      rescue
+        puts tested_mail if ENV['DEBUG']
+        raise
+      end
+    end
+
+    def assert_rss(expected_rss_file_path, actual_rss_file_path)
+      expected = expected_rss(expected_rss_file_path)
+      actual = IO.read(actual_rss_file_path) + "\n"
+
+      channel_regexp = '<channel rdf:about="file:///tmp/git-[0-9]{8}-[0-9]{5}-' +
+                       '[0-9a-z]{10}/origin/">'
+      [expected, actual].each do |rss|
+        rss.sub!(/<rdf:RDF(([ \n]|xmlns[^ \n]*)*)>/, '<rdf:RDF>')
+        rss.sub!(/<dc:date>.*?<\/dc:date>/, '<dc:date/>')
+        rss.sub!(/#{channel_regexp}/,
+                 '<channel rdf:about="file:///tmp/.../origin/">')
+      end
+      assert_equal(expected, actual)
     end
   end
 
-  def GitCommitMailerTrackRemoteTestUtils.included(included_to)
-    make_superclass_tests_available(included_to)
+  class GitCommitMailerDiffTest < Test::Unit::TestCase
+    include Utils
+    include ::GitCommitMailerDiffTest
+  end
+
+  class GitCommitMailerFileManipulationTest < Test::Unit::TestCase
+    include Utils
+    include ::GitCommitMailerFileManipulationTest
+  end
+
+  class GitCommitMailerNoDiffTest < Test::Unit::TestCase
+    include Utils
+    include ::GitCommitMailerNoDiffTest
+
+    def create_default_mailer
+      create_mailer("--repository=#{@origin_repository_directory}",
+                    "--name=sample-repo",
+                    "--from=from@example.com",
+                    "--error-to=error@example.com",
+                    DATE_OPTION,
+                    "--no-diff",
+                    "to@example")
+    end
+  end
+
+  class GitCommitMailerTagTest < Test::Unit::TestCase
+    include Utils
+    include ::GitCommitMailerTagTest
+  end
+
+  class GitCommitMailerMergeTest < Test::Unit::TestCase
+    include Utils
+    include ::GitCommitMailerMergeTest
+  end
+
+  class GitCommitMailerNonAsciiTest < Test::Unit::TestCase
+    include Utils
+    include ::GitCommitMailerNonAsciiTest
+  end
+
+  class GitCommitMailerOptionTest < Test::Unit::TestCase
+    include Utils
+    include ::GitCommitMailerOptionTest
   end
 end
 
-class GitCommitMailerDiffTest < ::GitCommitMailerDiffTest
-  include GitCommitMailerTrackRemoteTestUtils
-end
+module TrackRemoteModeTest
+  module Utils
+    include HookModeTest::Utils
+    alias old_git git
+    def git(command, *args)
+      if command =~ /\Apush/
+        git "fetch --force", @remote_tracking_repository
+      end
+      old_git(command, *args)
+    end
 
-class GitCommitMailerFileManipulationTest < ::GitCommitMailerFileManipulationTest
-  include GitCommitMailerTrackRemoteTestUtils
-end
+    def create_remote_tracking_repository
+      @remote_tracking_repository = @test_directory + 'remote-tracking-repo/'
+      FileUtils.mkdir @remote_tracking_repository
+      git 'init --bare', @remote_tracking_repository
+      git "remote add origin #{@origin_repository_directory}", @remote_tracking_repository
+    end
 
-class GitCommitMailerNoDiffTest < ::GitCommitMailerNoDiffTest
-  include GitCommitMailerTrackRemoteTestUtils
-  def create_default_mailer
-    create_mailer("--repository=#{@remote_tracking_repository}",
-                  "--name=sample-repo",
-                  "--from=from@example.com",
-                  "--error-to=error@example.com",
-                  DATE_OPTION,
-                  "--track-remote",
-                  "--no-diff",
-                  "to@example")
+    alias old_create_repositories create_repositories
+    def create_repositories
+      old_create_repositories
+      create_remote_tracking_repository
+    end
+
+    def create_default_mailer
+      create_mailer("--repository=#{@remote_tracking_repository}",
+                    "--name=sample-repo",
+                    "--from=from@example.com",
+                    "--error-to=error@example.com",
+                    DATE_OPTION,
+                    "--track-remote",
+                    "to@example")
+    end
+
+    def get_mails_of_last_push
+      push_mail, commit_mails = nil, []
+
+      reference_changes = @mailer.fetch
+      reference_changes.each do |old_revision, new_revision, reference|
+        push_mail, commit_mails = process_reference_change(old_revision, new_revision, reference)
+      end
+
+      [push_mail, commit_mails]
+    end
+
+    def each_reference_change
+      reference_changes = @mailer.fetch
+      reference_changes.each do |old_revision, new_revision, reference|
+        puts "#{old_revision} #{new_revision} #{reference}" if ENV['DEBUG']
+        yield old_revision, new_revision, reference
+      end
+    end
+
+    def assert_header(expected_header, actual_header)
+      assert_equal(expected_header.gsub(/^X-Git-Refname: refs\/heads\/master$/,
+                                        'X-Git-Refname: refs/remotes/origin/master'),
+                   actual_header)
+    end
+
+    def assert_body(expected_body, actual_body)
+      assert_equal(expected_body.gsub(/refs\/heads\/master/,
+                                      'refs/remotes/origin/master'),
+                   actual_body)
+    end
   end
-end
 
-class GitCommitMailerTagTest < ::GitCommitMailerTagTest
-  include GitCommitMailerTrackRemoteTestUtils
-end
+  class GitCommitMailerDiffTest < Test::Unit::TestCase
+    include Utils
+    include ::GitCommitMailerDiffTest
+  end
 
-class GitCommitMailerNonAsciiTest < ::GitCommitMailerNonAsciiTest
-  include GitCommitMailerTrackRemoteTestUtils
-end
+  class GitCommitMailerFileManipulationTest < Test::Unit::TestCase
+    include Utils
+    include ::GitCommitMailerFileManipulationTest
+  end
 
-class GitCommitMailerMergeTest < ::GitCommitMailerMergeTest
-  include GitCommitMailerTrackRemoteTestUtils
-end
+  class GitCommitMailerNoDiffTest < Test::Unit::TestCase
+    include Utils
+    include ::GitCommitMailerNoDiffTest
 
+    def create_default_mailer
+      create_mailer("--repository=#{@remote_tracking_repository}",
+                    "--name=sample-repo",
+                    "--from=from@example.com",
+                    "--error-to=error@example.com",
+                    DATE_OPTION,
+                    "--track-remote",
+                    "--no-diff",
+                    "to@example")
+    end
+  end
+
+  class GitCommitMailerTagTest < Test::Unit::TestCase
+    include Utils
+    include ::GitCommitMailerTagTest
+  end
+
+  class GitCommitMailerMergeTest < Test::Unit::TestCase
+    include Utils
+    include ::GitCommitMailerMergeTest
+  end
+
+  class GitCommitMailerNonAsciiTest < Test::Unit::TestCase
+    include Utils
+    include ::GitCommitMailerNonAsciiTest
+  end
 end
