@@ -24,4 +24,14 @@ class ReceiverTest < Test::Unit::TestCase
     visit "/"
     assert_response("Method Not Allowed")
   end
+
+  def test_post_without_parameters
+    visit "/", :post
+    assert_response("Bad Request")
+  end
+
+  def test_post_with_empty_payload
+    visit "/", :post, :payload => ""
+    assert_response("Bad Request")
+  end
 end

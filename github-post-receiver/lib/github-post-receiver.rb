@@ -17,6 +17,9 @@
 
 require 'webrick/httpstatus'
 
+require 'rubygems'
+require 'json'
+
 class GitHubPostReceiver
   module PathResolver
     def base_dir
@@ -44,9 +47,29 @@ class GitHubPostReceiver
   private
   def process(request, response)
     unless request.post?
-      response.status = status(:method_not_allowed)
+      set_error_response(response, :method_not_allowed, "must POST")
       return
     end
+
+    payload = request["payload"]
+    if payload.nil?
+      set_error_response(response, :bad_request, "payload parameter is missing")
+      return
+    end
+
+    begin
+      payload = JSON.parse(payload)
+    rescue JSON::ParserError
+      set_error_response(response, :bad_request,
+                         "invalid JSON format: <#{$!.message}>")
+      return
+    end
+  end
+
+  def set_error_response(response, status_keyword, message)
+    response.status = status(status_keyword)
+    response["Content-Type"] = "text/plain"
+    response.write(message)
   end
 
   def target?(name)
