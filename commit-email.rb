@@ -1547,10 +1547,10 @@ EOF
   end
 
   def post_process_infos
-    #@push_info.author = determine_prominent_author
+    # @push_info.author = determine_prominent_author
     commit_infos = @commit_infos.dup
-    #@comit_infos may be altered and I don't know any sensible behavior of ruby
-    #in such cases. Take the safety measure at the moment...
+    # @commit_infos may be altered and I don't know any sensible behavior of ruby
+    # in such cases. Take the safety measure at the moment...
     commit_infos.reverse_each do |commit_info|
       traverse_merge_commit(commit_info) if commit_info.merge?
     end
