@@ -51,6 +51,12 @@ class GitHubPostReceiver
       return
     end
 
+    payload = parse_payload(request, response)
+    return if payload.nil?
+    process_payload(request, response, payload)
+  end
+
+  def parse_payload(request, response)
     payload = request["payload"]
     if payload.nil?
       set_error_response(response, :bad_request, "payload parameter is missing")
@@ -58,12 +64,49 @@ class GitHubPostReceiver
     end
 
     begin
-      payload = JSON.parse(payload)
+      JSON.parse(payload)
     rescue JSON::ParserError
       set_error_response(response, :bad_request,
                          "invalid JSON format: <#{$!.message}>")
+      nil
+    end
+  end
+
+  def process_payload(request, response, payload)
+    repository = process_payload_repository(request, response, payload)
+  end
+
+  def process_payload_repository(request, response, payload)
+    repository = payload["repository"]
+    if repository.nil?
+      set_error_response(response, :bad_request,
+                         "repository information is missing: " +
+                         "<#{payload.inspect}>")
       return
     end
+
+    unless repository.is_a?(Hash)
+      set_error_response(response, :bad_request,
+                         "invalid repository information format: " +
+                         "<#{repository.inspect}>")
+      return
+    end
+
+    name = repository["name"]
+    if name.nil?
+      set_error_response(response, :bad_request,
+                         "repository name is missing: " +
+                         "<#{repository.inspect}>")
+      return
+    end
+
+    unless target?(name)
+      set_error_response(response, :forbidden,
+                         "unacceptable repository: <#{name.inspect}>")
+      return
+    end
+
+    Repository.new(name, @options)
   end
 
   def set_error_response(response, status_keyword, message)
@@ -73,7 +116,7 @@ class GitHubPostReceiver
   end
 
   def target?(name)
-    @options[:targets].any? do |target|
+    (@options[:targets] || [/\Aa-z\d_\-\z/i]).any? do |target|
       target === name
     end
   end

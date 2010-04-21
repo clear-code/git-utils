@@ -17,7 +17,7 @@ class ReceiverTest < Test::Unit::TestCase
   include GitHubPostReceiverTestUtils
 
   def app
-    GitHubPostReceiver.new
+    GitHubPostReceiver.new(options)
   end
 
   def test_get
@@ -33,5 +33,21 @@ class ReceiverTest < Test::Unit::TestCase
   def test_post_with_empty_payload
     visit "/", :post, :payload => ""
     assert_response("Bad Request")
+  end
+
+  def test_post_with_non_target_repository
+    post_payload(:repository => {
+                   :name => "evil-repository",
+                 })
+    assert_response("Forbidden")
+  end
+
+  private
+  def post_payload(payload)
+    visit "/", :post, :payload => JSON.generate(payload)
+  end
+
+  def options
+    @options ||= {:targets => ["rroonga"]}
   end
 end
