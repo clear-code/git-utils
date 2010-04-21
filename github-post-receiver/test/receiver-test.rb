@@ -16,9 +16,19 @@
 class ReceiverTest < Test::Unit::TestCase
   include GitHubPostReceiverTestUtils
 
+  def setup
+    @tmp_dir = File.join(File.dirname(__FILE__), "tmp")
+    FileUtils.mkdir_p(@tmp_dir)
+  end
+
+  def teardown
+    FileUtils.rm_rf(@tmp_dir)
+  end
+
   def app
     GitHubPostReceiver.new(options)
   end
+
 
   def test_get
     visit "/"
@@ -42,12 +52,24 @@ class ReceiverTest < Test::Unit::TestCase
     assert_response("Forbidden")
   end
 
+  def test_post
+    omit("should not use real repository.")
+    post_payload(:repository => {
+                   :url => "http://github.com/ranguba/rroonga",
+                   :name => "rroonga",
+                 })
+    assert_response("OK")
+  end
+
   private
   def post_payload(payload)
     visit "/", :post, :payload => JSON.generate(payload)
   end
 
   def options
-    @options ||= {:targets => ["rroonga"]}
+    @options ||= {
+      :targets => ["rroonga"],
+      :base_dir => @tmp_dir,
+    }
   end
 end

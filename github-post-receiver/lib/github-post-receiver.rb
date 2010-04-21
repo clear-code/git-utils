@@ -15,6 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+require 'fileutils'
 require 'webrick/httpstatus'
 
 require 'rubygems'
@@ -27,7 +28,7 @@ class GitHubPostReceiver
     end
 
     def path(*paths)
-      File.expand(File.join(base_dir, *paths))
+      File.expand_path(File.join(base_dir, *paths))
     end
   end
 
@@ -74,6 +75,13 @@ class GitHubPostReceiver
 
   def process_payload(request, response, payload)
     repository = process_payload_repository(request, response, payload)
+    return if repository.nil?
+    begin
+      repository.process
+    rescue Repository::Error
+      set_error_response(response, :internal_server_error,
+                         "failed to send commit mail: <#{$!.message}>")
+    end
   end
 
   def process_payload_repository(request, response, payload)
@@ -106,7 +114,7 @@ class GitHubPostReceiver
       return
     end
 
-    Repository.new(name, @options)
+    Repository.new(name, payload, @options)
   end
 
   def set_error_response(response, status_keyword, message)
@@ -137,12 +145,28 @@ class GitHubPostReceiver
   class Repository
     include PathResolver
 
-    def initialize(name, options)
+    class Error < StandardError
+    end
+
+    def initialize(name, payload, options)
       @name = name
+      @payload = payload
       @options = options
     end
 
-    def git
+    def process
+      FileUtils.mkdir_p(mirrors_directory)
+      unless File.exist?(mirror_path)
+        git("clone", "--quiet", repository_uri, mirror_path)
+      end
+    end
+
+    private
+    def git(*arguments)
+      system(git_command, *(arguments.collect {|argument| argument.to_s}))
+    end
+
+    def git_command
       @git ||= @options[:git] || "git"
     end
 
@@ -152,14 +176,18 @@ class GitHubPostReceiver
         path("mirrors")
     end
 
-    def mirror_path(name)
-      path("mirrors", name)
+    def mirror_path
+      @mirror_path ||= path("mirrors", @name)
     end
 
     def commit_email
       @commit_email ||=
         @options[:commit_email] ||
         path("..", "commit-email.rb")
+    end
+
+    def repository_uri
+      "#{@payload['repository']['url'].sub(/\Ahttp/, 'git')}.git"
     end
   end
 end
