@@ -1,0 +1,50 @@
+= README
+
+== Name
+
+commit-email.rb
+
+== Description
+
+commit-email.rb is an utility to send commit mails for commits
+pushed to git repositories.
+
+See the following URL about git.
+
+* groonga: http://groonga.org/
+
+== Authors
+
+Kouhei Sutou:: <tt><kou@clear-code.com></tt>
+Ryo Onodera:: <tt><onodera@clear-code.com></tt>
+
+== License
+
+commit-email.rb is licensed under GPL 3. See license/gpl.txt
+for details.
+
+== Dependencies
+
+* Ruby >= 1.8 (including 1.9.1)
+* git >= ??? (any recent git should work)
+
+== Install
+
+commit-email.rb utilizes git's hook functionality to send
+commit mails.
+
+Edit "post-receive" shell script file to execute it from there,
+which is located under "hooks" directory in a git repository.
+
+Example:
+    /usr/bin/ruby /path/to/commit-email.rb \
+      --from-domain=clear-code.com \
+      --error-to=onodera@clear-code.com \
+      commit@clear-code.com
+  
+For more detailed usage and options, execute commit-email.rb
+with <tt>--help</tt> option.
+
+== Thanks
+
+* Kouhei Sutou wrote first prototype.

@@ -1,0 +1,50 @@
+= はじめに
+
+== 名前
+
+commit-email.rb
+
+== 説明
+
+gitのリポジトリにpushされたコミットからコミットメールを作成し
+送信するスクリプトです。
+
+gitに関する情報は以下を参照して下さい。
+
+* git: http://git-scm.com/
+
+== 作者
+
+Kouhei Sutou:: <tt><kou@clear-code.com></tt>
+Ryo Onodera:: <tt><onodera@clear-code.com></tt>
+
+== ライセンス
+
+GPL 3です。詳しくはlicense/gpl.txtを見てください。
+
+== 依存ソフトウェア
+
+* Ruby >= 1.8 （1.9.1対応）
+* git >= ??? (最近のgitなら動くはずです)
+
+== インストール
+
+commit-email.rbはgitのフック機構を利用してコミットメールを
+送信します。
+
+コミットメールを送信するようにしたいgitリポジトリのhooksディ
+レクトリにあるシェルスクリプトファイルpost-receiveから
+commit-email.rbを実行するようにしてください。
+
+例:
+    /usr/bin/ruby /path/to/commit-email.rb \
+      --from-domain=clear-code.com \
+      --error-to=onodera@clear-code.com \
+      commit@clear-code.com
+
+詳細はcommit-email.rbに<tt>--help</tt>オプションをつけて実行
+して下さい。
+
+== 感謝
+
+* 須藤さん: 最初のプロトタイプを作成してくれました。
