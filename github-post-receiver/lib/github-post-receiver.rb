@@ -77,8 +77,10 @@ class GitHubPostReceiver
   def process_payload(request, response, payload)
     repository = process_payload_repository(request, response, payload)
     return if repository.nil?
+    before, after, reference =
+      process_push_parameters(request, response, payload)
     begin
-      repository.process
+      repository.process(before, after, reference)
     rescue Repository::Error
       set_error_response(response, :internal_server_error,
                          "failed to send commit mail: <#{$!.message}>")
@@ -116,6 +118,31 @@ class GitHubPostReceiver
     end
 
     repository_class.new(name, payload, @options)
+  end
+
+  def process_push_parameters(request, response, payload)
+    before = payload["before"]
+    if before.nil?
+      set_error_response(response, :bad_request,
+                         "before commit ID is missing: <#{payload.inspect}>")
+      return
+    end
+
+    after = payload["after"]
+    if after.nil?
+      set_error_response(response, :bad_request,
+                         "after commit ID is missing: <#{payload.inspect}>")
+      return
+    end
+
+    reference = payload["reference"]
+    if after.nil?
+      set_error_response(response, :bad_request,
+                         "reference is missing: <#{payload.inspect}>")
+      return
+    end
+
+    [before, after, reference]
   end
 
   def set_error_response(response, status_keyword, message)
@@ -161,34 +188,28 @@ class GitHubPostReceiver
       raise Error.new("mail receive address is missing: <#{@name}>") if @to.nil?
     end
 
-    def process
+    def process(before, after, reference)
       FileUtils.mkdir_p(mirrors_directory)
-      unless File.exist?(mirror_path)
-        git("clone", "--quiet", "--bare", repository_uri, mirror_path)
-        create_post_receive_hook
+      if File.exist?(mirror_path)
+        git("pull", "--git-dir", mirror_path, "--rebase")
+      else
+        git("clone", "--quiet", "--mirror", repository_uri, mirror_path)
       end
+      send_commit_email(before, after, reference)
     end
 
-    def create_post_receive_hook
-      path = File.join(mirror_path, "hooks", "post-receive")
-      options = [["--from-domain", from_domain],
-                 ["--name", @name],
-                 ["--max-size", "1M"]]
-      options << ["--error-to", error_to] if error_to
-      File.open(path, "w") do |hook|
-        hook.print(<<-EOH)
-#!/bin/sh
-
-#{ruby} #{commit_email} \\
-EOH
-        options.each do |name, value|
-          hook.puts("  #{name} #{Shellwords.escape(value)} \\")
-        end
-        hook.print(<<-EOH)
-  #{Shellwords.escape(@to)}
-EOH
+    def send_commit_email(before, after, reference)
+      options = ["--from-domain", from_domain,
+                 "--name", @name,
+                 "--max-size", "1M"]
+      options.concat("--error-to", error_to) if error_to
+      options << @to
+      command_line = [ruby, commit_email, *options].collect do |component|
+        Shellwords.escape(component)
+      end.join(" ")
+      IO.popen(command_line, "w") do |io|
+        io.puts("#{before} #{after} #{reference}")
       end
-      FileUtils.chmod(0o755, path)
     end
 
     private
@@ -211,7 +232,11 @@ EOH
     end
 
     def ruby
-      @ruby ||= @options[:ruby] || "/usr/bin/ruby"
+      @ruby ||= @options[:ruby] || current_ruby
+    end
+
+    def current_ruby
+      File.join(Config::CONFIG["bindir"], Config::CONFIG["RUBY_INSTALL_NAME"])
     end
 
     def commit_email

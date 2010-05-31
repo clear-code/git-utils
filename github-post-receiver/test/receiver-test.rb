@@ -55,23 +55,27 @@ class ReceiverTest < Test::Unit::TestCase
 
   def test_post
     assert_false(File.exist?(mirror_path("rroonga")))
+    before = "0f2be32a3671360a323f1dee64c757bc9fc44998"
+    after = "c7bf92799225d67788be7c42ea4f504a47708390"
+    reference = "refs/heads/master"
     post_payload(:repository => {
                    :url => "http://github.com/ranguba/rroonga",
                    :name => "rroonga",
-                 })
+                 },
+                 :before => before,
+                 :after => after,
+                 :reference => reference)
     assert_response("OK")
     assert_true(File.exist?(mirror_path("rroonga")))
-    hook_path = mirror_path("rroonga", "hooks", "post-receive")
-    assert_equal(<<-EOC, File.read(hook_path))
-#!/bin/sh
-
-/usr/bin/ruby #{commit_email} \\
-  --from-domain example.com \\
-  --name rroonga \\
-  --max-size 1M \\
-  null@example.com
-EOC
-    assert_equal(0o755, File.stat(hook_path).mode & 0o777)
+    result = YAML.load_file(File.join(@tmp_dir, "commit-email-result.yaml"))
+    assert_equal([{
+                    "argv" => ["--from-domain", "example.com",
+                               "--name", "rroonga",
+                               "--max-size", "1M",
+                               "null@example.com"],
+                    "lines" => ["#{before} #{after} #{reference}\n"],
+                  }],
+                 result)
   end
 
   private
@@ -85,12 +89,9 @@ EOC
       :base_dir => @tmp_dir,
       :fixtures_dir => @fixtures_dir,
       :repository_class => LocalRepository,
+      :commit_email => File.join(@fixtures_dir, "mock-commit-email.rb"),
       :to => "null@example.com",
     }
-  end
-
-  def commit_email
-    File.expand_path(File.join(@tmp_dir, "..", "commit-email.rb"))
   end
 
   def mirror_path(*components)
