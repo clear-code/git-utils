@@ -25,7 +25,7 @@ require 'github-post-receiver'
 
 use Rack::CommonLogger
 
-map "/post-receive/" do
+map "/post-receiver/" do
   config_file = ::File.join(base_dir, "config.yaml")
   run GitHubPostReceiver.new(YAML.load_file(config_file))
 end
