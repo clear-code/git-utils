@@ -39,18 +39,72 @@ class ReceiverTest < Test::Unit::TestCase
   def test_post_without_parameters
     visit "/", :post
     assert_response("Bad Request")
+    assert_equal("payload parameter is missing", response_body)
   end
 
   def test_post_with_empty_payload
     visit "/", :post, :payload => ""
     assert_response("Bad Request")
+    error_message = nil
+    begin
+      JSON.parse("")
+    rescue
+      error_message = $!.message
+    end
+    assert_equal("invalid JSON format: <#{error_message}>",
+                 response_body)
   end
 
   def test_post_with_non_target_repository
+    name = "evil-repository"
     post_payload(:repository => {
-                   :name => "evil-repository",
+                   :name => name,
                  })
     assert_response("Forbidden")
+    assert_equal("unacceptable repository: <#{name.inspect}>",
+                 response_body)
+  end
+
+  def test_post_without_before
+    payload = {
+      "repository" => {
+        "url" => "http://github.com/ranguba/rroonga",
+        "name" => "rroonga",
+      }
+    }
+    post_payload(payload)
+    assert_response("Bad Request")
+    assert_equal("before commit ID is missing: <#{payload.inspect}>",
+                 response_body)
+  end
+
+  def test_post_without_after
+    payload = {
+      "before" => "0f2be32a3671360a323f1dee64c757bc9fc44998",
+      "repository" => {
+        "url" => "http://github.com/ranguba/rroonga",
+        "name" => "rroonga",
+      },
+    }
+    post_payload(payload)
+    assert_response("Bad Request")
+    assert_equal("after commit ID is missing: <#{payload.inspect}>",
+                 response_body)
+  end
+
+  def test_post_without_reference
+    payload = {
+      "before" => "0f2be32a3671360a323f1dee64c757bc9fc44998",
+      "after" => "c7bf92799225d67788be7c42ea4f504a47708390",
+      "repository" => {
+        "url" => "http://github.com/ranguba/rroonga",
+        "name" => "rroonga",
+      },
+    }
+    post_payload(payload)
+    assert_response("Bad Request")
+    assert_equal("reference is missing: <#{payload.inspect}>",
+                 response_body)
   end
 
   def test_post

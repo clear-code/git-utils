@@ -136,7 +136,7 @@ class GitHubPostReceiver
     end
 
     reference = payload["reference"]
-    if after.nil?
+    if reference.nil?
       set_error_response(response, :bad_request,
                          "reference is missing: <#{payload.inspect}>")
       return
