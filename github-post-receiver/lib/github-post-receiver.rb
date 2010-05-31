@@ -26,7 +26,9 @@ require 'json'
 class GitHubPostReceiver
   module PathResolver
     def base_dir
-      @base_dir ||= @options[:base_dir]
+      @base_dir ||=
+        @options[:base_dir] ||
+        File.expand_path(File.dirname(__FILE__), "..")
     end
 
     def path(*paths)
