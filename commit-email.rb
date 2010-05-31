@@ -596,7 +596,7 @@ class GitCommitMailer
       lines << line.chomp if line #take out the very first 'diff --git' header
       while line = output.shift
         line.chomp!
-        if line =~ /\Adiff --git/
+        if /\Adiff --git/ =~ line
           @diffs << DiffPerFile.new(@mailer, lines, @revision)
           lines = [line]
         else
