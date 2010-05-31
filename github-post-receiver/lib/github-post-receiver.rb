@@ -229,7 +229,8 @@ class GitHubPostReceiver
     end
 
     def send_commit_email(before, after, reference)
-      options = ["--from-domain", from_domain,
+      options = ["--repository", mirror_path,
+                 "--from-domain", from_domain,
                  "--name", @name,
                  "--max-size", "1M"]
       options.concat(["--error-to", error_to]) if error_to

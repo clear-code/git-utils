@@ -123,7 +123,8 @@ class ReceiverTest < Test::Unit::TestCase
     assert_true(File.exist?(mirror_path("rroonga")))
     result = YAML.load_file(File.join(@tmp_dir, "commit-email-result.yaml"))
     assert_equal([{
-                    "argv" => ["--from-domain", "example.com",
+                    "argv" => ["--repository", mirror_path("rroonga"),
+                               "--from-domain", "example.com",
                                "--name", "rroonga",
                                "--max-size", "1M",
                                "null@example.com"],
