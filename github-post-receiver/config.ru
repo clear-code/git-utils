@@ -15,8 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-base_dir = File.dirname(__FILE__)
-lib_dir = File.join(base_dir, "lib")
+base_dir = ::File.dirname(__FILE__)
+lib_dir = ::File.join(base_dir, "lib")
 $LOAD_PATH.unshift(lib_dir)
 
 require 'github-post-receiver'
