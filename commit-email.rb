@@ -1862,10 +1862,12 @@ if __FILE__ == $0
   rescue Exception => error
     require 'net/smtp'
     require 'socket'
+    require 'etc'
 
     to = []
     subject = "Error"
-    from = "#{ENV['USER']}@#{Socket.gethostname}"
+    user = Etc.getpwuid(Process.uid).name
+    from = "#{user}@#{Socket.gethostname}"
     server = nil
     port = nil
     begin
