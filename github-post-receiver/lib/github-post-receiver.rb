@@ -232,7 +232,7 @@ class GitHubPostReceiver
       options = ["--from-domain", from_domain,
                  "--name", @name,
                  "--max-size", "1M"]
-      options.concat("--error-to", error_to) if error_to
+      options.concat(["--error-to", error_to]) if error_to
       options << @to
       command_line = [ruby, commit_email, *options].collect do |component|
         Shellwords.escape(component)
