@@ -242,7 +242,7 @@ class GitHubPostReceiver
         io.puts("#{before} #{after} #{reference}")
       end
       unless $?.success?
-        raise Error.new("failed to run commit-email.rb: "
+        raise Error.new("failed to run commit-email.rb: " +
                         "<#{command_line}>:<#{before} #{after} #{reference}>")
       end
     end
