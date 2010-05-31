@@ -155,7 +155,7 @@ class GitHubPostReceiver
   end
 
   def target?(name)
-    (@options[:targets] || [/\Aa-z\d_\-\z/i]).any? do |target|
+    (@options[:targets] || [/\A[a-z\d_\-]+\z/i]).any? do |target|
       target === name
     end
   end
