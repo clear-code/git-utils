@@ -36,7 +36,10 @@ class GitHubPostReceiver
   include PathResolver
 
   def initialize(options={})
-    @options = options
+    @options = {}
+    options.each do |key, value|
+      @options[key.to_sym] = value
+    end
   end
 
   def call(env)

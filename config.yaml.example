@@ -1,0 +1,3 @@
+to: receiver@example.com
+error_to: admin@example.com
+from_domain: example.com

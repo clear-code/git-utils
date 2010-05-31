@@ -15,6 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+require 'yaml'
+
 base_dir = ::File.dirname(__FILE__)
 lib_dir = ::File.join(base_dir, "lib")
 $LOAD_PATH.unshift(lib_dir)
@@ -23,4 +25,7 @@ require 'github-post-receiver'
 
 use Rack::CommonLogger
 
-run GitHubPostReceiver
+map "/post-receive/" do
+  config_file = ::File.join(base_dir, "config.yaml")
+  run GitHubPostReceiver.new(YAML.load_file(config_file))
+end
