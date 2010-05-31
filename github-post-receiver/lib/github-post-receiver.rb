@@ -233,12 +233,13 @@ class GitHubPostReceiver
       command_line = [ruby, commit_email, *options].collect do |component|
         Shellwords.escape(component)
       end.join(" ")
+      change = "#{before} #{after} #{reference}"
       IO.popen(command_line, "w") do |io|
-        io.puts("#{before} #{after} #{reference}")
+        io.puts(change)
       end
       unless $?.success?
         raise Error.new("failed to run commit-email.rb: " +
-                        "<#{command_line}>:<#{before} #{after} #{reference}>")
+                        "<#{command_line}>:<#{change}>")
       end
     end
 
