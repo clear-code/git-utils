@@ -17,6 +17,7 @@
 
 require 'fileutils'
 require 'webrick/httpstatus'
+require 'shellwords'
 
 require 'rubygems'
 require 'json'
@@ -114,7 +115,7 @@ class GitHubPostReceiver
       return
     end
 
-    Repository.new(name, payload, @options)
+    repository_class.new(name, payload, @options)
   end
 
   def set_error_response(response, status_keyword, message)
@@ -142,6 +143,10 @@ class GitHubPostReceiver
     code
   end
 
+  def repository_class
+    @options[:repository_class] || Repository
+  end
+
   class Repository
     include PathResolver
 
@@ -152,13 +157,38 @@ class GitHubPostReceiver
       @name = name
       @payload = payload
       @options = options
+      @to = @options[:to]
+      raise Error.new("mail receive address is missing: <#{@name}>") if @to.nil?
     end
 
     def process
       FileUtils.mkdir_p(mirrors_directory)
       unless File.exist?(mirror_path)
-        git("clone", "--quiet", repository_uri, mirror_path)
+        git("clone", "--quiet", "--bare", repository_uri, mirror_path)
+        create_post_receive_hook
       end
+    end
+
+    def create_post_receive_hook
+      path = File.join(mirror_path, "hooks", "post-receive")
+      options = [["--from-domain", from_domain],
+                 ["--name", @name],
+                 ["--max-size", "1M"]]
+      options << ["--error-to", error_to] if error_to
+      File.open(path, "w") do |hook|
+        hook.print(<<-EOH)
+#!/bin/sh
+
+#{ruby} #{commit_email} \\
+EOH
+        options.each do |name, value|
+          hook.puts("  #{name} #{Shellwords.escape(value)} \\")
+        end
+        hook.print(<<-EOH)
+  #{Shellwords.escape(@to)}
+EOH
+      end
+      FileUtils.chmod(0o755, path)
     end
 
     private
@@ -177,13 +207,25 @@ class GitHubPostReceiver
     end
 
     def mirror_path
-      @mirror_path ||= path("mirrors", @name)
+      @mirror_path ||= File.join(mirrors_directory, @name)
+    end
+
+    def ruby
+      @ruby ||= @options[:ruby] || "/usr/bin/ruby"
     end
 
     def commit_email
       @commit_email ||=
         @options[:commit_email] ||
         path("..", "commit-email.rb")
+    end
+
+    def from_domain
+      @from_domain ||= @options[:from_domain] || "example.com"
+    end
+
+    def error_to
+      @error_to ||= @options[:error_to]
     end
 
     def repository_uri

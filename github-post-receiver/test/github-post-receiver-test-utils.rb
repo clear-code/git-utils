@@ -46,4 +46,15 @@ module GitHubPostReceiverTestUtils
       [code, messages[code]]
     end
   end
+
+  class LocalRepository < GitHubPostReceiver::Repository
+    private
+    def fixtures_dir
+      @options[:fixtures_dir]
+    end
+
+    def repository_uri
+      File.join(fixtures_dir, "#{@name}.git")
+    end
+  end
 end
