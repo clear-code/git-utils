@@ -109,12 +109,7 @@ class GitHubPostReceiver
     return if repository.nil?
     before, after, reference =
       process_push_parameters(request, response, payload)
-    begin
-      repository.process(before, after, reference)
-    rescue Repository::Error
-      set_error_response(response, :internal_server_error,
-                         "failed to send commit mail: <#{$!.message}>")
-    end
+    repository.process(before, after, reference)
   end
 
   def process_payload_repository(request, response, payload)
