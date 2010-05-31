@@ -118,7 +118,7 @@ class ReceiverTest < Test::Unit::TestCase
                  },
                  :before => before,
                  :after => after,
-                 :reference => reference)
+                 :ref => reference)
     assert_response("OK")
     assert_true(File.exist?(mirror_path("rroonga")))
     result = YAML.load_file(File.join(@tmp_dir, "commit-email-result.yaml"))
