@@ -39,10 +39,7 @@ class GitHubPostReceiver
   include PathResolver
 
   def initialize(options={})
-    @options = {}
-    options.each do |key, value|
-      @options[key.to_sym] = value
-    end
+    @options = symbolize_options(options)
   end
 
   def call(env)
@@ -70,6 +67,15 @@ class GitHubPostReceiver
   private
   def production?
     ENV["RACK_ENV"] == "production"
+  end
+
+  def symbolize_options(options)
+    symbolized_options = {}
+    options.each do |key, value|
+      value = symbolize_options(value) if value.is_a?(Hash)
+      symbolized_options[key.to_sym] = value
+    end
+    symbolized_options
   end
 
   def notify_exception(exception, request)
@@ -128,21 +134,37 @@ class GitHubPostReceiver
       return
     end
 
-    name = repository["name"]
-    if name.nil?
+    repository_name = repository["name"]
+    if repository_name.nil?
       set_error_response(response, :bad_request,
-                         "repository name is missing: " +
+                         "repository name is missing: <#{repository.inspect}>")
+      return
+    end
+
+    owner = repository["owner"]
+    if owner.nil?
+      set_error_response(response, :bad_request,
+                         "repository owner is missing: <#{repository.inspect}>")
+      return
+    end
+
+    owner_name = owner["name"]
+    if owner_name.nil?
+      set_error_response(response, :bad_request,
+                         "repository owner name is missing: " +
                          "<#{repository.inspect}>")
       return
     end
 
-    unless target?(name)
+    unless target?(owner_name, repository_name)
       set_error_response(response, :forbidden,
-                         "unacceptable repository: <#{name.inspect}>")
+                         "unacceptable repository: " +
+                         "<#{owner_name.inspect}>:<#{repository_name.inspect}>")
       return
     end
 
-    repository_class.new(name, payload, @options)
+    repository_class.new(owner_name, repository_name, payload,
+                         repository_options(owner_name, repository_name))
   end
 
   def process_push_parameters(request, response, payload)
@@ -176,9 +198,9 @@ class GitHubPostReceiver
     response.write(message)
   end
 
-  def target?(name)
+  def target?(owner_name, repository_name)
     (@options[:targets] || [/\A[a-z\d_\-]+\z/i]).any? do |target|
-      target === name
+      target === repository_name
     end
   end
 
@@ -199,13 +221,20 @@ class GitHubPostReceiver
     @options[:repository_class] || Repository
   end
 
+  def repository_options(owner_name, repository_name)
+    owner_options = (@options[:owners] || {})[owner_name] || {}
+    _repository_options = owner_options[repository_name] || {}
+    @options.merge(owner_options).merge(_repository_options)
+  end
+
   class Repository
     include PathResolver
 
     class Error < StandardError
     end
 
-    def initialize(name, payload, options)
+    def initialize(owner_name, name, payload, options)
+      @owner_name = owner_name
       @name = name
       @payload = payload
       @options = options
@@ -225,7 +254,7 @@ class GitHubPostReceiver
 
     def send_commit_email(before, after, reference)
       options = ["--repository", mirror_path,
-                 "--name", @name,
+                 "--name", "#{@owner_name}/#{@name}",
                  "--max-size", "1M"]
       options.concat(["--from-domain", from_domain]) if from_domain
       options.concat(["--sender", sender]) if sender
@@ -264,7 +293,7 @@ class GitHubPostReceiver
     end
 
     def mirror_path
-      @mirror_path ||= File.join(mirrors_directory, @name)
+      @mirror_path ||= File.join(mirrors_directory, @owner_name, @name)
     end
 
     def ruby

@@ -56,12 +56,46 @@ class ReceiverTest < Test::Unit::TestCase
   end
 
   def test_post_with_non_target_repository
-    name = "evil-repository"
+    owner_name = "devil"
+    repository_name = "evil-repository"
     post_payload(:repository => {
-                   :name => name,
+                   :name => repository_name,
+                   :owner => {
+                     :name => owner_name,
+                   },
                  })
     assert_response("Forbidden")
-    assert_equal("unacceptable repository: <#{name.inspect}>",
+    assert_equal("unacceptable repository: " +
+                 "<#{owner_name.inspect}>:<#{repository_name.inspect}>",
+                 response_body)
+  end
+
+  def test_post_without_owner
+    repository = {
+      "url" => "http://github.com/ranguba/rroonga",
+      "name" => "rroonga",
+    }
+    payload = {
+      "repository" => repository,
+    }
+    post_payload(payload)
+    assert_response("Bad Request")
+    assert_equal("repository owner is missing: <#{repository.inspect}>",
+                 response_body)
+  end
+
+  def test_post_without_owner_name
+    repository = {
+      "url" => "http://github.com/ranguba/rroonga",
+      "name" => "rroonga",
+      "owner" => {},
+    }
+    payload = {
+      "repository" => repository,
+    }
+    post_payload(payload)
+    assert_response("Bad Request")
+    assert_equal("repository owner name is missing: <#{repository.inspect}>",
                  response_body)
   end
 
@@ -70,6 +104,9 @@ class ReceiverTest < Test::Unit::TestCase
       "repository" => {
         "url" => "http://github.com/ranguba/rroonga",
         "name" => "rroonga",
+        "owner" => {
+          "name" => "ranguba",
+        },
       }
     }
     post_payload(payload)
@@ -84,6 +121,9 @@ class ReceiverTest < Test::Unit::TestCase
       "repository" => {
         "url" => "http://github.com/ranguba/rroonga",
         "name" => "rroonga",
+        "owner" => {
+          "name" => "ranguba",
+        },
       },
     }
     post_payload(payload)
@@ -99,6 +139,9 @@ class ReceiverTest < Test::Unit::TestCase
       "repository" => {
         "url" => "http://github.com/ranguba/rroonga",
         "name" => "rroonga",
+        "owner" => {
+          "name" => "ranguba",
+        },
       },
     }
     post_payload(payload)
@@ -115,17 +158,19 @@ class ReceiverTest < Test::Unit::TestCase
     post_payload(:repository => {
                    :url => "http://github.com/ranguba/rroonga",
                    :name => "rroonga",
+                   :owner => {
+                     :name => "ranguba",
+                   },
                  },
                  :before => before,
                  :after => after,
                  :ref => reference)
     assert_response("OK")
-    assert_true(File.exist?(mirror_path("rroonga")))
+    assert_true(File.exist?(mirror_path("ranguba", "rroonga")))
     result = YAML.load_file(File.join(@tmp_dir, "commit-email-result.yaml"))
     assert_equal([{
-                    "argv" => ["--repository", mirror_path("rroonga"),
-                               "--from-domain", "example.com",
-                               "--name", "rroonga",
+                    "argv" => ["--repository", mirror_path("ranguba", "rroonga"),
+                               "--name", "ranguba/rroonga",
                                "--max-size", "1M",
                                "null@example.com"],
                     "lines" => ["#{before} #{after} #{reference}\n"],
