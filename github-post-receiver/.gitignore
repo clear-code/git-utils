@@ -1,3 +1,5 @@
 /test-unit
 /test/.test-result
 /webrat.log
+/mirrors
+/config.yaml
