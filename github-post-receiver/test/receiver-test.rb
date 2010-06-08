@@ -151,7 +151,8 @@ class ReceiverTest < Test::Unit::TestCase
   end
 
   def test_post
-    assert_false(File.exist?(mirror_path("rroonga")))
+    repository_mirror_path = mirror_path("ranguba", "rroonga")
+    assert_false(File.exist?(repository_mirror_path))
     before = "0f2be32a3671360a323f1dee64c757bc9fc44998"
     after = "c7bf92799225d67788be7c42ea4f504a47708390"
     reference = "refs/heads/master"
@@ -166,13 +167,51 @@ class ReceiverTest < Test::Unit::TestCase
                  :after => after,
                  :ref => reference)
     assert_response("OK")
-    assert_true(File.exist?(mirror_path("ranguba", "rroonga")))
+    assert_true(File.exist?(repository_mirror_path))
     result = YAML.load_file(File.join(@tmp_dir, "commit-email-result.yaml"))
     assert_equal([{
-                    "argv" => ["--repository", mirror_path("ranguba", "rroonga"),
+                    "argv" => ["--repository", repository_mirror_path,
                                "--name", "ranguba/rroonga",
                                "--max-size", "1M",
                                "null@example.com"],
+                    "lines" => ["#{before} #{after} #{reference}\n"],
+                  }],
+                 result)
+  end
+
+  def test_per_owner_configuration
+    repository_mirror_path = mirror_path("ranguba", "rroonga")
+    assert_false(File.exist?(repository_mirror_path))
+    options[:owners] = {
+      "ranguba" => {
+        :to => "ranguba-commit@example.org",
+        :from => "ranguba+commit@example.org",
+        :sender => "null@example.org",
+      }
+    }
+    before = "0f2be32a3671360a323f1dee64c757bc9fc44998"
+    after = "c7bf92799225d67788be7c42ea4f504a47708390"
+    reference = "refs/heads/master"
+    post_payload(:repository => {
+                   :url => "http://github.com/ranguba/rroonga",
+                   :name => "rroonga",
+                   :owner => {
+                     :name => "ranguba",
+                   },
+                 },
+                 :before => before,
+                 :after => after,
+                 :ref => reference)
+    assert_response("OK")
+    assert_true(File.exist?(repository_mirror_path))
+    result = YAML.load_file(File.join(@tmp_dir, "commit-email-result.yaml"))
+    assert_equal([{
+                    "argv" => ["--repository", repository_mirror_path,
+                               "--name", "ranguba/rroonga",
+                               "--max-size", "1M",
+                               "--from", "ranguba+commit@example.org",
+                               "--sender", "null@example.org",
+                               "ranguba-commit@example.org"],
                     "lines" => ["#{before} #{after} #{reference}\n"],
                   }],
                  result)

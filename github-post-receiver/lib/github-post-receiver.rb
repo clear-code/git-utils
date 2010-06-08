@@ -72,7 +72,6 @@ class GitHubPostReceiver
   def symbolize_options(options)
     symbolized_options = {}
     options.each do |key, value|
-      value = symbolize_options(value) if value.is_a?(Hash)
       symbolized_options[key.to_sym] = value
     end
     symbolized_options
@@ -223,8 +222,10 @@ class GitHubPostReceiver
 
   def repository_options(owner_name, repository_name)
     owner_options = (@options[:owners] || {})[owner_name] || {}
-    _repository_options = owner_options[repository_name] || {}
-    @options.merge(owner_options).merge(_repository_options)
+    owner_options = symbolize_options(owner_options)
+    _repository_options = (owner_options[:repositories] || {})[repository_name]
+    options = @options.merge(owner_options)
+    options.merge(symbolize_options(_repository_options || {}))
   end
 
   class Repository
@@ -256,6 +257,7 @@ class GitHubPostReceiver
       options = ["--repository", mirror_path,
                  "--name", "#{@owner_name}/#{@name}",
                  "--max-size", "1M"]
+      options.concat(["--from", from]) if from
       options.concat(["--from-domain", from_domain]) if from_domain
       options.concat(["--sender", sender]) if sender
       options.concat(["--error-to", error_to]) if error_to
@@ -308,6 +310,10 @@ class GitHubPostReceiver
       @commit_email ||=
         @options[:commit_email] ||
         path("..", "commit-email.rb")
+    end
+
+    def from
+      @from ||= @options[:from]
     end
 
     def from_domain
