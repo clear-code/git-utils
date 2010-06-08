@@ -216,7 +216,7 @@ class GitHubPostReceiver
     def process(before, after, reference)
       FileUtils.mkdir_p(mirrors_directory)
       if File.exist?(mirror_path)
-        git("fetch", "--git-dir", mirror_path)
+        git("--git-dir", mirror_path, "fetch", "--quiet")
       else
         git("clone", "--quiet", "--mirror", repository_uri, mirror_path)
       end
@@ -245,7 +245,11 @@ class GitHubPostReceiver
 
     private
     def git(*arguments)
-      system(git_command, *(arguments.collect {|argument| argument.to_s}))
+      arguments = arguments.collect {|argument| argument.to_s}
+      command_line = [git_command, *arguments]
+      unless system(*command_line)
+        raise Error.new("failed to run command: <#{command_line.join(' ')}>")
+      end
     end
 
     def git_command
