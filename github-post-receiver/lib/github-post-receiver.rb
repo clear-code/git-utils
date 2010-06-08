@@ -216,7 +216,7 @@ class GitHubPostReceiver
     def process(before, after, reference)
       FileUtils.mkdir_p(mirrors_directory)
       if File.exist?(mirror_path)
-        git("pull", "--git-dir", mirror_path, "--rebase")
+        git("fetch", "--git-dir", mirror_path)
       else
         git("clone", "--quiet", "--mirror", repository_uri, mirror_path)
       end
