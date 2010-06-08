@@ -644,6 +644,19 @@ module GitCommitMailerOptionTest
 
     assert_mail('test_max_size.push_mail', push_mail)
   end
+
+  def test_sender
+    set_additional_default_mailer_option("--sender=sender@example.com")
+    create_default_mailer
+
+    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
+    git 'push'
+
+    push_mail, commit_mails = get_mails_of_last_push
+
+    assert_mail('test_sender.push_mail', push_mail)
+    assert_mail('test_sender', commit_mails.first)
+  end
 end
 
 module HookModeTest

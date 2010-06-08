@@ -787,6 +787,7 @@ class GitCommitMailer
       #mailer.reference = options.reference
       mailer.from = options.from
       mailer.from_domain = options.from_domain
+      mailer.sender = options.sender
       mailer.add_diff = options.add_diff
       mailer.max_size = options.max_size
       mailer.repository_uri = options.repository_uri
@@ -826,6 +827,7 @@ class GitCommitMailer
       options.error_to = []
       options.from = nil
       options.from_domain = nil
+      options.sender = nil
       options.add_diff = true
       options.max_size = parse_size(DEFAULT_MAX_SIZE)
       options.repository_uri = nil
@@ -915,6 +917,11 @@ class GitCommitMailer
                   "cannot coexist with --from"
         end
         options.from_domain = domain
+      end
+
+      opts.on("--sender=SENDER",
+              "Use SENDER as a sender address") do |sender|
+        options.sender = sender
       end
     end
 
@@ -1011,7 +1018,7 @@ class GitCommitMailer
   attr_reader :reference, :old_revision, :new_revision, :to
   attr_writer :from, :add_diff, :show_path, :send_push_mail, :use_utf7
   attr_writer :repository, :date, :git_bin_path, :track_remote
-  attr_accessor :from_domain, :max_size, :repository_uri
+  attr_accessor :from_domain, :sender, :max_size, :repository_uri
   attr_accessor :rss_path, :rss_uri, :name, :server, :port
 
   def initialize(to)
@@ -1642,9 +1649,9 @@ EOF
 
   private
   def server_and_addresses(mail)
-    _from = GitCommitMailer.extract_email_address_from_mail(mail)
+    from = sender || GitCommitMailer.extract_email_address_from_mail(mail)
     to = @to.collect {|address| GitCommitMailer.extract_email_address(address)}
-    [@server || "localhost", @port, _from, to]
+    [@server || "localhost", @port, from, to]
   end
 
   def output_rss
@@ -1730,6 +1737,7 @@ EOF
     headers << "To: #{to.join(', ')}"
     headers << "Subject: #{subject}"
     headers << "Date: #{info.date.rfc2822}"
+    headers << "Sender: #{sender}" if sender
     headers.find_all do |header|
       /\A\s*\z/ !~ header
     end.join("\n") + "\n"
@@ -1763,7 +1771,7 @@ EOF
     #XXX work around NKF's bug of gratuitously wrapping long ascii words with
     #    MIME encoded-word syntax's header and footer, while not actually
     #    encoding the payload as base64: just strip the header and footer out.
-    encoded_string.gsub!(/=\?EUC-JP\?B\?(.*)\?=\n /) {$1}
+    encoded_string.gsub!(/\=\?EUC-JP\?B\?(.*)\?=\n /) {$1}
     encoded_string.gsub!(/(\n )*=\?US-ASCII\?Q\?(.*)\?=(\n )*/) {$2}
 
     encoded_string
@@ -1868,6 +1876,7 @@ if __FILE__ == $0
     subject = "Error"
     user = Etc.getpwuid(Process.uid).name
     from = "#{user}@#{Socket.gethostname}"
+    sender = nil
     server = nil
     port = nil
     begin
@@ -1875,6 +1884,7 @@ if __FILE__ == $0
       to = [_to]
       to = options.error_to unless options.error_to.empty?
       from = options.from || from
+      sender = options.sender
       subject = "#{options.name}: #{subject}" if options.name
       server = options.server
       port = options.port
@@ -1898,7 +1908,7 @@ if __FILE__ == $0
     else
       from = GitCommitMailer.extract_email_address(from)
       to = to.collect {|address| GitCommitMailer.extract_email_address(address)}
-      GitCommitMailer.send_mail(server || "localhost", port, from, to, <<-MAIL)
+      header <<-HEADER
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
@@ -1906,9 +1916,15 @@ From: #{from}
 To: #{to.join(', ')}
 Subject: #{subject}
 Date: #{Time.now.rfc2822}
+HEADER
+      header << "Sender: #{sender}\n" if sender
+      mail = <<-MAIL
+#{header}
 
 #{detail}
-  MAIL
+MAIL
+      GitCommitMailer.send_mail(server || "localhost", port,
+                                sender || from, to, mail)
       exit(false)
     end
   end
