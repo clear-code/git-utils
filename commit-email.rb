@@ -1051,7 +1051,7 @@ class GitCommitMailer
 
   def from(info)
     return @from if @from
-    return "#{info.author}@#{@from_domain}".sub(/@\z/, '') if @from_domain
+    # return "#{info.author}@#{@from_domain}".sub(/@\z/, '') if @from_domain
     info.author_email
   end
 
