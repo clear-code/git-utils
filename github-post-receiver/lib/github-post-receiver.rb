@@ -225,9 +225,10 @@ class GitHubPostReceiver
 
     def send_commit_email(before, after, reference)
       options = ["--repository", mirror_path,
-                 "--from-domain", from_domain,
                  "--name", @name,
                  "--max-size", "1M"]
+      options.concat(["--from-domain", from_domain]) if from_domain
+      options.concat(["--sender", sender]) if sender
       options.concat(["--error-to", error_to]) if error_to
       options << @to
       command_line = [ruby, commit_email, *options].collect do |component|
@@ -281,7 +282,11 @@ class GitHubPostReceiver
     end
 
     def from_domain
-      @from_domain ||= @options[:from_domain] || "example.com"
+      @from_domain ||= @options[:from_domain]
+    end
+
+    def sender
+      @sender ||= @options[:sender]
     end
 
     def error_to
