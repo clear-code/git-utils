@@ -877,7 +877,6 @@ module HookModeTest
     def create_default_mailer
       create_mailer("--repository=#{@origin_repository_directory}",
                     "--name=sample-repo",
-                    "--from=from@example.com",
                     "--error-to=error@example.com",
                     DATE_OPTION,
                     "to@example", *@default_mailer_options)
@@ -1033,7 +1032,6 @@ module TrackRemoteModeTest
     def create_default_mailer
       create_mailer("--repository=#{@remote_tracking_repository}",
                     "--name=sample-repo",
-                    "--from=from@example.com",
                     "--error-to=error@example.com",
                     DATE_OPTION,
                     "--track-remote",
