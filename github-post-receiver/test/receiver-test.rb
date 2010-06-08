@@ -217,6 +217,51 @@ class ReceiverTest < Test::Unit::TestCase
                  result)
   end
 
+  def test_per_repository_configuration
+    repository_mirror_path = mirror_path("ranguba", "rroonga")
+    assert_false(File.exist?(repository_mirror_path))
+    options[:owners] = {
+      "ranguba" => {
+        :to => "ranguba-commit@example.org",
+        :from => "ranguba+commit@example.org",
+        :sender => "null@example.org",
+        "repositories" => {
+          "rroonga" => {
+            :to => "ranguba-commit@example.net",
+            :from => "ranguba+commit@example.net",
+            :sender => "null@example.net",
+          }
+        }
+      }
+    }
+    before = "0f2be32a3671360a323f1dee64c757bc9fc44998"
+    after = "c7bf92799225d67788be7c42ea4f504a47708390"
+    reference = "refs/heads/master"
+    post_payload(:repository => {
+                   :url => "http://github.com/ranguba/rroonga",
+                   :name => "rroonga",
+                   :owner => {
+                     :name => "ranguba",
+                   },
+                 },
+                 :before => before,
+                 :after => after,
+                 :ref => reference)
+    assert_response("OK")
+    assert_true(File.exist?(repository_mirror_path))
+    result = YAML.load_file(File.join(@tmp_dir, "commit-email-result.yaml"))
+    assert_equal([{
+                    "argv" => ["--repository", repository_mirror_path,
+                               "--name", "ranguba/rroonga",
+                               "--max-size", "1M",
+                               "--from", "ranguba+commit@example.net",
+                               "--sender", "null@example.net",
+                               "ranguba-commit@example.net"],
+                    "lines" => ["#{before} #{after} #{reference}\n"],
+                  }],
+                 result)
+  end
+
   private
   def post_payload(payload)
     visit "/", :post, :payload => JSON.generate(payload)
