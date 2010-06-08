@@ -1909,7 +1909,7 @@ if __FILE__ == $0
     else
       from = GitCommitMailer.extract_email_address(from)
       to = to.collect {|address| GitCommitMailer.extract_email_address(address)}
-      header <<-HEADER
+      header = <<-HEADER
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
