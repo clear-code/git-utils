@@ -910,7 +910,9 @@ module HookModeTest
     end
 
     def read_from_fixture_directory(file)
-      IO.read('fixtures/' + file)
+      file = IO.read('fixtures/' + file)
+      file.force_encoding("UTF-8") if file.respond_to? :force_encoding
+      file
     end
 
     def expected_rss(file)

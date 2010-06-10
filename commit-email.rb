@@ -703,6 +703,7 @@ class GitCommitMailer
         result = `#{script} 2>&1`
       end
       raise "execute failed: #{command}\n#{result}" unless $?.exitstatus.zero?
+      result.force_encoding("UTF-8") if result.respond_to? :force_encoding
       result
     end
 
