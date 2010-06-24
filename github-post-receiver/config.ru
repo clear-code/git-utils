@@ -30,7 +30,7 @@ $LOAD_PATH.unshift(lib_dir.to_s)
 
 require 'github-post-receiver'
 
-require 'racknga/exception_notifier'
+require 'racknga/middleware/exception_notifier'
 
 use Rack::CommonLogger
 use Rack::Runtime
