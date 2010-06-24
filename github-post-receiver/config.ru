@@ -17,15 +17,31 @@
 
 require 'yaml'
 
-base_dir = ::File.dirname(__FILE__)
-lib_dir = ::File.join(base_dir, "lib")
-$LOAD_PATH.unshift(lib_dir)
+require 'pathname'
+
+base_dir = Pathname(__FILE__).dirname
+lib_dir = base_dir + "lib"
+
+racknga_base_dir = base_dir.dirname.dirname + "racknga"
+racknga_lib_dir = racknga_dir + "lib"
+
+$LOAD_PATH.unshift(racknga_lib_dir.to_s)
+$LOAD_PATH.unshift(lib_dir.to_s)
 
 require 'github-post-receiver'
 
+require 'racknga/exception_notifier'
+
 use Rack::CommonLogger
+use Rack::Runtime
+use Rack::ContentLength
+
+config_file = base_dir + "config.yaml"
+options = YAML.load_file(config_file.to_s)
+notifier_options = options.merge(options[:exception_notifier] || {})
+notifiers = [Racknga::ExceptionMailNotifier.new(notifier_options)]
+use Racknga::Middleware::ExceptionNotifier, :notifiers => notifiers
 
 map "/post-receiver/" do
-  config_file = ::File.join(base_dir, "config.yaml")
-  run GitHubPostReceiver.new(YAML.load_file(config_file))
+  run GitHubPostReceiver.new(options)
 end

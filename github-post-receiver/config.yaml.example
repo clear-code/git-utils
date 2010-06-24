@@ -1,5 +1,7 @@
 to: receiver@example.com
-error_to: admin@example.com
+exception_notifier:
+  to: admin@example.com
+  subject_label: "[git-utils]"
 sender: sender@example.com
 owners:
   ranguba:
