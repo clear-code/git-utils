@@ -23,7 +23,7 @@ base_dir = Pathname(__FILE__).dirname
 lib_dir = base_dir + "lib"
 
 racknga_base_dir = base_dir.dirname.dirname + "racknga"
-racknga_lib_dir = racknga_dir + "lib"
+racknga_lib_dir = racknga_base_dir + "lib"
 
 $LOAD_PATH.unshift(racknga_lib_dir.to_s)
 $LOAD_PATH.unshift(lib_dir.to_s)
