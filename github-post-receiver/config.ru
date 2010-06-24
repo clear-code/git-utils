@@ -38,7 +38,11 @@ use Rack::ContentLength
 
 config_file = base_dir + "config.yaml"
 options = YAML.load_file(config_file.to_s)
-notifier_options = options.merge(options[:exception_notifier] || {})
+notifier_options = options.dup
+if options[:error_to]
+  notifier_options = notifier_options.merge!(:to => options[:error_to])
+end
+notifier_options.merge!(options[:exception_notifier] || {})
 notifiers = [Racknga::ExceptionMailNotifier.new(notifier_options)]
 use Racknga::Middleware::ExceptionNotifier, :notifiers => notifiers
 

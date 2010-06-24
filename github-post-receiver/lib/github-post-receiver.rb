@@ -240,7 +240,9 @@ class GitHubPostReceiver
       options.concat(["--from", from]) if from
       options.concat(["--from-domain", from_domain]) if from_domain
       options.concat(["--sender", sender]) if sender
-      options.concat(["--error-to", error_to]) if error_to
+      error_to.each do |_error_to|
+        options.concat(["--error-to", _error_to])
+      end
       options << @to
       command_line = [ruby, commit_email, *options].collect do |component|
         Shellwords.escape(component)
@@ -305,7 +307,17 @@ class GitHubPostReceiver
     end
 
     def error_to
-      @error_to ||= @options[:error_to]
+      @error_to ||= force_array(@options[:error_to])
+    end
+
+    def force_array(value)
+      if value.is_a?(Array)
+        value
+      elsif value.nil?
+        []
+      else
+        [value]
+      end
     end
 
     def repository_uri
