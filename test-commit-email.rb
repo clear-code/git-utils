@@ -878,11 +878,17 @@ module HookModeTest
     end
 
     def create_default_mailer
+      if not defined?(@default_mailer_options)
+        options = nil
+      else
+        options = @default_mailer_options
+      end
+
       create_mailer("--repository=#{@origin_repository_directory}",
                     "--name=sample-repo",
                     "--error-to=error@example.com",
                     DATE_OPTION,
-                    "to@example", *@default_mailer_options)
+                    "to@example", *options)
     end
 
     def each_reference_change
@@ -1035,12 +1041,18 @@ module TrackRemoteModeTest
     end
 
     def create_default_mailer
+      if not defined?(@default_mailer_options)
+        options = nil
+      else
+        options = @default_mailer_options
+      end
+
       create_mailer("--repository=#{@remote_tracking_repository}",
                     "--name=sample-repo",
                     "--error-to=error@example.com",
                     DATE_OPTION,
                     "--track-remote",
-                    "to@example", *@default_mailer_options)
+                    "to@example", *options)
     end
 
     def get_mails_of_last_push
