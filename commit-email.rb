@@ -1035,10 +1035,9 @@ class GitCommitMailer
       opts.separator ""
       opts.separator "Other options:"
 
-      return
-      opts.on("-IPATH", "--include=PATH", "Add PATH to load path") do |path|
-        $LOAD_PATH.unshift(path)
-      end
+      #opts.on("-IPATH", "--include=PATH", "Add PATH to load path") do |path|
+      #  $LOAD_PATH.unshift(path)
+      #end
     end
   end
 
@@ -1046,7 +1045,8 @@ class GitCommitMailer
   attr_writer :from, :add_diff, :show_path, :send_push_mail, :use_utf7
   attr_writer :repository, :date, :git_bin_path, :track_remote
   attr_accessor :from_domain, :sender, :max_size, :repository_uri
-  attr_accessor :rss_path, :rss_uri, :name, :server, :port
+  attr_accessor :rss_path, :rss_uri, :server, :port
+  attr_writer :name
 
   def initialize(to)
     @to = to
