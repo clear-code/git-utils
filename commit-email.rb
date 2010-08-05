@@ -1307,15 +1307,16 @@ EOF
     # ^N is empty.  For a non fast forward, O ^N is the list of removed
     # revisions
     fast_forward = false
-    revision = nil
+    revision_found = false
     commits_summary = []
     git("rev-list #@new_revision..#@old_revision").lines.each do |revision|
+      revision_found ||= true
       revision.strip!
       short_revision = GitCommitMailer.short_revision(revision)
       subject = get_record(revision, '%s')
       commits_summary << "discards  #{short_revision} #{subject}\n"
     end
-    unless revision
+    unless revision_found
       fast_forward = true
       subject = get_record(old_revision, '%s')
       commits_summary << "    from  #{short_old_revision} #{subject}\n"
@@ -1609,7 +1610,7 @@ EOF
   end
 
   def make_infos
-    catch (:no_email) do
+    catch(:no_email) do
       @push_info = create_push_info(old_revision, new_revision, reference,
                                     *collect_push_information)
       if @push_info.branch_changed?
@@ -1924,11 +1925,11 @@ if __FILE__ == $0
       server = options.server
       port = options.port
     rescue OptionParser::MissingArgument
-      argv.delete_if {|arg| $!.args.include?(arg)}
+      argv.delete_if {|argument| $!.args.include?(argument)}
       retry
     rescue OptionParser::ParseError
       if to.empty?
-        _to, *_ = ARGV.reject {|arg| /^-/.match(arg)}
+        _to, *_ = ARGV.reject {|argument| /^-/.match(argument)}
         to = [_to]
       end
     end
