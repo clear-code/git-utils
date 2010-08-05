@@ -805,6 +805,7 @@ module HookModeTest
                                   'GIT_COMMITTER_EMAIL',
                                   'EMAIL'])
       @timestamp = DATE
+      @working_tree_directory = ""
       create_repositories
     end
 

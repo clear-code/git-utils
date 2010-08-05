@@ -171,6 +171,8 @@ class GitCommitMailer
         @is_binary = false
         @is_mode_changed = false
 
+        @old_blob = @new_blob = nil
+
         parse_header(lines, revision)
         parse_extended_headers(lines)
         parse_body(lines)
@@ -389,7 +391,7 @@ class GitCommitMailer
 
       def headers
          unless @is_binary
-           if @similarity_index == 100 && (@type == :renamed || @type == :copied)
+           if (@type == :renamed || @type == :copied) && @similarity_index == 100
              return ""
            end
 
