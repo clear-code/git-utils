@@ -50,6 +50,24 @@ while (arg = original_argv.shift)
   end
 end
 
+class SpentTime
+  def initialize(label)
+    @label = label
+    @seconds = 0.0
+  end
+
+  def spend
+    start_time = Time.now
+    returned_object = yield
+    @seconds += (Time.now - start_time)
+    returned_object
+  end
+
+  def report
+    puts "#{"%0.9s" % @seconds} seconds spent by #{@label}."
+  end
+end
+
 class GitCommitMailer
   KILO_SIZE = 1000
   DEFAULT_MAX_SIZE = "100M"
@@ -721,7 +739,10 @@ class GitCommitMailer
     end
 
     def git(git_bin_path, repository, command, &block)
-      execute("#{git_bin_path} --git-dir=#{shell_escape(repository)} #{command}", &block)
+      $executing_git ||= SpentTime.new("executing git commands")
+      $executing_git.spend do
+        execute("#{git_bin_path} --git-dir=#{shell_escape(repository)} #{command}", &block)
+      end
     end
 
     def short_revision(revision)
@@ -746,9 +767,12 @@ class GitCommitMailer
     end
 
     def send_mail(server, port, from, to, mail)
-      Net::SMTP.start(server, port) do |smtp|
-        smtp.open_message_stream(from, to) do |f|
-          f.print(mail)
+      $sending_mail ||= SpentTime.new("sending mails")
+      $sending_mail.spend do
+        Net::SMTP.start(server, port) do |smtp|
+          smtp.open_message_stream(from, to) do |f|
+            f.print(mail)
+          end
         end
       end
     end
@@ -1859,11 +1883,18 @@ if __FILE__ == $0
     mailer = GitCommitMailer.parse_options_and_create(argv)
 
     if not mailer.track_remote?
-      while line = STDIN.gets
-        old_revision, new_revision, reference = line.split
-        mailer.process_reference_change(old_revision, new_revision, reference)
-        mailer.send_all_mails
+      running = SpentTime.new("running the whole command")
+      running.spend do
+        while line = STDIN.gets
+          old_revision, new_revision, reference = line.split
+          mailer.process_reference_change(old_revision, new_revision, reference)
+          mailer.send_all_mails
+        end
       end
+
+      $executing_git.report
+      $sending_mail.report
+      running.report
     else
       reference_changes = mailer.fetch
       reference_changes.each do |old_revision, new_revision, reference|
