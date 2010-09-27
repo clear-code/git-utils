@@ -20,8 +20,8 @@ Ryo Onodera:: <tt><onodera@clear-code.com></tt>
 
 == License
 
-commit-email.rb is licensed under GPL 3. See license/gpl.txt
-for details.
+commit-email.rb is licensed under GPLv3 or later. See
+license/GPL-3.txt for details.
 
 == Dependencies
 

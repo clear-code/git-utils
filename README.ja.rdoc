@@ -20,7 +20,8 @@ Ryo Onodera:: <tt><onodera@clear-code.com></tt>
 
 == ライセンス
 
-GPL 3です。詳しくはlicense/gpl.txtを見てください。
+GPLv3またはそれ以降のバージョンです。詳しくはlicense/GPL-3.txt
+を見てください。
 
 == 依存ソフトウェア
 
