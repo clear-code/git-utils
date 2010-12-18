@@ -321,7 +321,7 @@ class GitHubPostReceiver
     end
 
     def repository_uri
-      "#{@payload['repository']['url'].sub(/\Ahttp/, 'git')}.git"
+      "#{@payload['repository']['url']}.git"
     end
   end
 end
