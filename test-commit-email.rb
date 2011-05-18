@@ -19,10 +19,7 @@
 
 $VERBOSE = true
 
-begin
-  gem 'test-unit'
-rescue LoadError
-end
+gem 'test-unit'
 require 'test/unit'
 require 'tempfile'
 
