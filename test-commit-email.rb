@@ -670,7 +670,7 @@ module HookModeTest
     end
 
     def advance_timestamp
-      @timestamp = @timestamp.succ
+      @timestamp += 1
     end
 
     def delete_output_from_hook
