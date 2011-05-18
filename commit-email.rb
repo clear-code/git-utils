@@ -829,6 +829,7 @@ class GitCommitMailer
       mailer.date = options.date
       mailer.git_bin_path = options.git_bin_path
       mailer.track_remote = options.track_remote
+      mailer.verbose = options.verbose
     end
 
     def parse_size(size)
@@ -869,6 +870,7 @@ class GitCommitMailer
       options.date = nil
       options.git_bin_path = "git"
       options.track_remote = false
+      options.verbose = false
       options
     end
 
@@ -1038,6 +1040,11 @@ class GitCommitMailer
       #opts.on("-IPATH", "--include=PATH", "Add PATH to load path") do |path|
       #  $LOAD_PATH.unshift(path)
       #end
+      opts.on("--[no-]verbose",
+              "Be verbose.",
+              "(#{options.verbose})") do |verbose|
+        options.verbose = verbose
+      end
     end
   end
 
@@ -1046,7 +1053,7 @@ class GitCommitMailer
   attr_writer :repository, :date, :git_bin_path, :track_remote
   attr_accessor :from_domain, :sender, :max_size, :repository_uri
   attr_accessor :rss_path, :rss_uri, :server, :port
-  attr_writer :name
+  attr_writer :name, :verbose
 
   def initialize(to)
     @to = to
@@ -1096,6 +1103,10 @@ class GitCommitMailer
 
   def track_remote?
     @track_remote
+  end
+
+  def verbose?
+    @verbose
   end
 
   def short_new_revision
@@ -1893,9 +1904,11 @@ if __FILE__ == $0
         end
       end
 
-      $executing_git.report
-      $sending_mail.report
-      running.report
+      if mailer.verbose?
+        $executing_git.report
+        $sending_mail.report
+        running.report
+      end
     else
       reference_changes = mailer.fetch
       reference_changes.each do |old_revision, new_revision, reference|
