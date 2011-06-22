@@ -237,9 +237,9 @@ class GitHubPostReceiver
       options = ["--repository", mirror_path,
                  "--name", "#{@owner_name}/#{@name}",
                  "--max-size", "1M"]
-      options.concat(["--from", from]) if from
-      options.concat(["--from-domain", from_domain]) if from_domain
-      options.concat(["--sender", sender]) if sender
+      add_option(options, "--from", from)
+      add_option(options, "--from-domain", from_domain)
+      add_option(options, "--sender", sender)
       error_to.each do |_error_to|
         options.concat(["--error-to", _error_to])
       end
@@ -322,6 +322,12 @@ class GitHubPostReceiver
 
     def repository_uri
       "#{@payload['repository']['url']}.git"
+    end
+
+    def add_option(options, name, value)
+      return if value.nil?
+      return if value.empty?
+      options.concat([name, value])
     end
   end
 end
