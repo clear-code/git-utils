@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2010  Kouhei Sutou <kou@clear-code.com>
+# Copyright (C) 2010-2011  Kouhei Sutou <kou@clear-code.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -243,7 +243,11 @@ class GitHubPostReceiver
       error_to.each do |_error_to|
         options.concat(["--error-to", _error_to])
       end
-      options << @to
+      if @to.is_a?(Array)
+        options.concat(@to)
+      else
+        options << @to
+      end
       command_line = [ruby, commit_email, *options].collect do |component|
         Shellwords.escape(component)
       end.join(" ")
