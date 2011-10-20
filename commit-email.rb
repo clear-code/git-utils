@@ -780,8 +780,8 @@ class GitCommitMailer
     def parse_options_and_create(argv=nil)
       argv ||= ARGV
       to, options = parse(argv)
-      to = [*to, *options.to].compact
-      mailer = new(to)
+      to += options.to
+      mailer = new(to.compact)
       apply_options(mailer, options)
       mailer
     end
