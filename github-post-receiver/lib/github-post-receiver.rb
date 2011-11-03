@@ -220,15 +220,23 @@ class GitHubPostReceiver
       @payload = payload
       @options = options
       @to = @options[:to]
+      @max_n_retries = (@options[:n_retries] || 3).to_i
       raise Error.new("mail receive address is missing: <#{@name}>") if @to.nil?
     end
 
     def process(before, after, reference)
       FileUtils.mkdir_p(mirrors_directory)
-      if File.exist?(mirror_path)
-        git("--git-dir", mirror_path, "fetch", "--quiet")
-      else
-        git("clone", "--quiet", "--mirror", repository_uri, mirror_path)
+      n_retries = 0
+      begin
+        if File.exist?(mirror_path)
+          git("--git-dir", mirror_path, "fetch", "--quiet")
+        else
+          git("clone", "--quiet", "--mirror", repository_uri, mirror_path)
+        end
+      rescue Error
+        n_retries += 1
+        retry if n_retries <= @max_n_retries
+        raise
       end
       send_commit_email(before, after, reference)
     end
