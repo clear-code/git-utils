@@ -178,7 +178,7 @@ class GitHubPostReceiver
   end
 
   def target?(owner_name, repository_name)
-    (@options[:targets] || [/\A[a-z\d_\-]+\z/i]).any? do |target|
+    (@options[:targets] || [/\A[a-z\d_.\-]+\z/i]).any? do |target|
       target === repository_name
     end
   end
