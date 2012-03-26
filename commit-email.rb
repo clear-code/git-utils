@@ -1871,26 +1871,26 @@ end
 
 if __FILE__ == $0
   begin
-original_argv = ARGV.dup
-argv = []
+    original_argv = ARGV.dup
+    argv = []
 
-found_include_option = false
-while (arg = original_argv.shift)
-  if found_include_option
-    $LOAD_PATH.unshift(arg)
     found_include_option = false
-  else
-    case arg
-    when "-I", "--include"
-      found_include_option = true
-    when /\A-I/, /\A--include=?/
-      path = $POSTMATCH
-      $LOAD_PATH.unshift(path) unless path.empty?
-    else
-      argv << arg
+    while (arg = original_argv.shift)
+      if found_include_option
+        $LOAD_PATH.unshift(arg)
+        found_include_option = false
+      else
+        case arg
+        when "-I", "--include"
+          found_include_option = true
+        when /\A-I/, /\A--include=?/
+          path = $POSTMATCH
+          $LOAD_PATH.unshift(path) unless path.empty?
+        else
+          argv << arg
+        end
+      end
     end
-  end
-end
 
     mailer = GitCommitMailer.parse_options_and_create(argv)
 
