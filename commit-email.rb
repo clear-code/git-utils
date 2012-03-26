@@ -1929,8 +1929,7 @@ if __FILE__ == $0
     server = nil
     port = nil
     begin
-      _to, options = GitCommitMailer.parse(argv)
-      to = [_to]
+      to, options = GitCommitMailer.parse(argv)
       to = options.error_to unless options.error_to.empty?
       from = options.from || from
       sender = options.sender
