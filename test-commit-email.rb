@@ -723,8 +723,10 @@ module HookModeTest
     def enable_hook
       if File.exist?(@hook + ".sample")
         FileUtils.mv(@hook + ".sample", @hook)
+      else
+        FileUtils.touch(@hook)
       end
-      execute "chmod +x #{@hook}"
+      FileUtils.chmod(0755, @hook)
     end
 
     def grab_hook_output
