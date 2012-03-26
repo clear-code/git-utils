@@ -29,27 +29,6 @@ require "socket"
 require "nkf"
 require "shellwords"
 
-original_argv = ARGV.dup
-argv = []
-
-found_include_option = false
-while (arg = original_argv.shift)
-  if found_include_option
-    $LOAD_PATH.unshift(arg)
-    found_include_option = false
-  else
-    case arg
-    when "-I", "--include"
-      found_include_option = true
-    when /\A-I/, /\A--include=?/
-      path = $POSTMATCH
-      $LOAD_PATH.unshift(path) unless path.empty?
-    else
-      argv << arg
-    end
-  end
-end
-
 class SpentTime
   def initialize(label)
     @label = label
@@ -1892,6 +1871,27 @@ end
 
 if __FILE__ == $0
   begin
+original_argv = ARGV.dup
+argv = []
+
+found_include_option = false
+while (arg = original_argv.shift)
+  if found_include_option
+    $LOAD_PATH.unshift(arg)
+    found_include_option = false
+  else
+    case arg
+    when "-I", "--include"
+      found_include_option = true
+    when /\A-I/, /\A--include=?/
+      path = $POSTMATCH
+      $LOAD_PATH.unshift(path) unless path.empty?
+    else
+      argv << arg
+    end
+  end
+end
+
     mailer = GitCommitMailer.parse_options_and_create(argv)
 
     if not mailer.track_remote?
