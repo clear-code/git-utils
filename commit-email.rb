@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2009  Ryo Onodera <onodera@clear-code.com>
+# Copyright (C) 2012  Kouhei Sutou <kou@clear-code.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1872,6 +1873,7 @@ end
 if __FILE__ == $0
   begin
     argv = []
+    processing_change = nil
 
     found_include_option = false
     ARGV.each do |arg|
@@ -1898,6 +1900,7 @@ if __FILE__ == $0
       running.spend do
         while line = STDIN.gets
           old_revision, new_revision, reference = line.split
+          processing_change = [old_revision, new_revision, reference]
           mailer.process_reference_change(old_revision, new_revision, reference)
           mailer.send_all_mails
         end
@@ -1911,6 +1914,7 @@ if __FILE__ == $0
     else
       reference_changes = mailer.fetch
       reference_changes.each do |old_revision, new_revision, reference|
+        processing_change = [old_revision, new_revision, reference]
         mailer.process_reference_change(old_revision, new_revision, reference)
         mailer.send_all_mails
       end
@@ -1946,6 +1950,8 @@ if __FILE__ == $0
     end
 
     detail = <<-EOM
+Processing change: #{processing_change.inspect}
+
 #{error.class}: #{error.message}
 #{error.backtrace.join("\n")}
   EOM
