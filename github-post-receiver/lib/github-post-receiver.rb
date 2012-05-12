@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2010-2011  Kouhei Sutou <kou@clear-code.com>
+# Copyright (C) 2010-2012  Kouhei Sutou <kou@clear-code.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,6 @@
 require 'fileutils'
 require 'webrick/httpstatus'
 require 'shellwords'
-require 'net/smtp'
 
 require 'rubygems'
 require 'json'
