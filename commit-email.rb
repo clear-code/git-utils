@@ -869,63 +869,63 @@ class GitCommitMailer
     end
 
     def make_parser(options)
-      OptionParser.new do |opts|
-        opts.banner += "TO"
+      OptionParser.new do |parser|
+        parser.banner += "TO"
 
-        add_repository_options(opts, options)
-        add_email_options(opts, options)
-        add_input_options(opts, options)
-        add_rss_options(opts, options)
-        add_other_options(opts, options)
+        add_repository_options(parser, options)
+        add_email_options(parser, options)
+        add_input_options(parser, options)
+        add_rss_options(parser, options)
+        add_other_options(parser, options)
 
-        opts.on_tail("--help", "Show this message") do
-          puts opts
+        parser.on_tail("--help", "Show this message") do
+          puts parser
           exit!
         end
       end
     end
 
-    def add_repository_options(opts, options)
-      opts.separator ""
-      opts.separator "Repository related options:"
+    def add_repository_options(parser, options)
+      parser.separator ""
+      parser.separator "Repository related options:"
 
-      opts.on("--repository=PATH",
+      parser.on("--repository=PATH",
               "Use PATH as the target git repository",
               "(#{options.repository})") do |path|
         options.repository = path
       end
 
-      opts.on("--reference=REFERENCE",
+      parser.on("--reference=REFERENCE",
               "Use REFERENCE as the target reference",
               "(#{options.reference})") do |reference|
         options.reference = reference
       end
     end
 
-    def add_email_options(opts, options)
-      opts.separator ""
-      opts.separator "E-mail related options:"
+    def add_email_options(parser, options)
+      parser.separator ""
+      parser.separator "E-mail related options:"
 
-      opts.on("-sSERVER", "--server=SERVER",
+      parser.on("-sSERVER", "--server=SERVER",
               "Use SERVER as SMTP server (#{options.server})") do |server|
         options.server = server
       end
 
-      opts.on("-pPORT", "--port=PORT", Integer,
+      parser.on("-pPORT", "--port=PORT", Integer,
               "Use PORT as SMTP port (#{options.port})") do |port|
         options.port = port
       end
 
-      opts.on("-tTO", "--to=TO", "Add TO to To: address") do |to|
+      parser.on("-tTO", "--to=TO", "Add TO to To: address") do |to|
         options.to << to unless to.nil?
       end
 
-      opts.on("-eTO", "--error-to=TO",
+      parser.on("-eTO", "--error-to=TO",
               "Add TO to To: address when an error occurs") do |to|
         options.error_to << to unless to.nil?
       end
 
-      opts.on("-fFROM", "--from=FROM", "Use FROM as from address") do |from|
+      parser.on("-fFROM", "--from=FROM", "Use FROM as from address") do |from|
         if options.from_domain
           raise OptionParser::CannotCoexistOption,
                   "cannot coexist with --from-domain"
@@ -933,7 +933,7 @@ class GitCommitMailer
         options.from = from
       end
 
-      opts.on("--from-domain=DOMAIN",
+      parser.on("--from-domain=DOMAIN",
               "Use author@DOMAIN as from address") do |domain|
         if options.from
           raise OptionParser::CannotCoexistOption,
@@ -942,40 +942,40 @@ class GitCommitMailer
         options.from_domain = domain
       end
 
-      opts.on("--sender=SENDER",
+      parser.on("--sender=SENDER",
               "Use SENDER as a sender address") do |sender|
         options.sender = sender
       end
     end
 
-    def add_input_options(opts, options)
-      opts.separator ""
-      opts.separator "Output related options:"
+    def add_input_options(parser, options)
+      parser.separator ""
+      parser.separator "Output related options:"
 
-      opts.on("--name=NAME", "Use NAME as repository name") do |name|
+      parser.on("--name=NAME", "Use NAME as repository name") do |name|
         options.name = name
       end
 
-      opts.on("--[no-]show-path",
+      parser.on("--[no-]show-path",
               "Show commit target path") do |bool|
         options.show_path = bool
       end
 
-      opts.on("--[no-]send-push-mail",
+      parser.on("--[no-]send-push-mail",
               "Send push mail") do |bool|
         options.send_push_mail = bool
       end
 
-      opts.on("--repository-uri=URI",
+      parser.on("--repository-uri=URI",
               "Use URI as URI of repository") do |uri|
         options.repository_uri = uri
       end
 
-      opts.on("-n", "--no-diff", "Don't add diffs") do |diff|
+      parser.on("-n", "--no-diff", "Don't add diffs") do |diff|
         options.add_diff = false
       end
 
-      opts.on("--max-size=SIZE",
+      parser.on("--max-size=SIZE",
               "Limit mail body size to SIZE",
               "G/GB/M/MB/K/KB/B units are available",
               "(#{format_size(options.max_size)})") do |max_size|
@@ -986,55 +986,55 @@ class GitCommitMailer
         end
       end
 
-      opts.on("--no-limit-size",
+      parser.on("--no-limit-size",
               "Don't limit mail body size",
               "(#{options.max_size.nil?})") do |not_limit_size|
         options.max_size = nil
       end
 
-      opts.on("--[no-]utf7",
+      parser.on("--[no-]utf7",
               "Use UTF-7 encoding for mail body instead",
               "of UTF-8 (#{options.use_utf7})") do |use_utf7|
         options.use_utf7 = use_utf7
       end
 
-      opts.on("--date=DATE",
+      parser.on("--date=DATE",
               "Use DATE as date of push mails (Time.parse is used)") do |date|
         options.date = Time.parse(date)
       end
 
-      opts.on("--git-bin-path=GIT_BIN_PATH",
+      parser.on("--git-bin-path=GIT_BIN_PATH",
               "Use GIT_BIN_PATH command instead of default \"git\"") do |git_bin_path|
         options.git_bin_path = git_bin_path
       end
 
-      opts.on("--track-remote",
+      parser.on("--track-remote",
               "Fetch new commits from repository's origin and send mails") do
         options.track_remote = true
       end
     end
 
-    def add_rss_options(opts, options)
-      opts.separator ""
-      opts.separator "RSS related options:"
+    def add_rss_options(parser, options)
+      parser.separator ""
+      parser.separator "RSS related options:"
 
-      opts.on("--rss-path=PATH", "Use PATH as output RSS path") do |path|
+      parser.on("--rss-path=PATH", "Use PATH as output RSS path") do |path|
         options.rss_path = path
       end
 
-      opts.on("--rss-uri=URI", "Use URI as output RSS URI") do |uri|
+      parser.on("--rss-uri=URI", "Use URI as output RSS URI") do |uri|
         options.rss_uri = uri
       end
     end
 
-    def add_other_options(opts, options)
-      opts.separator ""
-      opts.separator "Other options:"
+    def add_other_options(parser, options)
+      parser.separator ""
+      parser.separator "Other options:"
 
-      #opts.on("-IPATH", "--include=PATH", "Add PATH to load path") do |path|
+      #parser.on("-IPATH", "--include=PATH", "Add PATH to load path") do |path|
       #  $LOAD_PATH.unshift(path)
       #end
-      opts.on("--[no-]verbose",
+      parser.on("--[no-]verbose",
               "Be verbose.",
               "(#{options.verbose})") do |verbose|
         options.verbose = verbose
