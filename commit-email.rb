@@ -228,45 +228,45 @@ class GitCommitMailer
 
       def parse_ordinary_change(line)
         case line
-          when /\A--- (a\/.*|"a\/.*"|\/dev\/null)\z/
-            @minus_file = CommitInfo.unescape_file_path($1)
-            @type = :added if $1 == '/dev/null'
-          when /\A\+\+\+ (b\/.*|"b\/.*"|\/dev\/null)\z/
-            @plus_file = CommitInfo.unescape_file_path($1)
-            @type = :deleted if $1 == '/dev/null'
-          when /\Aindex ([0-9a-f]{7,})\.\.([0-9a-f]{7,})/
-            @old_blob = $1
-            @new_blob = $2
-          else
-            return false
+        when /\A--- (a\/.*|"a\/.*"|\/dev\/null)\z/
+          @minus_file = CommitInfo.unescape_file_path($1)
+          @type = :added if $1 == '/dev/null'
+        when /\A\+\+\+ (b\/.*|"b\/.*"|\/dev\/null)\z/
+          @plus_file = CommitInfo.unescape_file_path($1)
+          @type = :deleted if $1 == '/dev/null'
+        when /\Aindex ([0-9a-f]{7,})\.\.([0-9a-f]{7,})/
+          @old_blob = $1
+          @new_blob = $2
+        else
+          return false
         end
         true
       end
 
       def parse_add_and_remove(line)
         case line
-          when /\Anew file mode (.*)\z/
-            @type = :added
-            @new_file_mode = $1
-          when /\Adeleted file mode (.*)\z/
-            @type = :deleted
-            @deleted_file_mode = $1
-          else
-            return false
+        when /\Anew file mode (.*)\z/
+          @type = :added
+          @new_file_mode = $1
+        when /\Adeleted file mode (.*)\z/
+          @type = :deleted
+          @deleted_file_mode = $1
+        else
+          return false
         end
         true
       end
 
       def parse_copy_and_rename(line)
         case line
-          when /\Arename (from|to) (.*)\z/
-            @type = :renamed
-          when /\Acopy (from|to) (.*)\z/
-            @type = :copied
-          when /\Asimilarity index (.*)%\z/
-            @similarity_index = $1.to_i
-          else
-            return false
+        when /\Arename (from|to) (.*)\z/
+          @type = :renamed
+        when /\Acopy (from|to) (.*)\z/
+          @type = :copied
+        when /\Asimilarity index (.*)%\z/
+          @similarity_index = $1.to_i
+        else
+          return false
         end
         true
       end
@@ -289,14 +289,14 @@ class GitCommitMailer
 
       def parse_mode_change(line)
         case line
-          when /\Aold mode (.*)\z/
-            @old_mode = $1
-            @is_mode_changed = true
-          when /\Anew mode (.*)\z/
-            @new_mode = $1
-            @is_mode_changed = true
-          else
-            return false
+        when /\Aold mode (.*)\z/
+          @old_mode = $1
+          @is_mode_changed = true
+        when /\Anew mode (.*)\z/
+          @new_mode = $1
+          @is_mode_changed = true
+        else
+          return false
         end
         true
       end
