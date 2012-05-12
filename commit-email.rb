@@ -1653,11 +1653,11 @@ EOF
 
   def send_all_mails
     if send_push_mail?
-      GitCommitMailer.send_mail(*(server_and_addresses(@push_mail) + [@push_mail]))
+      send_mail(@push_mail)
     end
 
     @commit_mails.each do |mail|
-      GitCommitMailer.send_mail(*(server_and_addresses(mail) + [mail]))
+      send_mail(mail)
     end
   end
 
@@ -1682,10 +1682,12 @@ EOF
   end
 
   private
-  def server_and_addresses(mail)
+  def send_mail(mail)
+    server = @server || "localhost"
+    port = @port
     from = sender || GitCommitMailer.extract_email_address_from_mail(mail)
     to = @to.collect {|address| GitCommitMailer.extract_email_address(address)}
-    [@server || "localhost", @port, from, to]
+    GitCommitMailer.send_mail(server, port, from, to, mail)
   end
 
   def output_rss
