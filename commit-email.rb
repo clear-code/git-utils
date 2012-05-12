@@ -754,18 +754,25 @@ class GitCommitMailer
       end
     end
 
-    def send_mail(server, port, from, to, mail)
-      if mail.respond_to?(:force_encoding)
-        binary_mail = mail.dup
-        binary_mail.force_encoding("BINARY")
+    def extract_to_addresses(mail)
+      to_value = nil
+      if /^To:(.*\r?\n(?:^\s+.*)*)/n =~ mail
+        to_value = $1
       else
-        binary_mail = mail
+        raise "'To:' header is not found in mail:\n#{mail}"
       end
+      to_value_without_comment = to_value.gsub(/".*?"/n, "")
+      to_value_without_comment.split(/\s*,\s*/n).collect do |address|
+        extract_email_address(address.strip)
+      end
+    end
+
+    def send_mail(server, port, from, to, mail)
       $sending_mail ||= SpentTime.new("sending mails")
       $sending_mail.spend do
         Net::SMTP.start(server, port) do |smtp|
           smtp.open_message_stream(from, to) do |f|
-            f.print(binary_mail)
+            f.print(mail)
           end
         end
       end
@@ -806,6 +813,7 @@ class GitCommitMailer
     def apply_options(mailer, options)
       mailer.repository = options.repository
       #mailer.reference = options.reference
+      mailer.send_per_to = options.send_per_to
       mailer.from = options.from
       mailer.from_domain = options.from_domain
       mailer.sender = options.sender
@@ -846,6 +854,7 @@ class GitCommitMailer
       options.repository = ".git"
       #options.reference = "refs/heads/master"
       options.to = []
+      options.send_per_to = false
       options.error_to = []
       options.from = nil
       options.from_domain = nil
@@ -918,6 +927,13 @@ class GitCommitMailer
 
       parser.on("-tTO", "--to=TO", "Add TO to To: address") do |to|
         options.to << to unless to.nil?
+      end
+
+      parser.on("--[no-]send-per-to",
+                "Send a mail for each To: address",
+                "instead of sending a mail for all To: addresses",
+                "(#{options.send_per_to})") do |boolean|
+        options.send_per_to = boolean
       end
 
       parser.on("-eTO", "--error-to=TO",
@@ -1043,6 +1059,7 @@ class GitCommitMailer
   end
 
   attr_reader :reference, :old_revision, :new_revision, :to
+  attr_writer :send_per_to
   attr_writer :from, :add_diff, :show_path, :send_push_mail, :use_utf7
   attr_writer :repository, :date, :git_bin_path, :track_remote
   attr_accessor :from_domain, :sender, :max_size, :repository_uri
@@ -1075,6 +1092,10 @@ class GitCommitMailer
                        "#{revision}").lines.collect do |line|
       line.strip
     end
+  end
+
+  def send_per_to?
+    @send_per_to
   end
 
   def from(info)
@@ -1631,11 +1652,23 @@ EOF
   end
 
   def make_mails
-    @push_mail = make_mail(@push_info)
+    if send_per_to?
+      @push_mails = @to.collect do |to|
+        make_mail(@push_info, [to])
+      end
+    else
+      @push_mails = [make_mail(@push_info, @to)]
+    end
 
     @commit_mails = []
     @commit_infos.each do |info|
-      @commit_mails << make_mail(info)
+      if send_per_to?
+        @to.each do |to|
+          @commit_mails << make_mail(info, [to])
+        end
+      else
+        @commit_mails << make_mail(info, @to)
+      end
     end
   end
 
@@ -1648,12 +1681,14 @@ EOF
       output_rss
     end
 
-    [@push_mail, @commit_mails]
+    [@push_mails, @commit_mails]
   end
 
   def send_all_mails
     if send_push_mail?
-      send_mail(@push_mail)
+      @push_mails.each do |mail|
+        send_mail(mail)
+      end
     end
 
     @commit_mails.each do |mail|
@@ -1686,7 +1721,7 @@ EOF
     server = @server || "localhost"
     port = @port
     from = sender || GitCommitMailer.extract_email_address_from_mail(mail)
-    to = @to.collect {|address| GitCommitMailer.extract_email_address(address)}
+    to = GitCommitMailer.extract_to_addresses(mail)
     GitCommitMailer.send_mail(server, port, from, to, mail)
   end
 
@@ -1720,7 +1755,7 @@ EOF
     end
   end
 
-  def make_mail(info)
+  def make_mail(info, to)
     utf8_body = info.format_mail_body
     utf7_body = nil
     utf7_body = utf8_to_utf7(utf8_body) if use_utf7?
@@ -1738,11 +1773,12 @@ EOF
       body = truncate_body(body, !utf7_body.nil?)
     end
 
-    #obviously utf-8 is superset of utf-7
-    if !utf7_body.nil? and body.respond_to?(:encoding)
-      body.force_encoding("utf-8")
+    header = make_header(encoding, bit, to, info)
+    if header.respond_to?(:force_encoding)
+      header.force_encoding("BINARY")
+      body.force_encoding("BINARY")
     end
-    make_header(encoding, bit, info) + "\n" + body
+    header + "\n" + body
   end
 
   def name
@@ -1761,7 +1797,7 @@ EOF
     end
   end
 
-  def make_header(body_encoding, body_encoding_bit, info)
+  def make_header(body_encoding, body_encoding_bit, to, info)
     subject = "#{(name + ' ') if name}" +
               mime_encoded_word("#{info.format_mail_subject}")
     headers = []

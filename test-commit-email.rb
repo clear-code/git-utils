@@ -66,7 +66,7 @@ EOF
 
     git 'push'
 
-    push_mail, commit_mails = get_mails_of_last_push
+    push_mails, commit_mails = get_mails_of_last_push
 
     assert_mail('test_diffs_with_trailing_spaces', commit_mails[0])
   end
@@ -96,7 +96,7 @@ EOF
 
     git 'push'
 
-    push_mail, commit_mails = get_mails_of_last_push
+    push_mails, commit_mails = get_mails_of_last_push
 
     assert_mail('test_diffs_with_multiple_hunks', commit_mails[0])
   end
@@ -114,7 +114,7 @@ EOF
     git "commit -a -m 'added multiple files'"
     git 'push'
 
-    push_mail, commit_mails = get_mails_of_last_push
+    push_mails, commit_mails = get_mails_of_last_push
 
     assert_mail('test_diffs_with_multiple_files', commit_mails[0])
   end
@@ -143,7 +143,7 @@ EOF
     git("commit -a -m 'Change a duplicated 7digits short object ID content'")
     git("push")
 
-    push_mail, commit_mails = get_mails_of_last_push
+    push_mails, commit_mails = get_mails_of_last_push
 
     assert_mail("test_diffs_with_8digits_object_id", commit_mails[0])
   end
@@ -157,9 +157,9 @@ module GitCommitMailerFileManipulationTest
 
     git 'push'
 
-    push_mail, commit_mails = get_mails_of_last_push
+    push_mails, commit_mails = get_mails_of_last_push
 
-    assert_mail('test_single_commit.push_mail', push_mail)
+    assert_mail('test_single_commit.push_mail', push_mails[0])
     assert_mail('test_single_commit', commit_mails[0])
   end
 
@@ -350,9 +350,9 @@ module GitCommitMailerTagTest
     git "tag -a -m \'sample tag\' v0.0.1"
     git "push --tags"
 
-    push_mail, commit_mails = get_mails_of_last_push
+    push_mails, commit_mails = get_mails_of_last_push
 
-    assert_mail('test_create_annotated_tag.push_mail', push_mail)
+    assert_mail('test_create_annotated_tag.push_mail', push_mails[0])
   end
 
   def test_update_annotated_tag
@@ -363,10 +363,9 @@ module GitCommitMailerTagTest
     git "tag -a -f -m \'sample tag\' v0.0.1"
     git "push --tags"
 
-    push_mail, commit_mails = get_mails_of_last_push
+    push_mails, commit_mails = get_mails_of_last_push
 
-    assert_not_nil(push_mail)
-    assert_mail('test_update_annotated_tag.push_mail', push_mail)
+    assert_mail('test_update_annotated_tag.push_mail', push_mails[0])
   end
 
   def test_delete_annotated_tag
@@ -377,10 +376,9 @@ module GitCommitMailerTagTest
     git "tag -d v0.0.1"
     git "push --tags origin :refs/tags/v0.0.1"
 
-    push_mail, commit_mails = get_mails_of_last_push
+    push_mails, commit_mails = get_mails_of_last_push
 
-    assert_not_nil(push_mail)
-    assert_mail('test_delete_annotated_tag.push_mail', push_mail)
+    assert_mail('test_delete_annotated_tag.push_mail', push_mails[0])
   end
 
   def test_create_unannotated_tag
@@ -389,9 +387,9 @@ module GitCommitMailerTagTest
     git "tag v0.0.1"
     git "push --tags"
 
-    push_mail, commit_mails = get_mails_of_last_push
+    push_mails, commit_mails = get_mails_of_last_push
 
-    assert_mail('test_create_unannotated_tag.push_mail', push_mail)
+    assert_mail('test_create_unannotated_tag.push_mail', push_mails[0])
   end
 
   def test_update_unannotated_tag
@@ -404,9 +402,9 @@ module GitCommitMailerTagTest
     git "tag -f v0.0.1"
     git "push --tags"
 
-    push_mail, commit_mails = get_mails_of_last_push
+    push_mails, commit_mails = get_mails_of_last_push
 
-    assert_mail('test_update_unannotated_tag.push_mail', push_mail)
+    assert_mail('test_update_unannotated_tag.push_mail', push_mails[0])
   end
 
   def test_delete_unannotated_tag
@@ -417,10 +415,9 @@ module GitCommitMailerTagTest
     git "tag -d v0.0.1"
     git "push --tags origin :refs/tags/v0.0.1"
 
-    push_mail, commit_mails = get_mails_of_last_push
+    push_mails, commit_mails = get_mails_of_last_push
 
-    assert_not_nil(push_mail)
-    assert_mail('test_delete_unannotated_tag.push_mail', push_mail)
+    assert_mail('test_delete_unannotated_tag.push_mail', push_mails[0])
   end
 
   def test_short_log
@@ -439,10 +436,9 @@ module GitCommitMailerTagTest
     git "tag -a -f -m \'sample tag (v0.0.2)\' v0.0.2"
     git "push --tags"
 
-    push_mail, commit_mails = get_mails_of_last_push
+    push_mails, commit_mails = get_mails_of_last_push
 
-    assert_not_nil(push_mail)
-    assert_mail('test_short_log.push_mail', push_mail)
+    assert_mail('test_short_log.push_mail', push_mails[0])
   end
 end
 
@@ -492,7 +488,7 @@ EOF
     end
 
     master_ref_change = pushes[0]
-    master_push_mail = master_ref_change[0]
+    master_push_mail = master_ref_change[0][0]
     master_commit_mails = master_ref_change[1]
 
     assert_mail('test_push_with_merge.push_mail', master_push_mail)
@@ -551,9 +547,9 @@ EOF
     git "merge #{first_branch}"
     git "push"
 
-    push_mail, commit_mails = get_mails_of_last_push
+    push_mails, commit_mails = get_mails_of_last_push
 
-    assert_mail('test_nested_merges.push_mail', push_mail)
+    assert_mail('test_nested_merges.push_mail', push_mails[0])
     assert_mail('test_nested_merges.1', commit_mails[0])
     assert_mail('test_nested_merges.2', commit_mails[1])
     assert_mail('test_nested_merges.3', commit_mails[2])
@@ -569,7 +565,7 @@ module GitCommitMailerNonAsciiTest
     git_commit_new_file("日本語.txt", "日本語の文章です。", "added a file with japanese file name")
     git "push"
 
-    push_mail, commit_mails = get_mails_of_last_push
+    push_mails, commit_mails = get_mails_of_last_push
 
     assert_mail('test_non_ascii_file_name', commit_mails[0])
   end
@@ -579,7 +575,7 @@ module GitCommitMailerNonAsciiTest
     git_commit_new_file("日本語.txt", "日本語の文章です。", "ファイルを追加")
     git "push"
 
-    push_mail, commit_mails = get_mails_of_last_push
+    push_mails, commit_mails = get_mails_of_last_push
 
     assert_mail('test_non_ascii_commit_subject', commit_mails[0])
   end
@@ -592,7 +588,7 @@ module GitCommitMailerNonAsciiTest
     git "commit -a -m \"日本語.txt -> 日本語です.txt\""
     git "push"
 
-    push_mail, commit_mails = get_mails_of_last_push
+    push_mails, commit_mails = get_mails_of_last_push
 
     assert_mail('test_move_non_ascii_file', commit_mails[0])
   end
@@ -603,7 +599,7 @@ module GitCommitMailerNonAsciiTest
 
     git 'push'
 
-    push_mail, commit_mails = get_mails_of_last_push
+    push_mails, commit_mails = get_mails_of_last_push
 
     assert_mail('test_long_word_in_commit_subject', commit_mails[0])
   end
@@ -615,7 +611,7 @@ module GitCommitMailerNonAsciiTest
                         "Added non UTF-8 content file")
     git("push")
 
-    push_mail, commit_mails = get_mails_of_last_push
+    push_mails, commit_mails = get_mails_of_last_push
 
     assert_mail("test_non_utf8_content", commit_mails[0])
   end
@@ -659,9 +655,9 @@ module GitCommitMailerOptionTest
     git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
     git 'push'
 
-    push_mail, commit_mails = get_mails_of_last_push
+    push_mails, commit_mails = get_mails_of_last_push
 
-    assert_mail('test_utf7.push_mail', push_mail)
+    assert_mail('test_utf7.push_mail', push_mails[0])
     assert_mail('test_utf7', commit_mails.first)
   end
 
@@ -691,9 +687,9 @@ module GitCommitMailerOptionTest
     git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
     git 'push'
 
-    push_mail, _ = get_mails_of_last_push
+    push_mails, _ = get_mails_of_last_push
 
-    assert_mail('test_max_size.push_mail', push_mail)
+    assert_mail('test_max_size.push_mail', push_mails[0])
   end
 
   def test_sender
@@ -703,9 +699,9 @@ module GitCommitMailerOptionTest
     git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
     git 'push'
 
-    push_mail, commit_mails = get_mails_of_last_push
+    push_mails, commit_mails = get_mails_of_last_push
 
-    assert_mail('test_sender.push_mail', push_mail)
+    assert_mail('test_sender.push_mail', push_mails[0])
     assert_mail('test_sender', commit_mails.first)
   end
 end
@@ -956,15 +952,15 @@ module HookModeTest
     end
 
     def process_reference_change(*args)
-      @push_mail, @commit_mails = @mailer.process_reference_change(*args)
+      @push_mails, @commit_mails = @mailer.process_reference_change(*args)
     end
 
     def get_mails_of_last_push
-      push_mail, commit_mails = nil, []
+      push_mails, commit_mails = [], []
       each_reference_change do |old_revision, new_revision, reference|
-        push_mail, commit_mails = process_reference_change(old_revision, new_revision, reference)
+        push_mails, commit_mails = process_reference_change(old_revision, new_revision, reference)
       end
-      [push_mail, commit_mails]
+      [push_mails, commit_mails]
     end
 
     def read_from_fixture_directory(file)
@@ -1107,14 +1103,14 @@ module TrackRemoteModeTest
     end
 
     def get_mails_of_last_push
-      push_mail, commit_mails = nil, []
+      push_mails, commit_mails = [], []
 
       reference_changes = @mailer.fetch
       reference_changes.each do |old_revision, new_revision, reference|
-        push_mail, commit_mails = process_reference_change(old_revision, new_revision, reference)
+        push_mails, commit_mails = process_reference_change(old_revision, new_revision, reference)
       end
 
-      [push_mail, commit_mails]
+      [push_mails, commit_mails]
     end
 
     def each_reference_change
