@@ -1,0 +1,30 @@
+X-Git-Author: User Name
+X-Git-Revision: c8fb04f580c77020bffc4d621817ec6faf597e82
+X-Git-Repository: XXX
+X-Git-Commit-Id: c8fb04f580c77020bffc4d621817ec6faf597e82
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+From: User Name <user@example.com>
+To: to@example
+Subject: sample-repo [master] Change a duplicated 7digits short object ID content
+Date: Wed, 13 Jan 2010 15:15:44 +0900
+
+User Name	2010-01-13 15:15:44 +0900 (Wed, 13 Jan 2010)
+
+  New Revision: c8fb04f580c77020bffc4d621817ec6faf597e82
+
+  Log:
+    Change a duplicated 7digits short object ID content
+
+  Modified files:
+    rpi
+
+  Modified: rpi (+1 -1)
+===================================================================
+--- rpi    2010-01-13 15:15:43 +0900 (61aaae35)
++++ rpi    2010-01-13 15:15:44 +0900 (b66ba06)
+@@ -1 +1 @@
+-rpi
++new content
+

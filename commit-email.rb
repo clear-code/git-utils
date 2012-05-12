@@ -234,7 +234,7 @@ class GitCommitMailer
           when /\A\+\+\+ (b\/.*|"b\/.*"|\/dev\/null)\z/
             @plus_file = CommitInfo.unescape_file_path($1)
             @type = :deleted if $1 == '/dev/null'
-          when /\Aindex ([0-9a-f]{7})\.\.([0-9a-f]{7})/
+          when /\Aindex ([0-9a-f]{7,})\.\.([0-9a-f]{7,})/
             @old_blob = $1
             @new_blob = $2
           else

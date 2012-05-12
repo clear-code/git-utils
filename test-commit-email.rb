@@ -117,6 +117,35 @@ EOF
 
     assert_mail('test_diffs_with_multiple_files', commit_mails[0])
   end
+
+  def test_8digits_object_id
+    create_default_mailer
+
+    # Use find-duplicated-7digits-short-object-id-contents.rb for finding
+    # duplicated 7digits short object ID contents.
+    # Here are one of duplciated pair:
+    #   % echo rpi | git hash-object --stdin
+    #   61aaae353841d282eb4cc29b31e8abe76d362f0c
+    #   % echo adua | git hash-object --stdin
+    #   61aaae3eff35760a9a0612c744e1f19e57e78e9c
+
+    duplicated_7digits_short_object_id_content1 = "rpi"
+    duplicated_7digits_short_object_id_content2 = "adua"
+    create_file(duplicated_7digits_short_object_id_content1,
+                duplicated_7digits_short_object_id_content1)
+    create_file(duplicated_7digits_short_object_id_content2,
+                duplicated_7digits_short_object_id_content2)
+    git("commit -a -m 'Add duplicated 7digits short object ID contents'")
+    git("push")
+
+    create_file(duplicated_7digits_short_object_id_content1, "new content")
+    git("commit -a -m 'Change a duplicated 7digits short object ID content'")
+    git("push")
+
+    push_mail, commit_mails = get_mails_of_last_push
+
+    assert_mail("test_diffs_with_8digits_object_id", commit_mails[0])
+  end
 end
 
 module GitCommitMailerFileManipulationTest
