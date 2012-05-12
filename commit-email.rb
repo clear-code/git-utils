@@ -310,7 +310,6 @@ class GitCommitMailer
           is_parsed ||= parse_copy_and_rename(line)
           is_parsed ||= parse_binary_file_change(line)
           is_parsed ||= parse_mode_change(line)
-          is_parsed ||= parse_exended_headers(line)
           unless is_parsed
             raise "unexpected extended line header: " + line
           end
