@@ -1800,10 +1800,10 @@ EOF
   def utf8_to_utf7(utf8)
     require 'iconv'
     Iconv.conv("UTF-7", "UTF-8", utf8)
-  rescue InvalidEncoding
+  rescue Iconv::Failure
     begin
       Iconv.conv("UTF7", "UTF8", utf8)
-    rescue Exception
+    rescue Iconv::Failure
       nil
     end
   rescue Exception
