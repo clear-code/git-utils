@@ -1454,7 +1454,7 @@ EOF
     # release, and so we calculate which tag this tag is
     # replacing
     begin
-      previous_tag = git("describe --abbrev=0 #{parent_commit(revision)}").strip
+      git("describe --abbrev=0 #{parent_commit(revision)}").strip
     rescue NoParentCommit
     end
   end
