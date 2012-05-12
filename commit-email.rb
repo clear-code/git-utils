@@ -890,14 +890,14 @@ class GitCommitMailer
       parser.separator "Repository related options:"
 
       parser.on("--repository=PATH",
-              "Use PATH as the target git repository",
-              "(#{options.repository})") do |path|
+                "Use PATH as the target git repository",
+                "(#{options.repository})") do |path|
         options.repository = path
       end
 
       parser.on("--reference=REFERENCE",
-              "Use REFERENCE as the target reference",
-              "(#{options.reference})") do |reference|
+                "Use REFERENCE as the target reference",
+                "(#{options.reference})") do |reference|
         options.reference = reference
       end
     end
@@ -907,12 +907,12 @@ class GitCommitMailer
       parser.separator "E-mail related options:"
 
       parser.on("-sSERVER", "--server=SERVER",
-              "Use SERVER as SMTP server (#{options.server})") do |server|
+                "Use SERVER as SMTP server (#{options.server})") do |server|
         options.server = server
       end
 
       parser.on("-pPORT", "--port=PORT", Integer,
-              "Use PORT as SMTP port (#{options.port})") do |port|
+                "Use PORT as SMTP port (#{options.port})") do |port|
         options.port = port
       end
 
@@ -921,7 +921,7 @@ class GitCommitMailer
       end
 
       parser.on("-eTO", "--error-to=TO",
-              "Add TO to To: address when an error occurs") do |to|
+                "Add TO to To: address when an error occurs") do |to|
         options.error_to << to unless to.nil?
       end
 
@@ -934,7 +934,7 @@ class GitCommitMailer
       end
 
       parser.on("--from-domain=DOMAIN",
-              "Use author@DOMAIN as from address") do |domain|
+                "Use author@DOMAIN as from address") do |domain|
         if options.from
           raise OptionParser::CannotCoexistOption,
                   "cannot coexist with --from"
@@ -943,7 +943,7 @@ class GitCommitMailer
       end
 
       parser.on("--sender=SENDER",
-              "Use SENDER as a sender address") do |sender|
+                "Use SENDER as a sender address") do |sender|
         options.sender = sender
       end
     end
@@ -957,17 +957,17 @@ class GitCommitMailer
       end
 
       parser.on("--[no-]show-path",
-              "Show commit target path") do |bool|
+                "Show commit target path") do |bool|
         options.show_path = bool
       end
 
       parser.on("--[no-]send-push-mail",
-              "Send push mail") do |bool|
+                "Send push mail") do |bool|
         options.send_push_mail = bool
       end
 
       parser.on("--repository-uri=URI",
-              "Use URI as URI of repository") do |uri|
+                "Use URI as URI of repository") do |uri|
         options.repository_uri = uri
       end
 
@@ -976,9 +976,9 @@ class GitCommitMailer
       end
 
       parser.on("--max-size=SIZE",
-              "Limit mail body size to SIZE",
-              "G/GB/M/MB/K/KB/B units are available",
-              "(#{format_size(options.max_size)})") do |max_size|
+                "Limit mail body size to SIZE",
+                "G/GB/M/MB/K/KB/B units are available",
+                "(#{format_size(options.max_size)})") do |max_size|
         begin
           options.max_size = parse_size(max_size)
         rescue ArgumentError
@@ -987,29 +987,29 @@ class GitCommitMailer
       end
 
       parser.on("--no-limit-size",
-              "Don't limit mail body size",
-              "(#{options.max_size.nil?})") do |not_limit_size|
+                "Don't limit mail body size",
+                "(#{options.max_size.nil?})") do |not_limit_size|
         options.max_size = nil
       end
 
       parser.on("--[no-]utf7",
-              "Use UTF-7 encoding for mail body instead",
-              "of UTF-8 (#{options.use_utf7})") do |use_utf7|
+                "Use UTF-7 encoding for mail body instead",
+                "of UTF-8 (#{options.use_utf7})") do |use_utf7|
         options.use_utf7 = use_utf7
       end
 
       parser.on("--date=DATE",
-              "Use DATE as date of push mails (Time.parse is used)") do |date|
+                "Use DATE as date of push mails (Time.parse is used)") do |date|
         options.date = Time.parse(date)
       end
 
       parser.on("--git-bin-path=GIT_BIN_PATH",
-              "Use GIT_BIN_PATH command instead of default \"git\"") do |git_bin_path|
+                "Use GIT_BIN_PATH command instead of default \"git\"") do |git_bin_path|
         options.git_bin_path = git_bin_path
       end
 
       parser.on("--track-remote",
-              "Fetch new commits from repository's origin and send mails") do
+                "Fetch new commits from repository's origin and send mails") do
         options.track_remote = true
       end
     end
@@ -1035,8 +1035,8 @@ class GitCommitMailer
       #  $LOAD_PATH.unshift(path)
       #end
       parser.on("--[no-]verbose",
-              "Be verbose.",
-              "(#{options.verbose})") do |verbose|
+                "Be verbose.",
+                "(#{options.verbose})") do |verbose|
         options.verbose = verbose
       end
     end
