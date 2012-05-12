@@ -1798,16 +1798,21 @@ EOF
   end
 
   def utf8_to_utf7(utf8)
-    require 'iconv'
-    Iconv.conv("UTF-7", "UTF-8", utf8)
-  rescue Iconv::Failure
     begin
-      Iconv.conv("UTF7", "UTF8", utf8)
-    rescue Iconv::Failure
-      nil
+      require 'iconv'
+    rescue LoadError
+      return nil
     end
-  rescue Exception
-    nil
+
+    begin
+      Iconv.conv("UTF-7", "UTF-8", utf8)
+    rescue Iconv::Failure
+      begin
+        Iconv.conv("UTF7", "UTF8", utf8)
+      rescue Iconv::Failure
+        nil
+      end
+    end
   end
 
   def truncate_body(body, use_utf7)
