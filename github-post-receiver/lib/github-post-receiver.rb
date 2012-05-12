@@ -247,6 +247,7 @@ class GitHubPostReceiver
       add_option(options, "--from", from)
       add_option(options, "--from-domain", from_domain)
       add_option(options, "--sender", sender)
+      options << "--send-per-to" if send_per_to?
       error_to.each do |_error_to|
         options.concat(["--error-to", _error_to])
       end
@@ -319,6 +320,10 @@ class GitHubPostReceiver
 
     def error_to
       @error_to ||= force_array(@options[:error_to])
+    end
+
+    def send_per_to?
+      @options[:send_per_to]
     end
 
     def force_array(value)
