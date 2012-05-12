@@ -585,6 +585,7 @@ class GitCommitMailer
 
     def parse_diff
       output = git("log -n 1 --pretty=format:'' -C -p #{@revision}")
+      output = force_utf8(output)
       output = output.lines.to_a
       output.shift #removes the first empty line
 
@@ -679,6 +680,14 @@ class GitCommitMailer
       :copied => "Copied",
       :renamed => "Renamed",
     }
+
+    def force_utf8(string)
+      if string.respond_to?(:valid_encoding?)
+        string.force_encoding("UTF-8")
+        return string if string.valid_encoding?
+      end
+      NKF.nkf("-w", string)
+    end
   end
 
   class << self
@@ -746,11 +755,17 @@ class GitCommitMailer
     end
 
     def send_mail(server, port, from, to, mail)
+      if mail.respond_to?(:force_encoding)
+        binary_mail = mail.dup
+        binary_mail.force_encoding("BINARY")
+      else
+        binary_mail = mail
+      end
       $sending_mail ||= SpentTime.new("sending mails")
       $sending_mail.spend do
         Net::SMTP.start(server, port) do |smtp|
           smtp.open_message_stream(from, to) do |f|
-            f.print(mail)
+            f.print(binary_mail)
           end
         end
       end

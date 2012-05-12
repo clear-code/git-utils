@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2009  Ryo Onodera <onodera@clear-code.com>
-# Copyright (C) 2011  Kouhei Sutou <kou@clear-code.com>
+# Copyright (C) 2011-2012  Kouhei Sutou <kou@clear-code.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@ require 'rubygems'
 gem 'test-unit'
 require 'test/unit'
 require 'tempfile'
+require "nkf"
 
 require 'commit-email'
 
@@ -605,6 +606,27 @@ module GitCommitMailerNonAsciiTest
     push_mail, commit_mails = get_mails_of_last_push
 
     assert_mail('test_long_word_in_commit_subject', commit_mails[0])
+  end
+
+  def test_non_utf8_content
+    create_default_mailer
+    git_commit_new_file("non-utf8.txt",
+                        to_shift_jis("Shift_JISの内容"),
+                        "Added non UTF-8 content file")
+    git("push")
+
+    push_mail, commit_mails = get_mails_of_last_push
+
+    assert_mail("test_non_utf8_content", commit_mails[0])
+  end
+
+  private
+  def to_shift_jis(utf8_string)
+    if utf8_string.respond_to?(:encode)
+      utf8_string.encode("Shift_JIS")
+    else
+      NKF.nkf("-Ws", utf8_string)
+    end
   end
 end
 
