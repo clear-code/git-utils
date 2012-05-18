@@ -41,7 +41,7 @@ Example:
       --from-domain=example.com \
       --error-to=onodera@example.com \
       commit@example.com
-  
+
 For more detailed usage and options, execute commit-email.rb
 with <tt>--help</tt> option.
 
