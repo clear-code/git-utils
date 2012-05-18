@@ -38,9 +38,9 @@ which is located under "hooks" directory in a git repository.
 
 Example:
     /usr/bin/ruby /path/to/commit-email.rb \
-      --from-domain=clear-code.com \
-      --error-to=onodera@clear-code.com \
-      commit@clear-code.com
+      --from-domain=example.com \
+      --error-to=onodera@example.com \
+      commit@example.com
   
 For more detailed usage and options, execute commit-email.rb
 with <tt>--help</tt> option.
