@@ -965,7 +965,7 @@ module HookModeTest
 
     def read_from_fixture_directory(file)
       file = IO.read('fixtures/' + file)
-      file.force_encoding("ASCII-8BIT") if file.respond_to? :force_encoding
+      file.force_encoding("ASCII-8BIT") if file.respond_to?(:force_encoding)
       file
     end
 
