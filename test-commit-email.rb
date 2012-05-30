@@ -964,9 +964,9 @@ module HookModeTest
     end
 
     def read_from_fixture_directory(file)
-      file = IO.read('fixtures/' + file)
-      file.force_encoding("ASCII-8BIT") if file.respond_to?(:force_encoding)
-      file
+      content = IO.read('fixtures/' + file)
+      content.force_encoding("ASCII-8BIT") if content.respond_to?(:force_encoding)
+      content
     end
 
     def expected_rss(file)
