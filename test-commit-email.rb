@@ -965,7 +965,7 @@ module HookModeTest
 
     def read_from_fixture_directory(file)
       file = IO.read('fixtures/' + file)
-      file.force_encoding("UTF-8") if file.respond_to? :force_encoding
+      file.force_encoding("ASCII-8BIT") if file.respond_to? :force_encoding
       file
     end
 
@@ -995,18 +995,13 @@ module HookModeTest
     end
 
     def assert_mail(expected_mail_file_name, tested_mail)
-      utf8_tested_mail = tested_mail.dup
-      if utf8_tested_mail.respond_to?(:force_encoding)
-        utf8_tested_mail.force_encoding("UTF-8")
-      end
-
       begin
         assert_header(header_section(expected_mail(expected_mail_file_name)),
-                      header_section(utf8_tested_mail))
+                      header_section(tested_mail))
         assert_body(body_section(expected_mail(expected_mail_file_name)),
-                    body_section(utf8_tested_mail))
+                    body_section(tested_mail))
       rescue
-        puts utf8_tested_mail if ENV['DEBUG']
+        puts tested_mail if ENV['DEBUG']
         raise
       end
     end
