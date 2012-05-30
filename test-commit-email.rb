@@ -963,8 +963,8 @@ module HookModeTest
       [push_mails, commit_mails]
     end
 
-    def read_from_fixture_directory(file)
-      content = IO.read('fixtures/' + file)
+    def read_from_fixture_directory(path)
+      content = IO.read('fixtures/' + path)
       content.force_encoding("ASCII-8BIT") if content.respond_to?(:force_encoding)
       content
     end
