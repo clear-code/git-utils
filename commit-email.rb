@@ -883,7 +883,7 @@ class GitCommitMailer
 
         add_repository_options(parser, options)
         add_email_options(parser, options)
-        add_input_options(parser, options)
+        add_output_options(parser, options)
         add_rss_options(parser, options)
         add_other_options(parser, options)
 
@@ -964,7 +964,7 @@ class GitCommitMailer
       end
     end
 
-    def add_input_options(parser, options)
+    def add_output_options(parser, options)
       parser.separator ""
       parser.separator "Output related options:"
 
