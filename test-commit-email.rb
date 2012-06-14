@@ -649,20 +649,6 @@ module GitCommitMailerOptionTest
     assert_rss('test_rss.rss', rss_file_path)
   end
 
-
-  def test_utf7
-    set_additional_default_mailer_option("--utf7")
-    create_default_mailer
-
-    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
-    git 'push'
-
-    push_mails, commit_mails = get_mails_of_last_push
-
-    assert_mail('test_utf7.push_mail', push_mails[0])
-    assert_mail('test_utf7', commit_mails.first)
-  end
-
   def test_show_path
     set_additional_default_mailer_option("--show-path")
     create_default_mailer

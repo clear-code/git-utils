@@ -825,7 +825,6 @@ class GitCommitMailer
       mailer.show_path = options.show_path
       mailer.send_push_mail = options.send_push_mail
       mailer.name = options.name
-      mailer.use_utf7 = options.use_utf7
       mailer.server = options.server
       mailer.port = options.port
       mailer.date = options.date
@@ -867,7 +866,6 @@ class GitCommitMailer
       options.show_path = false
       options.send_push_mail = false
       options.name = nil
-      options.use_utf7 = false
       options.server = "localhost"
       options.port = Net::SMTP.default_port
       options.date = nil
@@ -1008,12 +1006,6 @@ class GitCommitMailer
         options.max_size = nil
       end
 
-      parser.on("--[no-]utf7",
-                "Use UTF-7 encoding for mail body instead",
-                "of UTF-8 (#{options.use_utf7})") do |use_utf7|
-        options.use_utf7 = use_utf7
-      end
-
       parser.on("--date=DATE",
                 "Use DATE as date of push mails (Time.parse is used)") do |date|
         options.date = Time.parse(date)
@@ -1060,7 +1052,7 @@ class GitCommitMailer
 
   attr_reader :reference, :old_revision, :new_revision, :to
   attr_writer :send_per_to
-  attr_writer :from, :add_diff, :show_path, :send_push_mail, :use_utf7
+  attr_writer :from, :add_diff, :show_path, :send_push_mail
   attr_writer :repository, :date, :git_bin_path, :track_remote
   attr_accessor :from_domain, :sender, :max_size, :repository_uri
   attr_accessor :rss_path, :rss_uri, :server, :port
@@ -1696,10 +1688,6 @@ EOF
     end
   end
 
-  def use_utf7?
-    @use_utf7
-  end
-
   def add_diff?
     @add_diff
   end
@@ -1756,21 +1744,12 @@ EOF
   end
 
   def make_mail(info, to)
-    utf8_body = info.format_mail_body
-    utf7_body = nil
-    utf7_body = utf8_to_utf7(utf8_body) if use_utf7?
-    if utf7_body
-      body = utf7_body
-      encoding = "utf-7"
-      bit = "7bit"
-    else
-      body = utf8_body
-      encoding = "utf-8"
-      bit = "8bit"
-    end
+    body = info.format_mail_body
+    encoding = "utf-8"
+    bit = "8bit"
 
     unless @max_size.nil?
-      body = truncate_body(body, !utf7_body.nil?)
+      body = truncate_body(body)
     end
 
     header = make_header(encoding, bit, to, info)
@@ -1849,31 +1828,12 @@ EOF
     encoded_string
   end
 
-  def utf8_to_utf7(utf8)
-    begin
-      require 'iconv'
-    rescue LoadError
-      return nil
-    end
-
-    begin
-      Iconv.conv("UTF-7", "UTF-8", utf8)
-    rescue Iconv::Failure
-      begin
-        Iconv.conv("UTF7", "UTF8", utf8)
-      rescue Iconv::Failure
-        nil
-      end
-    end
-  end
-
-  def truncate_body(body, use_utf7)
+  def truncate_body(body)
     return body if body.size < @max_size
 
     truncated_body = body[0, @max_size]
     formatted_size = self.class.format_size(@max_size)
     truncated_message = "... truncated to #{formatted_size}\n"
-    truncated_message = utf8_to_utf7(truncated_message) if use_utf7
     truncated_message_size = truncated_message.size
 
     lf_index = truncated_body.rindex(/(?:\r|\r\n|\n)/)
