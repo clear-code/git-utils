@@ -692,27 +692,35 @@ class GitCommitMailer
 
   class << self
     def execute(command, working_directory=nil, &block)
-      if working_directory
-        cd_command = "cd #{working_directory} && "
-      else
-        cd_command = ""
-      end
       if ENV['DEBUG']
         suppress_stderr = ''
       else
         suppress_stderr = ' 2> /dev/null'
       end
 
-      script = "(#{cd_command}#{command})#{suppress_stderr}"
+      script = "#{command} #{suppress_stderr}"
       puts script if ENV['DEBUG']
-      if block_given?
-        IO.popen(script, "w+", &block)
-      else
-        result = `#{script} 2>&1`
+      result = nil
+      with_working_direcotry(working_directory) do
+        if block_given?
+          IO.popen(script, "w+", &block)
+        else
+          result = `#{script} 2>&1`
+        end
       end
       raise "execute failed: #{command}\n#{result}" unless $?.exitstatus.zero?
       result.force_encoding("UTF-8") if result.respond_to?(:force_encoding)
       result
+    end
+
+    def with_working_direcotry(working_directory)
+      if working_directory
+        Dir.chdir(working_directory) do
+          yield
+        end
+      else
+        yield
+      end
     end
 
     def shell_escape(string)
