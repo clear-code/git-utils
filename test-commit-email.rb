@@ -25,7 +25,7 @@ require 'test/unit'
 require 'tempfile'
 require "nkf"
 
-require 'commit-email'
+require "./commit-email"
 
 module Constants
   DEFAULT_FILE = 'sample_file'
