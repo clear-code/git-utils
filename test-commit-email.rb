@@ -27,6 +27,8 @@ require "nkf"
 
 require "./commit-email"
 
+ENV["TZ"] = "Asia/Tokyo"
+
 module Constants
   DEFAULT_FILE = 'sample_file'
   DEFAULT_FILE_CONTENT = <<END_OF_CONTENT
