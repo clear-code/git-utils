@@ -821,6 +821,7 @@ class GitCommitMailer
     def apply_options(mailer, options)
       mailer.repository = options.repository
       #mailer.reference = options.reference
+      mailer.repository_browser = options.repository_browser
       mailer.send_per_to = options.send_per_to
       mailer.from = options.from
       mailer.from_domain = options.from_domain
@@ -860,6 +861,7 @@ class GitCommitMailer
       options = OpenStruct.new
       options.repository = ".git"
       #options.reference = "refs/heads/master"
+      options.repository_browser = nil
       options.to = []
       options.send_per_to = false
       options.error_to = []
@@ -915,6 +917,17 @@ class GitCommitMailer
                 "(#{options.reference})") do |reference|
         options.reference = reference
       end
+
+      available_softwares = [:github]
+      available_softwares_label = available_softwares.join(", ")
+      parser.on("--repository-browser=SOFTWARE",
+                available_softwares,
+                "Use SOFTWARE as the repository browser",
+                "(default: #{available_softwares_label})",
+                "(#{options.repository_browser})") do |software|
+        options.repository_browser = software
+      end
+
     end
 
     def add_email_options(parser, options)
@@ -1064,6 +1077,7 @@ class GitCommitMailer
   attr_writer :repository, :date, :git_bin_path, :track_remote
   attr_accessor :from_domain, :sender, :max_size, :repository_uri
   attr_accessor :rss_path, :rss_uri, :server, :port
+  attr_accessor :repository_browser
   attr_writer :name, :verbose
 
   def initialize(to)
