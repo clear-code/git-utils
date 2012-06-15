@@ -692,6 +692,20 @@ module GitCommitMailerOptionTest
     assert_mail('test_sender.push_mail', push_mails[0])
     assert_mail('test_sender', commit_mails.first)
   end
+
+  def test_github
+    set_additional_default_mailer_option("--repository-browser=github",
+                                         "--github-user=clear-code",
+                                         "--github-repository=git-utils")
+    create_default_mailer
+
+    create_file("README.rdoc", "= README")
+    git "commit -m %s" % shell_escape("Add README")
+    git "push"
+
+    _, commit_mails = get_mails_of_last_push
+    assert_mail('test_github', commit_mails.first)
+  end
 end
 
 module HookModeTest

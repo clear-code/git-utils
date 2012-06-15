@@ -523,6 +523,7 @@ class GitCommitMailer
       body << "#{author}\t#{@mailer.format_time(date)}\n"
       body << "\n"
       body << "  New Revision: #{revision}\n"
+      format_repository_browser_url(body)
       body << "\n"
       unless @merge_status.length.zero?
         body << "  #{@merge_status.join("\n  ")}\n\n"
@@ -645,6 +646,18 @@ class GitCommitMailer
         else
           raise "unsupported status type: #{line.inspect}"
         end
+      end
+    end
+
+    def format_repository_browser_url(body)
+      case @mailer.repository_browser
+      when :github
+        user = @mailer.github_user
+        repository = @mailer.github_repository
+        return if user.nil? or repository.nil?
+        base_url = @mailer.github_base_url
+        commit_url = "#{base_url}/#{user}/#{repository}/commit/#{revision}"
+        body << "    #{commit_url}\n"
       end
     end
 
@@ -822,6 +835,9 @@ class GitCommitMailer
       mailer.repository = options.repository
       #mailer.reference = options.reference
       mailer.repository_browser = options.repository_browser
+      mailer.github_base_url = options.github_base_url
+      mailer.github_user = options.github_user
+      mailer.github_repository = options.github_repository
       mailer.send_per_to = options.send_per_to
       mailer.from = options.from
       mailer.from_domain = options.from_domain
@@ -862,6 +878,9 @@ class GitCommitMailer
       options.repository = ".git"
       #options.reference = "refs/heads/master"
       options.repository_browser = nil
+      options.github_base_url = "https://github.com"
+      options.github_user = nil
+      options.github_repository = nil
       options.to = []
       options.send_per_to = false
       options.error_to = []
@@ -927,6 +946,28 @@ class GitCommitMailer
         options.repository_browser = software
       end
 
+      add_github_options(parser, options)
+    end
+
+    def add_github_options(parser, options)
+      parser.separator ""
+      parser.separator "GitHub related options:"
+
+      parser.on("--github-base-url=URL",
+                "Use URL as base URL of GitHub",
+                "(#{options.github_base_url})") do |url|
+        options.github_base_url = url
+      end
+
+      parser.on("--github-user=USER",
+                "Use USER as the GitHub user") do |user|
+        options.github_user = user
+      end
+
+      parser.on("--github-repository=REPOSITORY",
+                "Use REPOSITORY as the GitHub repository") do |repository|
+        options.github_repository = repository
+      end
     end
 
     def add_email_options(parser, options)
@@ -1077,6 +1118,7 @@ class GitCommitMailer
   attr_accessor :from_domain, :sender, :max_size, :repository_uri
   attr_accessor :rss_path, :rss_uri, :server, :port
   attr_accessor :repository_browser
+  attr_accessor :github_base_url, :github_user, :github_repository
   attr_writer :name, :verbose
 
   def initialize(to)

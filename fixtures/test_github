@@ -1,0 +1,30 @@
+X-Git-Author: User Name
+X-Git-Revision: 0f929d782fca181afa1507c73bc3f948fb1d6647
+X-Git-Repository: XXX
+X-Git-Commit-Id: 0f929d782fca181afa1507c73bc3f948fb1d6647
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+From: User Name <user@example.com>
+To: to@example
+Subject: sample-repo [master] Add README
+Date: Wed, 13 Jan 2010 15:15:43 +0900
+
+User Name	2010-01-13 15:15:43 +0900 (Wed, 13 Jan 2010)
+
+  New Revision: 0f929d782fca181afa1507c73bc3f948fb1d6647
+    https://github.com/clear-code/git-utils/commit/0f929d782fca181afa1507c73bc3f948fb1d6647
+
+  Log:
+    Add README
+
+  Added files:
+    README.rdoc
+
+  Added: README.rdoc (+1 -0) 100644
+===================================================================
+--- /dev/null
++++ README.rdoc    2010-01-13 15:15:43 +0900 (aa7d1e0)
+@@ -0,0 +1 @@
++= README
+
