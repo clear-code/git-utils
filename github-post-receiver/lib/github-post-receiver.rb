@@ -241,7 +241,7 @@ class GitHubPostReceiver
     end
 
     def send_commit_email(before, after, reference)
-      options = ["--repository-brwoser", "github",
+      options = ["--repository-browser", "github",
                  "--github-user", @owner_name,
                  "--github-repository", @name,
                  "--repository", mirror_path,
