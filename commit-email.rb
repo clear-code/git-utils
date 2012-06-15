@@ -181,9 +181,9 @@ class GitCommitMailer
       end
 
       def format_diff
-        desc =  "  #{CHANGED_TYPE[@type]}: #{@to_file} " +
-                "(+#{@added_line} -#{@deleted_line})" +
-                "#{format_file_mode}#{format_similarity_index}\n"
+        desc = "  #{CHANGED_TYPE[@type]}: #{@to_file} "
+        desc << "(+#{@added_line} -#{@deleted_line})"
+        desc << "#{format_file_mode}#{format_similarity_index}\n"
         desc << "  Mode: #{@old_mode} -> #{@new_mode}\n" if @is_mode_changed
         desc << diff_separator
 
