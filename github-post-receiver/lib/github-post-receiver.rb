@@ -241,7 +241,10 @@ class GitHubPostReceiver
     end
 
     def send_commit_email(before, after, reference)
-      options = ["--repository", mirror_path,
+      options = ["--repository-brwoser", "github",
+                 "--github-user", @owner_name,
+                 "--github-repository", @name,
+                 "--repository", mirror_path,
                  "--name", "#{@owner_name}/#{@name}",
                  "--max-size", "1M"]
       add_option(options, "--from", from)
