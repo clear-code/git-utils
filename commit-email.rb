@@ -121,7 +121,7 @@ class GitCommitMailer
     }
 
     def format_mail_subject
-      "(push) #{PushInfo::REFERENCE_TYPE[reference_type]} "+
+      "(push) #{PushInfo::REFERENCE_TYPE[reference_type]} " +
       "(#{short_reference}) is #{PushInfo::CHANGE_TYPE[change_type]}."
     end
 
