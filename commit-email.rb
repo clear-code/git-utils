@@ -2102,7 +2102,7 @@ pre
         </ul>
       </dd>
 <% end %>
-      <dt>Log:<dt>
+      <dt>Log:</dt>
       <dd><pre><%= h(@info.summary.strip) %></pre></dd>
 <%= format_files("Added",        @info.added_files) %>
 <%= format_files("Copied",       @info.copied_files) %>
