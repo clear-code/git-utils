@@ -2080,7 +2080,7 @@ pre
 {
   font-family: monospace;
   padding: 0.5em;
-  border: 1px solid #AAA;
+  border: 1px solid #aaa;
 }
     </style>
   </head>
