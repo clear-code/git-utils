@@ -17,3 +17,4 @@ source :rubygems
 
 gem "rake"
 gem "test-unit"
+gem "test-unit-rr"

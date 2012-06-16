@@ -30,6 +30,7 @@ require "socket"
 require "nkf"
 require "shellwords"
 require "erb"
+require "digest"
 
 class SpentTime
   def initialize(label)
@@ -193,6 +194,7 @@ class GitCommitMailer
       mailer.from_domain = options.from_domain
       mailer.sender = options.sender
       mailer.add_diff = options.add_diff
+      mailer.add_html = options.add_html
       mailer.max_size = options.max_size
       mailer.repository_uri = options.repository_uri
       mailer.rss_path = options.rss_path
@@ -238,6 +240,7 @@ class GitCommitMailer
       options.from_domain = nil
       options.sender = nil
       options.add_diff = true
+      options.add_html = false
       options.max_size = parse_size(DEFAULT_MAX_SIZE)
       options.repository_uri = nil
       options.rss_path = nil
@@ -400,6 +403,11 @@ class GitCommitMailer
         options.add_diff = false
       end
 
+      parser.on("--[no-]add-html",
+                "Add HTML as alternative content") do |add_html|
+        options.add_html = add_html
+      end
+
       parser.on("--max-size=SIZE",
                 "Limit mail body size to SIZE",
                 "G/GB/M/MB/K/KB/B units are available",
@@ -463,7 +471,7 @@ class GitCommitMailer
 
   attr_reader :reference, :old_revision, :new_revision, :to
   attr_writer :send_per_to
-  attr_writer :from, :add_diff, :show_path, :send_push_mail
+  attr_writer :from, :add_diff, :add_html, :show_path, :send_push_mail
   attr_writer :repository, :date, :git_bin_path, :track_remote
   attr_accessor :from_domain, :sender, :max_size, :repository_uri
   attr_accessor :rss_path, :rss_uri, :server, :port
@@ -1105,6 +1113,10 @@ EOF
     @add_diff
   end
 
+  def add_html?
+    @add_html
+  end
+
   def show_path?
     @show_path
   end
@@ -1157,12 +1169,28 @@ EOF
   end
 
   def make_mail(info, to)
-    body = info.format_mail_body
+    @boundary = generate_boundary
+
     encoding = "utf-8"
     bit = "8bit"
+    if add_html?
+      body_text = truncate_body(info.format_mail_body_text, @max_size / 2)
+      body_html = truncate_body(info.format_mail_body_html, @max_size / 2)
+      body = <<-EOB
+--#{@boundary}
+Content-Type: text/plain; charset=#{encoding}
+Content-Transfer-Encoding: #{bit}
 
-    unless @max_size.nil?
-      body = truncate_body(body)
+#{body_text}
+--#{@boundary}
+Content-Type: text/html; charset=#{encoding}
+Content-Transfer-Encoding: #{bit}
+
+#{body_html}
+--#{@boundary}--
+EOB
+    else
+      body = truncate_body(info.format_mail_body_text, @max_size)
     end
 
     header = make_header(encoding, bit, to, info)
@@ -1195,7 +1223,12 @@ EOF
     headers = []
     headers += info.headers
     headers << "MIME-Version: 1.0"
-    headers << "Content-Type: text/plain; charset=#{body_encoding}"
+    if add_html?
+      headers << "Content-Type: multipart/alternative;"
+      headers << " boundary=#{@boundary}"
+    else
+      headers << "Content-Type: text/plain; charset=#{body_encoding}"
+    end
     headers << "Content-Transfer-Encoding: #{body_encoding_bit}"
     headers << "From: #{from(info)}"
     headers << "To: #{to.join(', ')}"
@@ -1205,6 +1238,11 @@ EOF
     headers.find_all do |header|
       /\A\s*\z/ !~ header
     end.join("\n") + "\n"
+  end
+
+  def generate_boundary
+    random_integer = Time.now.to_i * 1000 + rand(1000)
+    Digest::SHA1.hexdigest(random_integer.to_s)
   end
 
   def detect_project
@@ -1241,18 +1279,19 @@ EOF
     encoded_string
   end
 
-  def truncate_body(body)
-    return body if body.size < @max_size
+  def truncate_body(body, max_size)
+    return body if max_size.nil?
+    return body if body.size < max_size
 
-    truncated_body = body[0, @max_size]
-    formatted_size = self.class.format_size(@max_size)
+    truncated_body = body[0, max_size]
+    formatted_size = self.class.format_size(max_size)
     truncated_message = "... truncated to #{formatted_size}\n"
     truncated_message_size = truncated_message.size
 
     lf_index = truncated_body.rindex(/(?:\r|\r\n|\n)/)
     while lf_index
-      if lf_index + truncated_message_size < @max_size
-        truncated_body[lf_index, @max_size] = "\n#{truncated_message}"
+      if lf_index + truncated_message_size < max_size
+        truncated_body[lf_index, max_size] = "\n#{truncated_message}"
         break
       else
         lf_index = truncated_body.rindex(/(?:\r|\r\n|\n)/, lf_index - 1)
@@ -1282,7 +1321,7 @@ EOF
         item = maker.items.new_item
         item.title = info.rss_title
         item.description = info.summary
-        item.content_encoded = "<pre>#{RSS::Utils.html_escape(info.rss_content)}</pre>"
+        item.content_encoded = info.rss_content
         item.link = "#{@repository_uri}/commit/?id=#{info.revision}"
         item.dc_date = info.date
         item.dc_creator = info.author
@@ -1370,7 +1409,7 @@ EOF
         "(#{short_reference}) is #{PushInfo::CHANGE_TYPE[change_type]}."
     end
 
-    def format_mail_body
+    def format_mail_body_text
       body = ""
       body << "#{author}\t#{@mailer.format_time(date)}\n"
       body << "\n"
@@ -1381,6 +1420,10 @@ EOF
         body << "    #{line}"
       end
       body << "\n\n"
+    end
+
+    def format_mail_body_html
+      "<pre>#{ERB::Util.h(format_mail_body_text)}</pre>"
     end
   end
 
@@ -1468,8 +1511,12 @@ EOF
       "[#{short_reference}#{affected_path_info}] " + subject
     end
 
-    def format_mail_body
+    def format_mail_body_text
       TextMailBodyFormatter.new(self).format
+    end
+
+    def format_mail_body_html
+      HTMLMailBodyFormatter.new(self).format
     end
 
     def short_revision
@@ -1481,7 +1528,7 @@ EOF
     end
 
     def rss_content
-      format_mail_body
+      "<pre>#{ERB::Util.h(format_mail_body_text)}</pre>"
     end
 
     private
@@ -1894,15 +1941,36 @@ EOF
       end
     end
 
-    class TextMailBodyFormatter
+    class MailBodyFormatter
       def initialize(info)
         @info = info
         @mailer = @info.mailer
       end
 
       def format
-        body = ERB.new(template, nil, "<>").result(binding)
-        body.sub(/\n+\z/, "\n")
+        ERB.new(template, nil, "<>").result(binding)
+      end
+
+      private
+      def repository_browser_url
+        case @mailer.repository_browser
+        when :github
+          user = @mailer.github_user
+          repository = @mailer.github_repository
+          return nil if user.nil? or repository.nil?
+          base_url = @mailer.github_base_url
+          revision = @info.revision
+          "#{base_url}/#{user}/#{repository}/commit/#{revision}"
+        else
+          nil
+        end
+      end
+
+    end
+
+    class TextMailBodyFormatter < MailBodyFormatter
+      def format
+        super.sub(/\n+\z/, "\n")
       end
 
       private
@@ -1937,18 +2005,9 @@ EOT
       end
 
       def format_repository_browser_url
-        case @mailer.repository_browser
-        when :github
-          user = @mailer.github_user
-          repository = @mailer.github_repository
-          return "" if user.nil? or repository.nil?
-          base_url = @mailer.github_base_url
-          revision = @info.revision
-          commit_url = "#{base_url}/#{user}/#{repository}/commit/#{revision}"
-          "  #{commit_url}\n"
-        else
-          ""
-        end
+        url = repository_browser_url
+        return "" if url.nil?
+        "  #{url}\n"
       end
 
       def format_files(title, items)
@@ -1974,6 +2033,170 @@ EOT
         @info.diffs.collect do |diff|
           diff.format_diff
         end
+      end
+    end
+
+    class HTMLMailBodyFormatter < MailBodyFormatter
+      include ERB::Util
+
+      private
+      def template
+        <<-EOT
+<!DOCTYPE html>
+<html>
+  <head>
+    <style type="text/css">
+dl
+{
+  margin-left: 2em;
+  line-height: 1.5;
+}
+
+dl dt
+{
+  clear: both;
+  float: left;
+  width: 13em;
+  font-weight: bold;
+}
+
+dl dd
+{
+  margin-left: 13.5em;
+}
+
+div.diff-section
+{
+  clear: both;
+}
+
+div.diff
+{
+  margin-left: 1em;
+  margin-right: 1em;
+}
+
+pre
+{
+  padding: 0.5em;
+  border: 1px solid #AAA;
+}
+    </style>
+  </head>
+  <body>
+    <dl>
+      <dt>Author:</dt>
+      <dd><%= h(@info.author) %></dd>
+      <dt>Date:</dt>
+      <dd><%= h(@mailer.format_time(@info.date)) %></dd>
+      <dt>New Revision:</dt>
+      <dd><%= format_revision %></dd>
+<% unless @info.merge_status.empty? %>
+      <dt>Merge:</dt>
+      <dd>
+        <ul>
+<%   @info.merge_status.each do |status| %>
+        <li><%= h(status) %></li>
+<%   end %>
+        </ul>
+      </dd>
+<% end %>
+      <dt>Log:<dt>
+      <dd><pre><%= h(@info.summary.strip) %></pre></dd>
+<%= format_files("Added",        @info.added_files) %>
+<%= format_files("Copied",       @info.copied_files) %>
+<%= format_files("Removed",      @info.deleted_files) %>
+<%= format_files("Modified",     @info.updated_files) %>
+<%= format_files("Renamed",      @info.renamed_files) %>
+<%= format_files("Type Changed", @info.type_changed_files) %>
+    </dl>
+
+<%= format_diffs %>
+  </body>
+</html>
+EOT
+      end
+
+      def format_revision
+        revision = @info.revision
+        url = repository_browser_url
+        if url
+          formatted_revision = "<a href=\"#{h(url)}\">#{h(revision)}</a>"
+        else
+          formatted_revision = h(revision)
+        end
+        formatted_revision
+      end
+
+      def format_files(title, items)
+        return "" if items.empty?
+
+        formatted_files = ""
+        formatted_files << "      <dt>#{h(title)} files:</dt>\n"
+        formatted_files << "      <dd>\n"
+        formatted_files << "        <ul>\n"
+        items.each do |item_name, new_item_name|
+          if new_item_name.nil?
+            formatted_files << "          <li>#{h(item_name)}</li>\n"
+          else
+            formatted_files << "          <li>\n"
+            formatted_files << "            #{h(new_item_name)}<br>\n"
+            formatted_files << "            (from #{item_name})\n"
+            formatted_files << "          </li>\n"
+          end
+        end
+        formatted_files << "        </ul>\n"
+        formatted_files << "      </dd>\n"
+        formatted_files
+      end
+
+      def format_diffs
+        return "" if @info.diffs.empty?
+
+        formatted_diff = ""
+        formatted_diff << "    <div class=\"diff-section\">\n"
+        @info.diffs.each do |diff|
+          formatted_diff << "      <div class=\"diff\">\n"
+          formatted_diff << "        <pre>#{format_diff(diff)}</pre>\n"
+          formatted_diff << "      </div>\n"
+        end
+        formatted_diff << "    </div>\n"
+        formatted_diff
+      end
+
+      def format_diff(diff)
+        formatted_diff = ""
+        diff.format_diff.each_line do |line|
+          case line
+          when /^-/
+            formatted_diff << span(h(line),
+                                   :class => "diff-deleted",
+                                   :style => ["background-color: #aaffaa",
+                                              "color: #000000"])
+          when /^\+/
+            formatted_diff << span(h(line),
+                                   :class => "diff-deleted",
+                                   :style => ["background-color: #ffaaaa",
+                                              "color: #000000"])
+          when /^@@/
+            formatted_diff << span(h(line),
+                                   :class => "diff-line",
+                                   :style => ["background-color: #eaf2f5",
+                                              "color: #999999"])
+          else
+            formatted_diff << h(line)
+          end
+        end
+        formatted_diff
+      end
+
+      def span(content, attributes)
+        formatted_attributes = attributes.collect do |key, value|
+          value = value.join("; ") if value.is_a?(Array)
+          "#{h(key)}=\"#{h(value)}\""
+        end
+        formatted_attributes = formatted_attributes.join(" ")
+        "<span #{formatted_attributes}>#{content}</span>"
       end
     end
   end

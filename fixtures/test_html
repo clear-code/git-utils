@@ -1,0 +1,117 @@
+X-Git-Author: User Name
+X-Git-Revision: 6e27d214c168339b8f288f33e12cf44ba03b5fc4
+X-Git-Repository: XXX
+X-Git-Commit-Id: 6e27d214c168339b8f288f33e12cf44ba03b5fc4
+MIME-Version: 1.0
+Content-Type: multipart/alternative;
+ boundary=9c155171616a69b0feb5eb8bfc10502dfa0444ba
+Content-Transfer-Encoding: 8bit
+From: User Name <user@example.com>
+To: to@example
+Subject: sample-repo [master] Add README
+Date: Wed, 13 Jan 2010 15:15:43 +0900
+
+--9c155171616a69b0feb5eb8bfc10502dfa0444ba
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+
+User Name	2010-01-13 15:15:43 +0900 (Wed, 13 Jan 2010)
+
+  New Revision: 6e27d214c168339b8f288f33e12cf44ba03b5fc4
+  https://github.com/clear-code/git-utils/commit/6e27d214c168339b8f288f33e12cf44ba03b5fc4
+
+  Log:
+    Add README
+
+  Added files:
+    README.rdoc
+
+  Added: README.rdoc (+3 -0) 100644
+===================================================================
+--- /dev/null
++++ README.rdoc    2010-01-13 15:15:43 +0900 (d8250e1)
+@@ -0,0 +1,3 @@
++= README
++
++git-utils is ...
+
+--9c155171616a69b0feb5eb8bfc10502dfa0444ba
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: 8bit
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <style type="text/css">
+dl
+{
+  margin-left: 2em;
+  line-height: 1.5;
+}
+
+dl dt
+{
+  clear: both;
+  float: left;
+  width: 13em;
+  font-weight: bold;
+}
+
+dl dd
+{
+  margin-left: 13.5em;
+}
+
+div.diff-section
+{
+  clear: both;
+}
+
+div.diff
+{
+  margin-left: 1em;
+  margin-right: 1em;
+}
+
+pre
+{
+  padding: 0.5em;
+  border: 1px solid #AAA;
+}
+    </style>
+  </head>
+  <body>
+    <dl>
+      <dt>Author:</dt>
+      <dd>User Name</dd>
+      <dt>Date:</dt>
+      <dd>2010-01-13 15:15:43 +0900 (Wed, 13 Jan 2010)</dd>
+      <dt>New Revision:</dt>
+      <dd><a href="https://github.com/clear-code/git-utils/commit/6e27d214c168339b8f288f33e12cf44ba03b5fc4">6e27d214c168339b8f288f33e12cf44ba03b5fc4</a></dd>
+      <dt>Log:<dt>
+      <dd><pre>Add README</pre></dd>
+      <dt>Added files:</dt>
+      <dd>
+        <ul>
+          <li>README.rdoc</li>
+        </ul>
+      </dd>
+    </dl>
+
+    <div class="diff-section">
+      <div class="diff">
+        <pre>  Added: README.rdoc (+3 -0) 100644
+===================================================================
+<span class="diff-deleted" style="background-color: #aaffaa; color: #000000">--- /dev/null
+</span><span class="diff-deleted" style="background-color: #ffaaaa; color: #000000">+++ README.rdoc    2010-01-13 15:15:43 +0900 (d8250e1)
+</span><span class="diff-line" style="background-color: #eaf2f5; color: #999999">@@ -0,0 +1,3 @@
+</span><span class="diff-deleted" style="background-color: #ffaaaa; color: #000000">+= README
+</span><span class="diff-deleted" style="background-color: #ffaaaa; color: #000000">+
+</span><span class="diff-deleted" style="background-color: #ffaaaa; color: #000000">+git-utils is ...
+</span></pre>
+      </div>
+    </div>
+  </body>
+</html>
+
+--9c155171616a69b0feb5eb8bfc10502dfa0444ba--

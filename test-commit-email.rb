@@ -19,9 +19,13 @@
 
 $VERBOSE = true
 
+ENV["TEST_UNIT_MAX_DIFF_TARGET_STRING_SIZE"] ||= "500000"
+
 require 'rubygems'
 gem 'test-unit'
+gem 'test-unit-rr'
 require 'test/unit'
+require 'test/unit/rr'
 require 'tempfile'
 require "nkf"
 
@@ -705,6 +709,38 @@ module GitCommitMailerOptionTest
 
     _, commit_mails = get_mails_of_last_push
     assert_mail('test_github', commit_mails.first)
+  end
+
+  def test_html
+    set_additional_default_mailer_option("--add-html",
+                                         "--repository-browser=github",
+                                         "--github-user=clear-code",
+                                         "--github-repository=git-utils")
+    create_default_mailer
+    stub(@mailer).generate_boundary {"9c155171616a69b0feb5eb8bfc10502dfa0444ba"}
+
+    create_file("README.rdoc", <<-EOR)
+= README
+
+git-utils is ...
+EOR
+    git "commit -m %s" % shell_escape("Add README")
+
+    create_file("README.rdoc", <<-EOR)
+= README for git-utils
+
+git-utils is ...
+
+== Thanks
+
+  * ...
+EOR
+    git "commit -m %s" % shell_escape("Add more descriotions")
+
+    git "push"
+
+    _, commit_mails = get_mails_of_last_push
+    assert_mail('test_html', commit_mails.first)
   end
 end
 
