@@ -2079,7 +2079,7 @@ div.diff
 
 pre
 {
-  font-family: monospace;
+  font-family: Consolas, Menlo, "Liberation Mono", Courier, monospace;
   padding: 0.5em;
   border: 1px solid #aaa;
 }
