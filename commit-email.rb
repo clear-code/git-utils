@@ -1925,7 +1925,12 @@ EOF
     <%= line %>
 <% end %>
 
-<%= format_changed_files %>
+<%= format_files("Added",        @info.added_files) %>
+<%= format_files("Copied",       @info.copied_files) %>
+<%= format_files("Removed",      @info.deleted_files) %>
+<%= format_files("Modified",     @info.updated_files) %>
+<%= format_files("Renamed",      @info.renamed_files) %>
+<%= format_files("Type Changed", @info.type_changed_files) %>
 
 <%= format_diff %>
 EOT
@@ -1960,15 +1965,6 @@ EOT
           end.join
         end
         rv
-      end
-
-      def format_changed_files
-        format_files("Added", @info.added_files) +
-        format_files("Copied", @info.copied_files) +
-        format_files("Removed", @info.deleted_files) +
-        format_files("Modified", @info.updated_files) +
-        format_files("Renamed", @info.renamed_files) +
-        format_files("Type Changed", @info.type_changed_files)
       end
 
       def format_diff
