@@ -53,13 +53,13 @@ dl dt
 {
   clear: both;
   float: left;
-  width: 13em;
+  width: 10em;
   font-weight: bold;
 }
 
 dl dd
 {
-  margin-left: 13.5em;
+  margin-left: 10.5em;
 }
 
 div.diff-section
@@ -75,8 +75,9 @@ div.diff
 
 pre
 {
+  font-family: monospace;
   padding: 0.5em;
-  border: 1px solid #AAA;
+  border: 1px solid #aaa;
 }
     </style>
   </head>
