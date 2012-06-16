@@ -251,6 +251,7 @@ class GitHubPostReceiver
       add_option(options, "--from-domain", from_domain)
       add_option(options, "--sender", sender)
       options << "--send-per-to" if send_per_to?
+      options << "--add-html" if add_html?
       error_to.each do |_error_to|
         options.concat(["--error-to", _error_to])
       end
@@ -327,6 +328,10 @@ class GitHubPostReceiver
 
     def send_per_to?
       @options[:send_per_to]
+    end
+
+    def add_html?
+      @options[:add_html]
     end
 
     def force_array(value)

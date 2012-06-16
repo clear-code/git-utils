@@ -3,6 +3,7 @@ error_to: admin@example.com
 exception_notifier:
   subject_label: "[git-utils]"
 sender: sender@example.com
+add_html: true
 owners:
   ranguba:
     to: groonga-commit@rubyforge.org
