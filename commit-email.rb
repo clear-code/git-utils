@@ -2078,6 +2078,7 @@ div.diff
 
 pre
 {
+  font-family: monospace;
   padding: 0.5em;
   border: 1px solid #AAA;
 }
