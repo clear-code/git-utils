@@ -29,6 +29,7 @@ require "net/smtp"
 require "socket"
 require "nkf"
 require "shellwords"
+require "erb"
 
 class SpentTime
   def initialize(label)
@@ -1900,40 +1901,47 @@ EOF
       end
 
       def format
-        body = ""
-        body << "#{@info.author}\t#{@mailer.format_time(@info.date)}\n"
-        body << "\n"
-        body << "  New Revision: #{@info.revision}\n"
-        format_repository_browser_url(body)
-        body << "\n"
-        unless @info.merge_status.length.zero?
-          body << "  #{@info.merge_status.join("\n  ")}\n\n"
-        end
-        body << "  Log:\n"
-        @info.summary.rstrip.each_line do |line|
-          body << "    #{line}"
-        end
-        body << "\n\n"
-        body << format_changed_files
-
-        body << "\n"
-        formatted_diff = format_diffs.join("\n")
-        body << formatted_diff
-        body << "\n" unless formatted_diff.empty?
-        body
+        ERB.new(template, nil, "<>").result(binding)
       end
 
       private
-      def format_repository_browser_url(body)
+      def template
+        <<-EOT
+<%= @info.author %>\t<%= @mailer.format_time(@info.date) %>
+
+
+  New Revision: <%= @info.revision %>
+<%= format_repository_browser_url %>
+
+<% unless @info.merge_status.empty? %>
+<%   @info.merge_status.each do |status| %>
+  <%= status %>
+<%   end %>
+
+<% end %>
+  Log:
+<% @info.summary.rstrip.each_line do |line| %>
+    <%= line %>
+<% end %>
+
+<%= format_changed_files %>
+
+<%= format_diff %>
+EOT
+      end
+
+      def format_repository_browser_url
         case @mailer.repository_browser
         when :github
           user = @mailer.github_user
           repository = @mailer.github_repository
-          return if user.nil? or repository.nil?
+          return "" if user.nil? or repository.nil?
           base_url = @mailer.github_base_url
           revision = @info.revision
           commit_url = "#{base_url}/#{user}/#{repository}/commit/#{revision}"
-          body << "    #{commit_url}\n"
+          "    #{commit_url}\n"
+        else
+          ""
         end
       end
 
@@ -1960,6 +1968,14 @@ EOF
         format_files("Modified", @info.updated_files) +
         format_files("Renamed", @info.renamed_files) +
         format_files("Type Changed", @info.type_changed_files)
+      end
+
+      def format_diff
+        if @info.diffs.empty?
+          ""
+        else
+          format_diffs.join("\n") + "\n"
+        end
       end
 
       def format_diffs
