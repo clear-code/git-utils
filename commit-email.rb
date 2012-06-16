@@ -1945,7 +1945,7 @@ EOT
           base_url = @mailer.github_base_url
           revision = @info.revision
           commit_url = "#{base_url}/#{user}/#{repository}/commit/#{revision}"
-          "    #{commit_url}\n"
+          "  #{commit_url}\n"
         else
           ""
         end
