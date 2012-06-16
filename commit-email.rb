@@ -2096,7 +2096,7 @@ pre
       <dd>
         <ul>
 <%   @info.merge_status.each do |status| %>
-        <li><%= h(status) %></li>
+          <li><%= h(status) %></li>
 <%   end %>
         </ul>
       </dd>
