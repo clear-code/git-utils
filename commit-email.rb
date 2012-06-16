@@ -1278,15 +1278,13 @@ EOF
       end
 
       @commit_infos.each do |info|
-        info.format_diffs.each do |description|
-          item = maker.items.new_item
-          item.title = info.rss_title
-          item.description = info.summary
-          item.content_encoded = "<pre>#{RSS::Utils.html_escape(info.rss_content)}</pre>"
-          item.link = "#{@repository_uri}/commit/?id=#{info.revision}"
-          item.dc_date = info.date
-          item.dc_creator = info.author
-        end
+        item = maker.items.new_item
+        item.title = info.rss_title
+        item.description = info.summary
+        item.content_encoded = "<pre>#{RSS::Utils.html_escape(info.rss_content)}</pre>"
+        item.link = "#{@repository_uri}/commit/?id=#{info.revision}"
+        item.dc_date = info.date
+        item.dc_creator = info.author
       end
 
       maker.items.do_sort = true
@@ -1408,7 +1406,9 @@ EOF
       end
     end
 
-    attr_reader :revision, :reference
+    attr_reader :mailer, :revision, :reference
+    attr_reader :added_files, :copied_files, :deleted_files, :updated_files
+    attr_reader :renamed_files, :type_changed_files, :diffs
     attr_reader :subject, :author, :author_email, :date, :summary
     attr_accessor :merge_status
     attr_writer :reference
@@ -1468,33 +1468,7 @@ EOF
     end
 
     def format_mail_body
-      body = ""
-      body << "#{author}\t#{@mailer.format_time(date)}\n"
-      body << "\n"
-      body << "  New Revision: #{revision}\n"
-      format_repository_browser_url(body)
-      body << "\n"
-      unless @merge_status.length.zero?
-        body << "  #{@merge_status.join("\n  ")}\n\n"
-      end
-      body << "  Log:\n"
-      @summary.rstrip.each_line do |line|
-        body << "    #{line}"
-      end
-      body << "\n\n"
-      body << format_changed_files
-
-      body << "\n"
-      formatted_diff = format_diffs.join("\n")
-      body << formatted_diff
-      body << "\n" unless formatted_diff.empty?
-      body
-    end
-
-    def format_diffs
-      @diffs.collect do |diff|
-        diff.format_diff
-      end
+      TextMailBodyFormatter.new(self).format
     end
 
     def short_revision
@@ -1605,51 +1579,6 @@ EOF
       end
     end
 
-    def format_repository_browser_url(body)
-      case @mailer.repository_browser
-      when :github
-        user = @mailer.github_user
-        repository = @mailer.github_repository
-        return if user.nil? or repository.nil?
-        base_url = @mailer.github_base_url
-        commit_url = "#{base_url}/#{user}/#{repository}/commit/#{revision}"
-        body << "    #{commit_url}\n"
-      end
-    end
-
-    def format_files(title, items)
-      rv = ""
-      unless items.empty?
-        rv << "  #{title} files:\n"
-        rv << items.collect do |item_name, new_item_name|
-           if new_item_name.nil?
-             "    #{item_name}\n"
-           else
-             "    #{new_item_name}\n" +
-             "      (from #{item_name})\n"
-           end
-        end.join
-      end
-      rv
-    end
-
-    def format_changed_files
-      format_files("Added", @added_files) +
-      format_files("Copied", @copied_files) +
-      format_files("Removed", @deleted_files) +
-      format_files("Modified", @updated_files) +
-      format_files("Renamed", @renamed_files) +
-      format_files("Type Changed", @type_changed_files)
-    end
-
-    CHANGED_TYPE = {
-      :added => "Added",
-      :modified => "Modified",
-      :deleted => "Deleted",
-      :copied => "Copied",
-      :renamed => "Renamed",
-    }
-
     def force_utf8(string)
       if string.respond_to?(:valid_encoding?)
         string.force_encoding("UTF-8")
@@ -1659,6 +1588,14 @@ EOF
     end
 
     class DiffPerFile
+      CHANGED_TYPE = {
+        :added => "Added",
+        :modified => "Modified",
+        :deleted => "Deleted",
+        :copied => "Copied",
+        :renamed => "Renamed",
+      }
+
       def initialize(mailer, lines, revision)
         @mailer = mailer
         @body = ''
@@ -1953,6 +1890,82 @@ EOF
 
       def diff_separator
         "#{"=" * 67}\n"
+      end
+    end
+
+    class TextMailBodyFormatter
+      def initialize(info)
+        @info = info
+        @mailer = @info.mailer
+      end
+
+      def format
+        body = ""
+        body << "#{@info.author}\t#{@mailer.format_time(@info.date)}\n"
+        body << "\n"
+        body << "  New Revision: #{@info.revision}\n"
+        format_repository_browser_url(body)
+        body << "\n"
+        unless @info.merge_status.length.zero?
+          body << "  #{@info.merge_status.join("\n  ")}\n\n"
+        end
+        body << "  Log:\n"
+        @info.summary.rstrip.each_line do |line|
+          body << "    #{line}"
+        end
+        body << "\n\n"
+        body << format_changed_files
+
+        body << "\n"
+        formatted_diff = format_diffs.join("\n")
+        body << formatted_diff
+        body << "\n" unless formatted_diff.empty?
+        body
+      end
+
+      private
+      def format_repository_browser_url(body)
+        case @mailer.repository_browser
+        when :github
+          user = @mailer.github_user
+          repository = @mailer.github_repository
+          return if user.nil? or repository.nil?
+          base_url = @mailer.github_base_url
+          revision = @info.revision
+          commit_url = "#{base_url}/#{user}/#{repository}/commit/#{revision}"
+          body << "    #{commit_url}\n"
+        end
+      end
+
+      def format_files(title, items)
+        rv = ""
+        unless items.empty?
+          rv << "  #{title} files:\n"
+          rv << items.collect do |item_name, new_item_name|
+             if new_item_name.nil?
+               "    #{item_name}\n"
+             else
+               "    #{new_item_name}\n" +
+               "      (from #{item_name})\n"
+             end
+          end.join
+        end
+        rv
+      end
+
+      def format_changed_files
+        format_files("Added", @info.added_files) +
+        format_files("Copied", @info.copied_files) +
+        format_files("Removed", @info.deleted_files) +
+        format_files("Modified", @info.updated_files) +
+        format_files("Renamed", @info.renamed_files) +
+        format_files("Type Changed", @info.type_changed_files)
+      end
+
+      def format_diffs
+        @info.diffs.collect do |diff|
+          diff.format_diff
+        end
       end
     end
   end
