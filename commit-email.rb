@@ -1952,19 +1952,18 @@ EOT
       end
 
       def format_files(title, items)
-        rv = ""
-        unless items.empty?
-          rv << "  #{title} files:\n"
-          rv << items.collect do |item_name, new_item_name|
-             if new_item_name.nil?
-               "    #{item_name}\n"
-             else
-               "    #{new_item_name}\n" +
-               "      (from #{item_name})\n"
-             end
-          end.join
+        return "" if items.empty?
+
+        formatted_files = "  #{title} files:\n"
+        items.each do |item_name, new_item_name|
+          if new_item_name.nil?
+            formatted_files << "    #{item_name}\n"
+          else
+            formatted_files << "    #{new_item_name}\n"
+            formatted_files << "      (from #{item_name})\n"
+          end
         end
-        rv
+        formatted_files
       end
 
       def format_diff
