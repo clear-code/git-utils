@@ -1990,7 +1990,7 @@ EOB
 <% end %>
   Log:
 <% @info.summary.rstrip.each_line do |line| %>
-    <%= line %>
+    <%= line.rstrip %>
 <% end %>
 
 <%= format_files("Added",        @info.added_files) %>
