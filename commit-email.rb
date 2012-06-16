@@ -1466,7 +1466,6 @@ EOF
 
       "[#{short_reference}#{affected_path_info}] " + subject
     end
-    alias :rss_title :format_mail_subject
 
     def format_mail_body
       body = ""
@@ -1491,7 +1490,6 @@ EOF
       body << "\n" unless formatted_diff.empty?
       body
     end
-    alias rss_content format_mail_body
 
     def format_diffs
       @diffs.collect do |diff|
@@ -1501,6 +1499,14 @@ EOF
 
     def short_revision
       GitCommitMailer.short_revision(@revision)
+    end
+
+    def rss_title
+      format_mail_subject
+    end
+
+    def rss_content
+      format_mail_body
     end
 
     private
