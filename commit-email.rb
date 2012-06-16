@@ -160,6 +160,250 @@ class GitCommitMailer
       end
     end
 
+    attr_reader :revision, :reference
+    attr_reader :subject, :author, :author_email, :date, :summary
+    attr_accessor :merge_status
+    attr_writer :reference
+    def initialize(mailer, reference, revision)
+      @mailer = mailer
+      @reference = reference
+      @revision = revision
+
+      @added_files = []
+      @copied_files = []
+      @deleted_files = []
+      @updated_files = []
+      @renamed_files = []
+      @type_changed_files = []
+
+      set_records
+      parse_diff
+      parse_file_status
+
+      @merge_status = []
+    end
+
+    def first_parent
+      return nil if @parent_revisions.length.zero?
+
+      @parent_revisions[0]
+    end
+
+    def other_parents
+      return [] if @parent_revisions.length.zero?
+
+      @parent_revisions[1..-1]
+    end
+
+    def merge?
+      @parent_revisions.length >= 2
+    end
+
+    def headers
+      [ "X-Git-Author: #{@author}",
+        "X-Git-Revision: #{@revision}",
+        # "X-Git-Repository: #{path}",
+        "X-Git-Repository: XXX",
+        "X-Git-Commit-Id: #{@revision}" ]
+    end
+
+    def format_mail_subject
+      affected_path_info = ""
+      if @mailer.show_path?
+        _affected_paths = affected_paths
+        unless _affected_paths.empty?
+          affected_path_info = " (#{_affected_paths.join(',')})"
+        end
+      end
+
+      "[#{short_reference}#{affected_path_info}] " + subject
+    end
+    alias :rss_title :format_mail_subject
+
+    def format_mail_body
+      body = ""
+      body << "#{author}\t#{@mailer.format_time(date)}\n"
+      body << "\n"
+      body << "  New Revision: #{revision}\n"
+      format_repository_browser_url(body)
+      body << "\n"
+      unless @merge_status.length.zero?
+        body << "  #{@merge_status.join("\n  ")}\n\n"
+      end
+      body << "  Log:\n"
+      @summary.rstrip.each_line do |line|
+        body << "    #{line}"
+      end
+      body << "\n\n"
+      body << format_changed_files
+
+      body << "\n"
+      formatted_diff = format_diffs.join("\n")
+      body << formatted_diff
+      body << "\n" unless formatted_diff.empty?
+      body
+    end
+    alias rss_content format_mail_body
+
+    def format_diffs
+      @diffs.collect do |diff|
+        diff.format_diff
+      end
+    end
+
+    def short_revision
+      GitCommitMailer.short_revision(@revision)
+    end
+
+    private
+    def sub_paths(prefix)
+      prefixes = prefix.split(/\/+/)
+      results = []
+      @diffs.each do |diff|
+        paths = diff.file_path.split(/\/+/)
+        if prefixes.size < paths.size and prefixes == paths[0, prefixes.size]
+          results << paths[prefixes.size]
+        end
+      end
+      results
+    end
+
+    def affected_paths
+      paths = []
+      sub_paths = sub_paths('')
+      paths.concat(sub_paths)
+      paths.uniq
+    end
+
+    def set_records
+      author, author_email, date, subject, parent_revisions =
+        get_records(["%an", "%an <%ae>", "%at", "%s", "%P"])
+      @author = author
+      @author_email = author_email
+      @date = Time.at(date.to_i)
+      @subject = subject
+      @parent_revisions = parent_revisions.split
+      @summary = git("log -n 1 --pretty=format:%s%n%n%b #{@revision}")
+    end
+
+    def parse_diff
+      output = git("log -n 1 --pretty=format:'' -C -p #{@revision}")
+      output = force_utf8(output)
+      output = output.lines.to_a
+      output.shift #removes the first empty line
+
+      @diffs = []
+      lines = []
+
+      line = output.shift
+      lines << line.chomp if line #take out the very first 'diff --git' header
+      while line = output.shift
+        line.chomp!
+        if /\Adiff --git/ =~ line
+          @diffs << DiffPerFile.new(@mailer, lines, @revision)
+          lines = [line]
+        else
+          lines << line
+        end
+      end
+
+      #create the last diff terminated by the EOF
+      @diffs << DiffPerFile.new(@mailer, lines, @revision) if lines.length > 0
+    end
+
+    def parse_file_status
+      git("log -n 1 --pretty=format:'' -C --name-status #{@revision}").
+      lines.each do |line|
+        line.rstrip!
+        next if line.empty?
+        if line =~ /\A([^\t]*?)\t([^\t]*?)\z/
+          status = $1
+          file = CommitInfo.unescape_file_path($2)
+
+          case status
+          when /^A/ # Added
+            @added_files << file
+          when /^M/ # Modified
+            @updated_files << file
+          when /^D/ # Deleted
+            @deleted_files << file
+          when /^T/ # File Type Changed
+            @type_changed_files << file
+          else
+            raise "unsupported status type: #{line.inspect}"
+          end
+        elsif line =~ /\A([^\t]*?)\t([^\t]*?)\t([^\t]*?)\z/
+          status = $1
+          from_file = CommitInfo.unescape_file_path($2)
+          to_file = CommitInfo.unescape_file_path($3)
+
+          case status
+          when /^R/ # Renamed
+            @renamed_files << [from_file, to_file]
+          when /^C/ # Copied
+            @copied_files << [from_file, to_file]
+          else
+            raise "unsupported status type: #{line.inspect}"
+          end
+        else
+          raise "unsupported status type: #{line.inspect}"
+        end
+      end
+    end
+
+    def format_repository_browser_url(body)
+      case @mailer.repository_browser
+      when :github
+        user = @mailer.github_user
+        repository = @mailer.github_repository
+        return if user.nil? or repository.nil?
+        base_url = @mailer.github_base_url
+        commit_url = "#{base_url}/#{user}/#{repository}/commit/#{revision}"
+        body << "    #{commit_url}\n"
+      end
+    end
+
+    def format_files(title, items)
+      rv = ""
+      unless items.empty?
+        rv << "  #{title} files:\n"
+        rv << items.collect do |item_name, new_item_name|
+           if new_item_name.nil?
+             "    #{item_name}\n"
+           else
+             "    #{new_item_name}\n" +
+             "      (from #{item_name})\n"
+           end
+        end.join
+      end
+      rv
+    end
+
+    def format_changed_files
+      format_files("Added", @added_files) +
+      format_files("Copied", @copied_files) +
+      format_files("Removed", @deleted_files) +
+      format_files("Modified", @updated_files) +
+      format_files("Renamed", @renamed_files) +
+      format_files("Type Changed", @type_changed_files)
+    end
+
+    CHANGED_TYPE = {
+      :added => "Added",
+      :modified => "Modified",
+      :deleted => "Deleted",
+      :copied => "Copied",
+      :renamed => "Renamed",
+    }
+
+    def force_utf8(string)
+      if string.respond_to?(:valid_encoding?)
+        string.force_encoding("UTF-8")
+        return string if string.valid_encoding?
+      end
+      NKF.nkf("-w", string)
+    end
+
     class DiffPerFile
       def initialize(mailer, lines, revision)
         @mailer = mailer
@@ -456,250 +700,6 @@ class GitCommitMailer
       def diff_separator
         "#{"=" * 67}\n"
       end
-    end
-
-    attr_reader :revision, :reference
-    attr_reader :subject, :author, :author_email, :date, :summary
-    attr_accessor :merge_status
-    attr_writer :reference
-    def initialize(mailer, reference, revision)
-      @mailer = mailer
-      @reference = reference
-      @revision = revision
-
-      @added_files = []
-      @copied_files = []
-      @deleted_files = []
-      @updated_files = []
-      @renamed_files = []
-      @type_changed_files = []
-
-      set_records
-      parse_diff
-      parse_file_status
-
-      @merge_status = []
-    end
-
-    def first_parent
-      return nil if @parent_revisions.length.zero?
-
-      @parent_revisions[0]
-    end
-
-    def other_parents
-      return [] if @parent_revisions.length.zero?
-
-      @parent_revisions[1..-1]
-    end
-
-    def merge?
-      @parent_revisions.length >= 2
-    end
-
-    def headers
-      [ "X-Git-Author: #{@author}",
-        "X-Git-Revision: #{@revision}",
-        # "X-Git-Repository: #{path}",
-        "X-Git-Repository: XXX",
-        "X-Git-Commit-Id: #{@revision}" ]
-    end
-
-    def format_mail_subject
-      affected_path_info = ""
-      if @mailer.show_path?
-        _affected_paths = affected_paths
-        unless _affected_paths.empty?
-          affected_path_info = " (#{_affected_paths.join(',')})"
-        end
-      end
-
-      "[#{short_reference}#{affected_path_info}] " + subject
-    end
-    alias :rss_title :format_mail_subject
-
-    def format_mail_body
-      body = ""
-      body << "#{author}\t#{@mailer.format_time(date)}\n"
-      body << "\n"
-      body << "  New Revision: #{revision}\n"
-      format_repository_browser_url(body)
-      body << "\n"
-      unless @merge_status.length.zero?
-        body << "  #{@merge_status.join("\n  ")}\n\n"
-      end
-      body << "  Log:\n"
-      @summary.rstrip.each_line do |line|
-        body << "    #{line}"
-      end
-      body << "\n\n"
-      body << format_changed_files
-
-      body << "\n"
-      formatted_diff = format_diffs.join("\n")
-      body << formatted_diff
-      body << "\n" unless formatted_diff.empty?
-      body
-    end
-    alias rss_content format_mail_body
-
-    def format_diffs
-      @diffs.collect do |diff|
-        diff.format_diff
-      end
-    end
-
-    def short_revision
-      GitCommitMailer.short_revision(@revision)
-    end
-
-    private
-    def sub_paths(prefix)
-      prefixes = prefix.split(/\/+/)
-      results = []
-      @diffs.each do |diff|
-        paths = diff.file_path.split(/\/+/)
-        if prefixes.size < paths.size and prefixes == paths[0, prefixes.size]
-          results << paths[prefixes.size]
-        end
-      end
-      results
-    end
-
-    def affected_paths
-      paths = []
-      sub_paths = sub_paths('')
-      paths.concat(sub_paths)
-      paths.uniq
-    end
-
-    def set_records
-      author, author_email, date, subject, parent_revisions =
-        get_records(["%an", "%an <%ae>", "%at", "%s", "%P"])
-      @author = author
-      @author_email = author_email
-      @date = Time.at(date.to_i)
-      @subject = subject
-      @parent_revisions = parent_revisions.split
-      @summary = git("log -n 1 --pretty=format:%s%n%n%b #{@revision}")
-    end
-
-    def parse_diff
-      output = git("log -n 1 --pretty=format:'' -C -p #{@revision}")
-      output = force_utf8(output)
-      output = output.lines.to_a
-      output.shift #removes the first empty line
-
-      @diffs = []
-      lines = []
-
-      line = output.shift
-      lines << line.chomp if line #take out the very first 'diff --git' header
-      while line = output.shift
-        line.chomp!
-        if /\Adiff --git/ =~ line
-          @diffs << DiffPerFile.new(@mailer, lines, @revision)
-          lines = [line]
-        else
-          lines << line
-        end
-      end
-
-      #create the last diff terminated by the EOF
-      @diffs << DiffPerFile.new(@mailer, lines, @revision) if lines.length > 0
-    end
-
-    def parse_file_status
-      git("log -n 1 --pretty=format:'' -C --name-status #{@revision}").
-      lines.each do |line|
-        line.rstrip!
-        next if line.empty?
-        if line =~ /\A([^\t]*?)\t([^\t]*?)\z/
-          status = $1
-          file = CommitInfo.unescape_file_path($2)
-
-          case status
-          when /^A/ # Added
-            @added_files << file
-          when /^M/ # Modified
-            @updated_files << file
-          when /^D/ # Deleted
-            @deleted_files << file
-          when /^T/ # File Type Changed
-            @type_changed_files << file
-          else
-            raise "unsupported status type: #{line.inspect}"
-          end
-        elsif line =~ /\A([^\t]*?)\t([^\t]*?)\t([^\t]*?)\z/
-          status = $1
-          from_file = CommitInfo.unescape_file_path($2)
-          to_file = CommitInfo.unescape_file_path($3)
-
-          case status
-          when /^R/ # Renamed
-            @renamed_files << [from_file, to_file]
-          when /^C/ # Copied
-            @copied_files << [from_file, to_file]
-          else
-            raise "unsupported status type: #{line.inspect}"
-          end
-        else
-          raise "unsupported status type: #{line.inspect}"
-        end
-      end
-    end
-
-    def format_repository_browser_url(body)
-      case @mailer.repository_browser
-      when :github
-        user = @mailer.github_user
-        repository = @mailer.github_repository
-        return if user.nil? or repository.nil?
-        base_url = @mailer.github_base_url
-        commit_url = "#{base_url}/#{user}/#{repository}/commit/#{revision}"
-        body << "    #{commit_url}\n"
-      end
-    end
-
-    def format_files(title, items)
-      rv = ""
-      unless items.empty?
-        rv << "  #{title} files:\n"
-        rv << items.collect do |item_name, new_item_name|
-           if new_item_name.nil?
-             "    #{item_name}\n"
-           else
-             "    #{new_item_name}\n" +
-             "      (from #{item_name})\n"
-           end
-        end.join
-      end
-      rv
-    end
-
-    def format_changed_files
-      format_files("Added", @added_files) +
-      format_files("Copied", @copied_files) +
-      format_files("Removed", @deleted_files) +
-      format_files("Modified", @updated_files) +
-      format_files("Renamed", @renamed_files) +
-      format_files("Type Changed", @type_changed_files)
-    end
-
-    CHANGED_TYPE = {
-      :added => "Added",
-      :modified => "Modified",
-      :deleted => "Deleted",
-      :copied => "Copied",
-      :renamed => "Renamed",
-    }
-
-    def force_utf8(string)
-      if string.respond_to?(:valid_encoding?)
-        string.force_encoding("UTF-8")
-        return string if string.valid_encoding?
-      end
-      NKF.nkf("-w", string)
     end
   end
 
