@@ -513,8 +513,8 @@ class GitCommitMailer
 
   def from(info)
     return @from if @from
-    # return "#{info.author}@#{@from_domain}".sub(/@\z/, '') if @from_domain
-    info.author_email
+    # return "#{info.author_name}@#{@from_domain}".sub(/@\z/, '') if @from_domain
+    "#{info.author_name} <#{info.author_email}>"
   end
 
   def repository
@@ -1022,7 +1022,7 @@ EOF
   end
 
   def post_process_infos
-    # @push_info.author = determine_prominent_author
+    # @push_info.author_name = determine_prominent_author
     commit_infos = @commit_infos.dup
     # @commit_infos may be altered and I don't know any sensible behavior of ruby
     # in such cases. Take the safety measure at the moment...
@@ -1324,7 +1324,7 @@ EOB
         item.content_encoded = info.rss_content
         item.link = "#{@repository_uri}/commit/?id=#{info.revision}"
         item.dc_date = info.date
-        item.dc_creator = info.author
+        item.dc_creator = info.author_name
       end
 
       maker.items.do_sort = true
@@ -1356,7 +1356,8 @@ EOB
 
   class PushInfo < Info
     attr_reader :old_revision, :new_revision, :reference, :reference_type, :log
-    attr_reader :author, :author_email, :date, :subject, :change_type, :commits
+    attr_reader :author_name, :author_email, :date, :subject, :change_type
+    attr_reader :commits
     def initialize(mailer, old_revision, new_revision, reference,
                    reference_type, change_type, log, commits=[])
       @mailer = mailer
@@ -1370,8 +1371,8 @@ EOB
       @reference = reference
       @reference_type = reference_type
       @log = log
-      author, author_email = get_records(["%an", "%an <%ae>"])
-      @author = author
+      author_name, author_email = get_records(["%an", "%ae"])
+      @author_name = author_name
       @author_email = author_email
       @date = @mailer.date
       @change_type = change_type
@@ -1411,7 +1412,7 @@ EOB
 
     def format_mail_body_text
       body = ""
-      body << "#{author}\t#{@mailer.format_time(date)}\n"
+      body << "#{author_name}\t#{@mailer.format_time(date)}\n"
       body << "\n"
       body << "New Push:\n"
       body << "\n"
@@ -1453,7 +1454,7 @@ EOB
     attr_reader :mailer, :revision, :reference
     attr_reader :added_files, :copied_files, :deleted_files, :updated_files
     attr_reader :renamed_files, :type_changed_files, :diffs
-    attr_reader :subject, :author, :author_email, :date, :summary
+    attr_reader :subject, :author_name, :author_email, :date, :summary
     attr_accessor :merge_status
     attr_writer :reference
     def initialize(mailer, reference, revision)
@@ -1492,7 +1493,7 @@ EOB
     end
 
     def headers
-      [ "X-Git-Author: #{@author}",
+      [ "X-Git-Author: #{@author_name}",
         "X-Git-Revision: #{@revision}",
         # "X-Git-Repository: #{path}",
         "X-Git-Repository: XXX",
@@ -1552,9 +1553,9 @@ EOB
     end
 
     def set_records
-      author, author_email, date, subject, parent_revisions =
-        get_records(["%an", "%an <%ae>", "%at", "%s", "%P"])
-      @author = author
+      author_name, author_email, date, subject, parent_revisions =
+        get_records(["%an", "%ae", "%at", "%s", "%P"])
+      @author_name = author_name
       @author_email = author_email
       @date = Time.at(date.to_i)
       @subject = subject
@@ -1976,7 +1977,7 @@ EOB
       private
       def template
         <<-EOT
-<%= @info.author %>\t<%= @mailer.format_time(@info.date) %>
+<%= @info.author_name %>\t<%= @mailer.format_time(@info.date) %>
 
 
   New Revision: <%= @info.revision %>
@@ -2087,7 +2088,7 @@ pre
   <body>
     <dl>
       <dt>Author:</dt>
-      <dd><%= h(@info.author) %></dd>
+      <dd><%= h("\#{@info.author_name} <\#{@info.author_email}>") %></dd>
       <dt>Date:</dt>
       <dd><%= h(@mailer.format_time(@info.date)) %></dd>
       <dt>New Revision:</dt>
