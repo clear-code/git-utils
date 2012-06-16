@@ -52,6 +52,414 @@ class GitCommitMailer
   KILO_SIZE = 1000
   DEFAULT_MAX_SIZE = "100M"
 
+  class << self
+    def execute(command, working_directory=nil, &block)
+      if ENV['DEBUG']
+        suppress_stderr = ''
+      else
+        suppress_stderr = ' 2> /dev/null'
+      end
+
+      script = "#{command} #{suppress_stderr}"
+      puts script if ENV['DEBUG']
+      result = nil
+      with_working_direcotry(working_directory) do
+        if block_given?
+          IO.popen(script, "w+", &block)
+        else
+          result = `#{script} 2>&1`
+        end
+      end
+      raise "execute failed: #{command}\n#{result}" unless $?.exitstatus.zero?
+      result.force_encoding("UTF-8") if result.respond_to?(:force_encoding)
+      result
+    end
+
+    def with_working_direcotry(working_directory)
+      if working_directory
+        Dir.chdir(working_directory) do
+          yield
+        end
+      else
+        yield
+      end
+    end
+
+    def shell_escape(string)
+      # To suppress warnings from Shellwords::escape.
+      if string.respond_to? :force_encoding
+        bytes = string.dup.force_encoding("ascii-8bit")
+      else
+        bytes = string
+      end
+
+      Shellwords.escape(bytes)
+    end
+
+    def git(git_bin_path, repository, command, &block)
+      $executing_git ||= SpentTime.new("executing git commands")
+      $executing_git.spend do
+        execute("#{git_bin_path} --git-dir=#{shell_escape(repository)} #{command}", &block)
+      end
+    end
+
+    def short_revision(revision)
+      revision[0, 7]
+    end
+
+    def extract_email_address(address)
+      if /<(.+?)>/ =~ address
+        $1
+      else
+        address
+      end
+    end
+
+    def extract_email_address_from_mail(mail)
+      begin
+        from_header = mail.lines.grep(/\AFrom: .*\Z/)[0]
+        extract_email_address(from_header.rstrip.sub(/From: /, ""))
+      rescue
+        raise '"From:" header is not found in mail.'
+      end
+    end
+
+    def extract_to_addresses(mail)
+      to_value = nil
+      if /^To:(.*\r?\n(?:^\s+.*)*)/n =~ mail
+        to_value = $1
+      else
+        raise "'To:' header is not found in mail:\n#{mail}"
+      end
+      to_value_without_comment = to_value.gsub(/".*?"/n, "")
+      to_value_without_comment.split(/\s*,\s*/n).collect do |address|
+        extract_email_address(address.strip)
+      end
+    end
+
+    def send_mail(server, port, from, to, mail)
+      $sending_mail ||= SpentTime.new("sending mails")
+      $sending_mail.spend do
+        Net::SMTP.start(server, port) do |smtp|
+          smtp.open_message_stream(from, to) do |f|
+            f.print(mail)
+          end
+        end
+      end
+    end
+
+    def parse_options_and_create(argv=nil)
+      argv ||= ARGV
+      to, options = parse(argv)
+      to += options.to
+      mailer = new(to.compact)
+      apply_options(mailer, options)
+      mailer
+    end
+
+    def parse(argv)
+      options = make_options
+
+      parser = make_parser(options)
+      argv = argv.dup
+      parser.parse!(argv)
+      to = argv
+
+      [to, options]
+    end
+
+    def format_size(size)
+      return "no limit" if size.nil?
+      return "#{size}B" if size < KILO_SIZE
+      size /= KILO_SIZE.to_f
+      return "#{size}KB" if size < KILO_SIZE
+      size /= KILO_SIZE.to_f
+      return "#{size}MB" if size < KILO_SIZE
+      size /= KILO_SIZE.to_f
+      "#{size}GB"
+    end
+
+    private
+    def apply_options(mailer, options)
+      mailer.repository = options.repository
+      #mailer.reference = options.reference
+      mailer.repository_browser = options.repository_browser
+      mailer.github_base_url = options.github_base_url
+      mailer.github_user = options.github_user
+      mailer.github_repository = options.github_repository
+      mailer.send_per_to = options.send_per_to
+      mailer.from = options.from
+      mailer.from_domain = options.from_domain
+      mailer.sender = options.sender
+      mailer.add_diff = options.add_diff
+      mailer.max_size = options.max_size
+      mailer.repository_uri = options.repository_uri
+      mailer.rss_path = options.rss_path
+      mailer.rss_uri = options.rss_uri
+      mailer.show_path = options.show_path
+      mailer.send_push_mail = options.send_push_mail
+      mailer.name = options.name
+      mailer.server = options.server
+      mailer.port = options.port
+      mailer.date = options.date
+      mailer.git_bin_path = options.git_bin_path
+      mailer.track_remote = options.track_remote
+      mailer.verbose = options.verbose
+    end
+
+    def parse_size(size)
+      case size
+      when /\A(.+?)GB?\z/i
+        Float($1) * KILO_SIZE ** 3
+      when /\A(.+?)MB?\z/i
+        Float($1) * KILO_SIZE ** 2
+      when /\A(.+?)KB?\z/i
+        Float($1) * KILO_SIZE
+      when /\A(.+?)B?\z/i
+        Float($1)
+      else
+        raise ArgumentError, "invalid size: #{size.inspect}"
+      end
+    end
+
+    def make_options
+      options = OpenStruct.new
+      options.repository = ".git"
+      #options.reference = "refs/heads/master"
+      options.repository_browser = nil
+      options.github_base_url = "https://github.com"
+      options.github_user = nil
+      options.github_repository = nil
+      options.to = []
+      options.send_per_to = false
+      options.error_to = []
+      options.from = nil
+      options.from_domain = nil
+      options.sender = nil
+      options.add_diff = true
+      options.max_size = parse_size(DEFAULT_MAX_SIZE)
+      options.repository_uri = nil
+      options.rss_path = nil
+      options.rss_uri = nil
+      options.show_path = false
+      options.send_push_mail = false
+      options.name = nil
+      options.server = "localhost"
+      options.port = Net::SMTP.default_port
+      options.date = nil
+      options.git_bin_path = "git"
+      options.track_remote = false
+      options.verbose = false
+      options
+    end
+
+    def make_parser(options)
+      OptionParser.new do |parser|
+        parser.banner += "TO"
+
+        add_repository_options(parser, options)
+        add_email_options(parser, options)
+        add_output_options(parser, options)
+        add_rss_options(parser, options)
+        add_other_options(parser, options)
+
+        parser.on_tail("--help", "Show this message") do
+          puts parser
+          exit!
+        end
+      end
+    end
+
+    def add_repository_options(parser, options)
+      parser.separator ""
+      parser.separator "Repository related options:"
+
+      parser.on("--repository=PATH",
+                "Use PATH as the target git repository",
+                "(#{options.repository})") do |path|
+        options.repository = path
+      end
+
+      parser.on("--reference=REFERENCE",
+                "Use REFERENCE as the target reference",
+                "(#{options.reference})") do |reference|
+        options.reference = reference
+      end
+
+      available_softwares = [:github]
+      parser.on("--repository-browser=SOFTWARE",
+                available_softwares,
+                "Use SOFTWARE as the repository browser",
+                "(available repository browsers: " +
+                  available_softwares.join(", ")) do |software|
+        options.repository_browser = software
+      end
+
+      add_github_options(parser, options)
+    end
+
+    def add_github_options(parser, options)
+      parser.separator ""
+      parser.separator "GitHub related options:"
+
+      parser.on("--github-base-url=URL",
+                "Use URL as base URL of GitHub",
+                "(#{options.github_base_url})") do |url|
+        options.github_base_url = url
+      end
+
+      parser.on("--github-user=USER",
+                "Use USER as the GitHub user") do |user|
+        options.github_user = user
+      end
+
+      parser.on("--github-repository=REPOSITORY",
+                "Use REPOSITORY as the GitHub repository") do |repository|
+        options.github_repository = repository
+      end
+    end
+
+    def add_email_options(parser, options)
+      parser.separator ""
+      parser.separator "E-mail related options:"
+
+      parser.on("-sSERVER", "--server=SERVER",
+                "Use SERVER as SMTP server (#{options.server})") do |server|
+        options.server = server
+      end
+
+      parser.on("-pPORT", "--port=PORT", Integer,
+                "Use PORT as SMTP port (#{options.port})") do |port|
+        options.port = port
+      end
+
+      parser.on("-tTO", "--to=TO", "Add TO to To: address") do |to|
+        options.to << to unless to.nil?
+      end
+
+      parser.on("--[no-]send-per-to",
+                "Send a mail for each To: address",
+                "instead of sending a mail for all To: addresses",
+                "(#{options.send_per_to})") do |boolean|
+        options.send_per_to = boolean
+      end
+
+      parser.on("-eTO", "--error-to=TO",
+                "Add TO to To: address when an error occurs") do |to|
+        options.error_to << to unless to.nil?
+      end
+
+      parser.on("-fFROM", "--from=FROM", "Use FROM as from address") do |from|
+        if options.from_domain
+          raise OptionParser::CannotCoexistOption,
+                  "cannot coexist with --from-domain"
+        end
+        options.from = from
+      end
+
+      parser.on("--from-domain=DOMAIN",
+                "Use author@DOMAIN as from address") do |domain|
+        if options.from
+          raise OptionParser::CannotCoexistOption,
+                  "cannot coexist with --from"
+        end
+        options.from_domain = domain
+      end
+
+      parser.on("--sender=SENDER",
+                "Use SENDER as a sender address") do |sender|
+        options.sender = sender
+      end
+    end
+
+    def add_output_options(parser, options)
+      parser.separator ""
+      parser.separator "Output related options:"
+
+      parser.on("--name=NAME", "Use NAME as repository name") do |name|
+        options.name = name
+      end
+
+      parser.on("--[no-]show-path",
+                "Show commit target path") do |bool|
+        options.show_path = bool
+      end
+
+      parser.on("--[no-]send-push-mail",
+                "Send push mail") do |bool|
+        options.send_push_mail = bool
+      end
+
+      parser.on("--repository-uri=URI",
+                "Use URI as URI of repository") do |uri|
+        options.repository_uri = uri
+      end
+
+      parser.on("-n", "--no-diff", "Don't add diffs") do |diff|
+        options.add_diff = false
+      end
+
+      parser.on("--max-size=SIZE",
+                "Limit mail body size to SIZE",
+                "G/GB/M/MB/K/KB/B units are available",
+                "(#{format_size(options.max_size)})") do |max_size|
+        begin
+          options.max_size = parse_size(max_size)
+        rescue ArgumentError
+          raise OptionParser::InvalidArgument, max_size
+        end
+      end
+
+      parser.on("--no-limit-size",
+                "Don't limit mail body size",
+                "(#{options.max_size.nil?})") do |not_limit_size|
+        options.max_size = nil
+      end
+
+      parser.on("--date=DATE",
+                "Use DATE as date of push mails (Time.parse is used)") do |date|
+        options.date = Time.parse(date)
+      end
+
+      parser.on("--git-bin-path=GIT_BIN_PATH",
+                "Use GIT_BIN_PATH command instead of default \"git\"") do |git_bin_path|
+        options.git_bin_path = git_bin_path
+      end
+
+      parser.on("--track-remote",
+                "Fetch new commits from repository's origin and send mails") do
+        options.track_remote = true
+      end
+    end
+
+    def add_rss_options(parser, options)
+      parser.separator ""
+      parser.separator "RSS related options:"
+
+      parser.on("--rss-path=PATH", "Use PATH as output RSS path") do |path|
+        options.rss_path = path
+      end
+
+      parser.on("--rss-uri=URI", "Use URI as output RSS URI") do |uri|
+        options.rss_uri = uri
+      end
+    end
+
+    def add_other_options(parser, options)
+      parser.separator ""
+      parser.separator "Other options:"
+
+      #parser.on("-IPATH", "--include=PATH", "Add PATH to load path") do |path|
+      #  $LOAD_PATH.unshift(path)
+      #end
+      parser.on("--[no-]verbose",
+                "Be verbose.",
+                "(#{options.verbose})") do |verbose|
+        options.verbose = verbose
+      end
+    end
+  end
+
   attr_reader :reference, :old_revision, :new_revision, :to
   attr_writer :send_per_to
   attr_writer :from, :add_diff, :show_path, :send_push_mail
@@ -1539,414 +1947,6 @@ EOF
 
       def diff_separator
         "#{"=" * 67}\n"
-      end
-    end
-  end
-
-  class << self
-    def execute(command, working_directory=nil, &block)
-      if ENV['DEBUG']
-        suppress_stderr = ''
-      else
-        suppress_stderr = ' 2> /dev/null'
-      end
-
-      script = "#{command} #{suppress_stderr}"
-      puts script if ENV['DEBUG']
-      result = nil
-      with_working_direcotry(working_directory) do
-        if block_given?
-          IO.popen(script, "w+", &block)
-        else
-          result = `#{script} 2>&1`
-        end
-      end
-      raise "execute failed: #{command}\n#{result}" unless $?.exitstatus.zero?
-      result.force_encoding("UTF-8") if result.respond_to?(:force_encoding)
-      result
-    end
-
-    def with_working_direcotry(working_directory)
-      if working_directory
-        Dir.chdir(working_directory) do
-          yield
-        end
-      else
-        yield
-      end
-    end
-
-    def shell_escape(string)
-      # To suppress warnings from Shellwords::escape.
-      if string.respond_to? :force_encoding
-        bytes = string.dup.force_encoding("ascii-8bit")
-      else
-        bytes = string
-      end
-
-      Shellwords.escape(bytes)
-    end
-
-    def git(git_bin_path, repository, command, &block)
-      $executing_git ||= SpentTime.new("executing git commands")
-      $executing_git.spend do
-        execute("#{git_bin_path} --git-dir=#{shell_escape(repository)} #{command}", &block)
-      end
-    end
-
-    def short_revision(revision)
-      revision[0, 7]
-    end
-
-    def extract_email_address(address)
-      if /<(.+?)>/ =~ address
-        $1
-      else
-        address
-      end
-    end
-
-    def extract_email_address_from_mail(mail)
-      begin
-        from_header = mail.lines.grep(/\AFrom: .*\Z/)[0]
-        extract_email_address(from_header.rstrip.sub(/From: /, ""))
-      rescue
-        raise '"From:" header is not found in mail.'
-      end
-    end
-
-    def extract_to_addresses(mail)
-      to_value = nil
-      if /^To:(.*\r?\n(?:^\s+.*)*)/n =~ mail
-        to_value = $1
-      else
-        raise "'To:' header is not found in mail:\n#{mail}"
-      end
-      to_value_without_comment = to_value.gsub(/".*?"/n, "")
-      to_value_without_comment.split(/\s*,\s*/n).collect do |address|
-        extract_email_address(address.strip)
-      end
-    end
-
-    def send_mail(server, port, from, to, mail)
-      $sending_mail ||= SpentTime.new("sending mails")
-      $sending_mail.spend do
-        Net::SMTP.start(server, port) do |smtp|
-          smtp.open_message_stream(from, to) do |f|
-            f.print(mail)
-          end
-        end
-      end
-    end
-
-    def parse_options_and_create(argv=nil)
-      argv ||= ARGV
-      to, options = parse(argv)
-      to += options.to
-      mailer = new(to.compact)
-      apply_options(mailer, options)
-      mailer
-    end
-
-    def parse(argv)
-      options = make_options
-
-      parser = make_parser(options)
-      argv = argv.dup
-      parser.parse!(argv)
-      to = argv
-
-      [to, options]
-    end
-
-    def format_size(size)
-      return "no limit" if size.nil?
-      return "#{size}B" if size < KILO_SIZE
-      size /= KILO_SIZE.to_f
-      return "#{size}KB" if size < KILO_SIZE
-      size /= KILO_SIZE.to_f
-      return "#{size}MB" if size < KILO_SIZE
-      size /= KILO_SIZE.to_f
-      "#{size}GB"
-    end
-
-    private
-    def apply_options(mailer, options)
-      mailer.repository = options.repository
-      #mailer.reference = options.reference
-      mailer.repository_browser = options.repository_browser
-      mailer.github_base_url = options.github_base_url
-      mailer.github_user = options.github_user
-      mailer.github_repository = options.github_repository
-      mailer.send_per_to = options.send_per_to
-      mailer.from = options.from
-      mailer.from_domain = options.from_domain
-      mailer.sender = options.sender
-      mailer.add_diff = options.add_diff
-      mailer.max_size = options.max_size
-      mailer.repository_uri = options.repository_uri
-      mailer.rss_path = options.rss_path
-      mailer.rss_uri = options.rss_uri
-      mailer.show_path = options.show_path
-      mailer.send_push_mail = options.send_push_mail
-      mailer.name = options.name
-      mailer.server = options.server
-      mailer.port = options.port
-      mailer.date = options.date
-      mailer.git_bin_path = options.git_bin_path
-      mailer.track_remote = options.track_remote
-      mailer.verbose = options.verbose
-    end
-
-    def parse_size(size)
-      case size
-      when /\A(.+?)GB?\z/i
-        Float($1) * KILO_SIZE ** 3
-      when /\A(.+?)MB?\z/i
-        Float($1) * KILO_SIZE ** 2
-      when /\A(.+?)KB?\z/i
-        Float($1) * KILO_SIZE
-      when /\A(.+?)B?\z/i
-        Float($1)
-      else
-        raise ArgumentError, "invalid size: #{size.inspect}"
-      end
-    end
-
-    def make_options
-      options = OpenStruct.new
-      options.repository = ".git"
-      #options.reference = "refs/heads/master"
-      options.repository_browser = nil
-      options.github_base_url = "https://github.com"
-      options.github_user = nil
-      options.github_repository = nil
-      options.to = []
-      options.send_per_to = false
-      options.error_to = []
-      options.from = nil
-      options.from_domain = nil
-      options.sender = nil
-      options.add_diff = true
-      options.max_size = parse_size(DEFAULT_MAX_SIZE)
-      options.repository_uri = nil
-      options.rss_path = nil
-      options.rss_uri = nil
-      options.show_path = false
-      options.send_push_mail = false
-      options.name = nil
-      options.server = "localhost"
-      options.port = Net::SMTP.default_port
-      options.date = nil
-      options.git_bin_path = "git"
-      options.track_remote = false
-      options.verbose = false
-      options
-    end
-
-    def make_parser(options)
-      OptionParser.new do |parser|
-        parser.banner += "TO"
-
-        add_repository_options(parser, options)
-        add_email_options(parser, options)
-        add_output_options(parser, options)
-        add_rss_options(parser, options)
-        add_other_options(parser, options)
-
-        parser.on_tail("--help", "Show this message") do
-          puts parser
-          exit!
-        end
-      end
-    end
-
-    def add_repository_options(parser, options)
-      parser.separator ""
-      parser.separator "Repository related options:"
-
-      parser.on("--repository=PATH",
-                "Use PATH as the target git repository",
-                "(#{options.repository})") do |path|
-        options.repository = path
-      end
-
-      parser.on("--reference=REFERENCE",
-                "Use REFERENCE as the target reference",
-                "(#{options.reference})") do |reference|
-        options.reference = reference
-      end
-
-      available_softwares = [:github]
-      parser.on("--repository-browser=SOFTWARE",
-                available_softwares,
-                "Use SOFTWARE as the repository browser",
-                "(available repository browsers: " +
-                  available_softwares.join(", ")) do |software|
-        options.repository_browser = software
-      end
-
-      add_github_options(parser, options)
-    end
-
-    def add_github_options(parser, options)
-      parser.separator ""
-      parser.separator "GitHub related options:"
-
-      parser.on("--github-base-url=URL",
-                "Use URL as base URL of GitHub",
-                "(#{options.github_base_url})") do |url|
-        options.github_base_url = url
-      end
-
-      parser.on("--github-user=USER",
-                "Use USER as the GitHub user") do |user|
-        options.github_user = user
-      end
-
-      parser.on("--github-repository=REPOSITORY",
-                "Use REPOSITORY as the GitHub repository") do |repository|
-        options.github_repository = repository
-      end
-    end
-
-    def add_email_options(parser, options)
-      parser.separator ""
-      parser.separator "E-mail related options:"
-
-      parser.on("-sSERVER", "--server=SERVER",
-                "Use SERVER as SMTP server (#{options.server})") do |server|
-        options.server = server
-      end
-
-      parser.on("-pPORT", "--port=PORT", Integer,
-                "Use PORT as SMTP port (#{options.port})") do |port|
-        options.port = port
-      end
-
-      parser.on("-tTO", "--to=TO", "Add TO to To: address") do |to|
-        options.to << to unless to.nil?
-      end
-
-      parser.on("--[no-]send-per-to",
-                "Send a mail for each To: address",
-                "instead of sending a mail for all To: addresses",
-                "(#{options.send_per_to})") do |boolean|
-        options.send_per_to = boolean
-      end
-
-      parser.on("-eTO", "--error-to=TO",
-                "Add TO to To: address when an error occurs") do |to|
-        options.error_to << to unless to.nil?
-      end
-
-      parser.on("-fFROM", "--from=FROM", "Use FROM as from address") do |from|
-        if options.from_domain
-          raise OptionParser::CannotCoexistOption,
-                  "cannot coexist with --from-domain"
-        end
-        options.from = from
-      end
-
-      parser.on("--from-domain=DOMAIN",
-                "Use author@DOMAIN as from address") do |domain|
-        if options.from
-          raise OptionParser::CannotCoexistOption,
-                  "cannot coexist with --from"
-        end
-        options.from_domain = domain
-      end
-
-      parser.on("--sender=SENDER",
-                "Use SENDER as a sender address") do |sender|
-        options.sender = sender
-      end
-    end
-
-    def add_output_options(parser, options)
-      parser.separator ""
-      parser.separator "Output related options:"
-
-      parser.on("--name=NAME", "Use NAME as repository name") do |name|
-        options.name = name
-      end
-
-      parser.on("--[no-]show-path",
-                "Show commit target path") do |bool|
-        options.show_path = bool
-      end
-
-      parser.on("--[no-]send-push-mail",
-                "Send push mail") do |bool|
-        options.send_push_mail = bool
-      end
-
-      parser.on("--repository-uri=URI",
-                "Use URI as URI of repository") do |uri|
-        options.repository_uri = uri
-      end
-
-      parser.on("-n", "--no-diff", "Don't add diffs") do |diff|
-        options.add_diff = false
-      end
-
-      parser.on("--max-size=SIZE",
-                "Limit mail body size to SIZE",
-                "G/GB/M/MB/K/KB/B units are available",
-                "(#{format_size(options.max_size)})") do |max_size|
-        begin
-          options.max_size = parse_size(max_size)
-        rescue ArgumentError
-          raise OptionParser::InvalidArgument, max_size
-        end
-      end
-
-      parser.on("--no-limit-size",
-                "Don't limit mail body size",
-                "(#{options.max_size.nil?})") do |not_limit_size|
-        options.max_size = nil
-      end
-
-      parser.on("--date=DATE",
-                "Use DATE as date of push mails (Time.parse is used)") do |date|
-        options.date = Time.parse(date)
-      end
-
-      parser.on("--git-bin-path=GIT_BIN_PATH",
-                "Use GIT_BIN_PATH command instead of default \"git\"") do |git_bin_path|
-        options.git_bin_path = git_bin_path
-      end
-
-      parser.on("--track-remote",
-                "Fetch new commits from repository's origin and send mails") do
-        options.track_remote = true
-      end
-    end
-
-    def add_rss_options(parser, options)
-      parser.separator ""
-      parser.separator "RSS related options:"
-
-      parser.on("--rss-path=PATH", "Use PATH as output RSS path") do |path|
-        options.rss_path = path
-      end
-
-      parser.on("--rss-uri=URI", "Use URI as output RSS URI") do |uri|
-        options.rss_uri = uri
-      end
-    end
-
-    def add_other_options(parser, options)
-      parser.separator ""
-      parser.separator "Other options:"
-
-      #parser.on("-IPATH", "--include=PATH", "Add PATH to load path") do |path|
-      #  $LOAD_PATH.unshift(path)
-      #end
-      parser.on("--[no-]verbose",
-                "Be verbose.",
-                "(#{options.verbose})") do |verbose|
-        options.verbose = verbose
       end
     end
   end
