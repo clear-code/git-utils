@@ -2057,13 +2057,13 @@ dl dt
 {
   clear: both;
   float: left;
-  width: 10em;
+  width: 8em;
   font-weight: bold;
 }
 
 dl dd
 {
-  margin-left: 10.5em;
+  margin-left: 8.5em;
 }
 
 div.diff-section
