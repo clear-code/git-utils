@@ -140,7 +140,8 @@ class GitCommitMailer
   end
 
   class CommitInfo < Info
-    def self.unescape_file_path(file_path)
+    class << self
+      def unescape_file_path(file_path)
       if file_path =~ /\A"(.*)"\z/
         escaped_file_path = $1
         if escaped_file_path.respond_to?(:encoding)
@@ -157,6 +158,7 @@ class GitCommitMailer
         unescaped_file_path
       else
         file_path
+      end
       end
     end
 
