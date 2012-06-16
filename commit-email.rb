@@ -1312,7 +1312,7 @@ EOF
     end
 
     def short_reference
-      @reference.sub(/\A.*\/.*\//, '');
+      @reference.sub(/\A.*\/.*\//, '')
     end
   end
 
