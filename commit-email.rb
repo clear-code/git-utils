@@ -1901,7 +1901,8 @@ EOF
       end
 
       def format
-        ERB.new(template, nil, "<>").result(binding)
+        body = ERB.new(template, nil, "<>").result(binding)
+        body.sub(/\n+\z/, "\n")
       end
 
       private
@@ -1971,11 +1972,7 @@ EOT
       end
 
       def format_diff
-        if @info.diffs.empty?
-          ""
-        else
-          format_diffs.join("\n") + "\n"
-        end
+        format_diffs.join("\n")
       end
 
       def format_diffs
