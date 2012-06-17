@@ -2047,6 +2047,13 @@ EOT
 <html>
   <head>
     <style type="text/css">
+pre
+{
+  font-family: Consolas, Menlo, "Liberation Mono", Courier, monospace;
+  padding: 0.5em;
+  border: 1px solid #aaa;
+}
+
 dl
 {
   margin-left: 2em;
@@ -2077,10 +2084,25 @@ div.diff
   margin-right: 1em;
 }
 
+div.diff pre
+{
+  white-space: normal;
+}
+
+div.diff span
+{
+  white-space: pre;
+  display: block;
+}
+
 span.diff-line
 {
   background-color: #eaf2f5;
   color: #999999;
+}
+
+span.diff-not-changed
+{
 }
 
 span.diff-deleted
@@ -2093,13 +2115,6 @@ span.diff-added
 {
   background-color: #aaffaa;
   color: #000000;
-}
-
-pre
-{
-  font-family: Consolas, Menlo, "Liberation Mono", Courier, monospace;
-  padding: 0.5em;
-  border: 1px solid #aaa;
 }
     </style>
   </head>
@@ -2199,7 +2214,8 @@ EOT
             formatted_diff << span(h(line_without_new_line),
                                    :class => "diff-line")
           else
-            formatted_diff << h(line_without_new_line)
+            formatted_diff << span(h(line_without_new_line),
+                                   :class => "diff-not-changed")
           end
           formatted_diff << "\n"
         end
