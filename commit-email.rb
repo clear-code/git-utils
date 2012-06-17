@@ -2173,12 +2173,12 @@ EOT
           when /^-/
             formatted_diff << span(h(line),
                                    :class => "diff-deleted",
-                                   :style => ["background-color: #aaffaa",
+                                   :style => ["background-color: #ffaaaa",
                                               "color: #000000"])
           when /^\+/
             formatted_diff << span(h(line),
                                    :class => "diff-added",
-                                   :style => ["background-color: #ffaaaa",
+                                   :style => ["background-color: #aaffaa",
                                               "color: #000000"])
           when /^@@/
             formatted_diff << span(h(line),
