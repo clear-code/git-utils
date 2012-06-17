@@ -2169,25 +2169,27 @@ EOT
       def format_diff(diff)
         formatted_diff = ""
         diff.format_diff.each_line do |line|
+          line_without_new_line = line.chomp
           case line
           when /^-/
-            formatted_diff << span(h(line),
+            formatted_diff << span(h(line_without_new_line),
                                    :class => "diff-deleted",
                                    :style => ["background-color: #ffaaaa",
                                               "color: #000000"])
           when /^\+/
-            formatted_diff << span(h(line),
+            formatted_diff << span(h(line_without_new_line),
                                    :class => "diff-added",
                                    :style => ["background-color: #aaffaa",
                                               "color: #000000"])
           when /^@@/
-            formatted_diff << span(h(line),
+            formatted_diff << span(h(line_without_new_line),
                                    :class => "diff-line",
                                    :style => ["background-color: #eaf2f5",
                                               "color: #999999"])
           else
-            formatted_diff << h(line)
+            formatted_diff << h(line_without_new_line)
           end
+          formatted_diff << "\n"
         end
         formatted_diff
       end
