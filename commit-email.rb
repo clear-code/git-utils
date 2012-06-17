@@ -51,10 +51,17 @@ class SpentTime
 end
 
 class GitCommitMailer
+  VERSION = "1.0.0"
+  URL = "https://github.com/clear-code/git-utils"
+
   KILO_SIZE = 1000
   DEFAULT_MAX_SIZE = "100M"
 
   class << self
+    def x_mailer
+      "#{name} #{VERSION}; #{URL}"
+    end
+
     def execute(command, working_directory=nil, &block)
       if ENV['DEBUG']
         suppress_stderr = ''
@@ -1222,6 +1229,7 @@ EOB
               mime_encoded_word("#{info.format_mail_subject}")
     headers = []
     headers += info.headers
+    headers << "X-Mailer: #{self.class.x_mailer}"
     headers << "MIME-Version: 1.0"
     if add_html?
       headers << "Content-Type: multipart/alternative;"
@@ -2403,6 +2411,7 @@ Processing change: #{processing_change.inspect}
       from = GitCommitMailer.extract_email_address(from)
       to = to.collect {|address| GitCommitMailer.extract_email_address(address)}
       header = <<-HEADER
+X-Mailer: #{GitCommitMailer.x_mailer}
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
