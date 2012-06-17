@@ -1228,8 +1228,8 @@ EOB
       headers << " boundary=#{@boundary}"
     else
       headers << "Content-Type: text/plain; charset=#{body_encoding}"
+      headers << "Content-Transfer-Encoding: #{body_encoding_bit}"
     end
-    headers << "Content-Transfer-Encoding: #{body_encoding_bit}"
     headers << "From: #{from(info)}"
     headers << "To: #{to.join(', ')}"
     headers << "Subject: #{subject}"

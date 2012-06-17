@@ -5,7 +5,6 @@ X-Git-Commit-Id: 6e27d214c168339b8f288f33e12cf44ba03b5fc4
 MIME-Version: 1.0
 Content-Type: multipart/alternative;
  boundary=9c155171616a69b0feb5eb8bfc10502dfa0444ba
-Content-Transfer-Encoding: 8bit
 From: User Name <user@example.com>
 To: to@example
 Subject: sample-repo [master] Add README
