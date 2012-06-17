@@ -2077,6 +2077,24 @@ div.diff
   margin-right: 1em;
 }
 
+span.diff-line
+{
+  background-color: #eaf2f5;
+  color: #999999;
+}
+
+span.diff-deleted
+{
+  background-color: #ffaaaa;
+  color: #000000;
+}
+
+span.diff-added
+{
+  background-color: #aaffaa;
+  color: #000000;
+}
+
 pre
 {
   font-family: Consolas, Menlo, "Liberation Mono", Courier, monospace;
@@ -2173,19 +2191,13 @@ EOT
           case line
           when /^-/
             formatted_diff << span(h(line_without_new_line),
-                                   :class => "diff-deleted",
-                                   :style => ["background-color: #ffaaaa",
-                                              "color: #000000"])
+                                   :class => "diff-deleted")
           when /^\+/
             formatted_diff << span(h(line_without_new_line),
-                                   :class => "diff-added",
-                                   :style => ["background-color: #aaffaa",
-                                              "color: #000000"])
+                                   :class => "diff-added")
           when /^@@/
             formatted_diff << span(h(line_without_new_line),
-                                   :class => "diff-line",
-                                   :style => ["background-color: #eaf2f5",
-                                              "color: #999999"])
+                                   :class => "diff-line")
           else
             formatted_diff << h(line_without_new_line)
           end
