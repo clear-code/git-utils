@@ -2156,13 +2156,21 @@ EOT
       end
 
       def tag_start(name, attributes)
-        formatted_attributes = attributes.collect do |key, value|
+        sorted_attributes = attributes.sort_by do |key, value|
+          key
+        end
+        formatted_attributes = sorted_attributes.collect do |key, value|
           if value.is_a?(Hash)
-            value = value.collect do |value_key, value_value|
+            sorted_value = value.sort_by do |value_key, value_value|
+              value_key
+            end
+            value = sorted_value.collect do |value_key, value_value|
               "#{value_key}: #{value_value}"
             end
           end
-          value = value.join("; ") if value.is_a?(Array)
+          if value.is_a?(Array)
+            value = value.sort.join("; ")
+          end
           "#{h(key)}=\"#{h(value)}\""
         end
         formatted_attributes = formatted_attributes.join(" ")
