@@ -2046,92 +2046,18 @@ EOT
 <!DOCTYPE html>
 <html>
   <head>
-    <style type="text/css">
-pre
-{
-  font-family: Consolas, Menlo, "Liberation Mono", Courier, monospace;
-  line-height: 1.2;
-  padding: 0.5em;
-  border: 1px solid #aaa;
-}
-
-dl
-{
-  margin-left: 2em;
-  line-height: 1.5;
-}
-
-dl dt
-{
-  clear: both;
-  float: left;
-  width: 8em;
-  font-weight: bold;
-}
-
-dl dd
-{
-  margin-left: 8.5em;
-}
-
-div.diff-section
-{
-  clear: both;
-}
-
-div.diff
-{
-  margin-left: 1em;
-  margin-right: 1em;
-}
-
-div.diff pre
-{
-  white-space: normal;
-}
-
-div.diff span
-{
-  white-space: pre;
-  display: block;
-}
-
-span.diff-header,
-span.diff-header-mark,
-span.diff-line
-{
-  background-color: #eaf2f5;
-  color: #999999;
-}
-
-span.diff-not-changed
-{
-}
-
-span.diff-deleted
-{
-  background-color: #ffaaaa;
-  color: #000000;
-}
-
-span.diff-added
-{
-  background-color: #aaffaa;
-  color: #000000;
-}
-    </style>
   </head>
   <body>
-    <dl>
-      <dt>Author:</dt>
-      <dd><%= h("\#{@info.author_name} <\#{@info.author_email}>") %></dd>
-      <dt>Date:</dt>
-      <dd><%= h(@mailer.format_time(@info.date)) %></dd>
-      <dt>New Revision:</dt>
-      <dd><%= format_revision %></dd>
+    <%= dl_start %>
+      <%= dt("Author") %>
+      <%= dd(h("\#{@info.author_name} <\#{@info.author_email}>")) %>
+      <%= dt("Date") %>
+      <%= dd(h(@mailer.format_time(@info.date))) %>
+      <%= dt("New Revision") %>
+      <%= dd(format_revision) %>
 <% unless @info.merge_status.empty? %>
-      <dt>Merge:</dt>
-      <dd>
+      <%= dt("Merge") %>
+      <%= dd_start %>
         <ul>
 <%   @info.merge_status.each do |status| %>
           <li><%= h(status) %></li>
@@ -2139,8 +2065,8 @@ span.diff-added
         </ul>
       </dd>
 <% end %>
-      <dt>Log:</dt>
-      <dd><pre><%= h(@info.summary.strip) %></pre></dd>
+      <%= dt("Log") %>
+      <%= dd(pre(h(@info.summary.strip))) %>
 <%= format_files("Added",        @info.added_files) %>
 <%= format_files("Copied",       @info.copied_files) %>
 <%= format_files("Removed",      @info.deleted_files) %>
@@ -2170,8 +2096,8 @@ EOT
         return "" if items.empty?
 
         formatted_files = ""
-        formatted_files << "      <dt>#{h(title)} files:</dt>\n"
-        formatted_files << "      <dd>\n"
+        formatted_files << "      #{dt(h(title) + 'files')}\n"
+        formatted_files << "      #{dd_start}\n"
         formatted_files << "        <ul>\n"
         items.each do |item_name, new_item_name|
           if new_item_name.nil?
@@ -2192,10 +2118,10 @@ EOT
         return "" if @info.diffs.empty?
 
         formatted_diff = ""
-        formatted_diff << "    <div class=\"diff-section\">\n"
+        formatted_diff << "    #{div_diff_section_start}\n"
         @info.diffs.each do |diff|
-          formatted_diff << "      <div class=\"diff\">\n"
-          formatted_diff << "        <pre>#{format_diff(diff)}</pre>\n"
+          formatted_diff << "      #{div_diff_start}\n"
+          formatted_diff << "        #{pre_diff(format_diff(diff))}\n"
           formatted_diff << "      </div>\n"
         end
         formatted_diff << "    </div>\n"
@@ -2210,24 +2136,18 @@ EOT
           case line
           when /^=/
             in_header = false
-            formatted_diff << span(h(line_without_new_line),
-                                   :class => "diff-header-mark")
-          when /^-/
-            formatted_diff << span(h(line_without_new_line),
-                                   :class => "diff-deleted")
-          when /^\+/
-            formatted_diff << span(h(line_without_new_line),
-                                   :class => "diff-added")
+            formatted_diff << span_diff_header_mark(h(line_without_new_line))
           when /^@@/
-            formatted_diff << span(h(line_without_new_line),
-                                   :class => "diff-line")
+            formatted_diff << span_diff_line(h(line_without_new_line))
+          when /^-/
+            formatted_diff << span_diff_deleted(h(line_without_new_line))
+          when /^\+/
+            formatted_diff << span_diff_added(h(line_without_new_line))
           else
             if in_header
-              formatted_diff << span(h(line_without_new_line),
-                                     :class => "diff-header")
+              formatted_diff << span_diff_header(h(line_without_new_line))
             else
-              formatted_diff << span(h(line_without_new_line),
-                                     :class => "diff-not-changed")
+              formatted_diff << span_diff_not_changed(h(line_without_new_line))
             end
           end
           formatted_diff << "\n"
@@ -2235,13 +2155,149 @@ EOT
         formatted_diff
       end
 
-      def span(content, attributes)
+      def tag_start(name, attributes)
         formatted_attributes = attributes.collect do |key, value|
+          if value.is_a?(Hash)
+            value = value.collect do |value_key, value_value|
+              "#{value_key}: #{value_value}"
+            end
+          end
           value = value.join("; ") if value.is_a?(Array)
           "#{h(key)}=\"#{h(value)}\""
         end
         formatted_attributes = formatted_attributes.join(" ")
-        "<span #{formatted_attributes}>#{content}</span>"
+        "<#{name} #{formatted_attributes}>"
+      end
+
+      def tag(name, content, attributes)
+        "#{tag_start(name, attributes)}#{content}</#{name}>"
+      end
+
+      def dl_start
+        tag_start("dl",
+                  "style" => {
+                    "margin-left" => "2em",
+                    "line-height" => "1.5",
+                  })
+      end
+
+      def dt_margin
+        8
+      end
+
+      def dt(content)
+        tag("dt", content,
+            "style" => {
+              "clear"       => "both",
+              "float"       => "left",
+              "width"       => "#{dt_margin}em",
+              "font-weight" => "bold",
+            })
+      end
+
+      def dd_start
+        tag_start("dd",
+                  "style" => {
+                    "margin-left" => "#{dt_margin + 0.5}em",
+                  })
+      end
+
+      def dd(content)
+        "#{dd_start}#{content}</dd>"
+      end
+
+      def pre(content, styles={})
+        font_families = [
+          "Consolas", "Menlo", "\"Liberation Mono\"",
+          "Courier", "monospace"
+        ]
+        pre_styles = {
+          "font-family" => font_families.join(", "),
+          "line-height" => "1.2",
+          "padding"     => "0.5em",
+          "border"      => "1px solid #aaa",
+        }
+        tag("pre", content, "style" => pre_styles.merge(styles))
+      end
+
+      def div_diff_section_start
+        tag_start("div",
+                  "class" => "diff-section",
+                  "style" => {
+                    "clear" => "both",
+                  })
+      end
+
+      def div_diff_start
+        tag_start("div",
+                  "class" => "diff",
+                  "style" => {
+                    "margin-left"  => "1em",
+                    "margin-right" => "1em",
+                  })
+      end
+
+      def pre_diff(diff)
+        pre(diff, "white-space" => "normal")
+      end
+
+      def span_diff_styles
+        {
+          "white-space" => "pre",
+          "display"     => "block",
+        }
+      end
+
+      def span_diff_metadata_styles
+        styles = {
+          "background-color" => "#eaf2f5",
+          "color"            => "#999999",
+        }
+        span_diff_styles.merge(styles)
+      end
+
+      def span_diff_header(content)
+        tag("span", content,
+            "class" => "diff-header",
+            "style" => span_diff_metadata_styles)
+      end
+
+      def span_diff_header_mark(content)
+        tag("span", content,
+            "class" => "diff-header-mark",
+            "style" => span_diff_metadata_styles)
+      end
+
+      def span_diff_line(content)
+        tag("span", content,
+            "class" => "diff-line",
+            "style" => span_diff_metadata_styles)
+      end
+
+      def span_diff_deleted(content)
+        styles = {
+          "background-color" => "#ffaaaa",
+          "color"            => "#000000",
+        }
+        tag("span", content,
+            "class" => "diff-deleted",
+            "style" => span_diff_styles.merge(styles))
+      end
+
+      def span_diff_added(content)
+        styles = {
+          "background-color" => "#aaffaa",
+          "color"            => "#000000",
+        }
+        tag("span", content,
+            "class" => "diff-added",
+            "style" => span_diff_styles.merge(styles))
+      end
+
+      def span_diff_not_changed(content)
+        tag("span", content,
+            "class" => "diff-not-changed",
+            "style" => span_diff_styles)
       end
     end
   end
