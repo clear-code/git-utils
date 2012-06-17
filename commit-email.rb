@@ -2177,7 +2177,7 @@ EOT
                                               "color: #000000"])
           when /^\+/
             formatted_diff << span(h(line),
-                                   :class => "diff-deleted",
+                                   :class => "diff-added",
                                    :style => ["background-color: #ffaaaa",
                                               "color: #000000"])
           when /^@@/
