@@ -2050,6 +2050,7 @@ EOT
 pre
 {
   font-family: Consolas, Menlo, "Liberation Mono", Courier, monospace;
+  line-height: 1.2;
   padding: 0.5em;
   border: 1px solid #aaa;
 }
