@@ -2095,6 +2095,8 @@ div.diff span
   display: block;
 }
 
+span.diff-header,
+span.diff-header-mark,
 span.diff-line
 {
   background-color: #eaf2f5;
@@ -2201,9 +2203,14 @@ EOT
 
       def format_diff(diff)
         formatted_diff = ""
+        in_header = true
         diff.format_diff.each_line do |line|
           line_without_new_line = line.chomp
           case line
+          when /^=/
+            in_header = false
+            formatted_diff << span(h(line_without_new_line),
+                                   :class => "diff-header-mark")
           when /^-/
             formatted_diff << span(h(line_without_new_line),
                                    :class => "diff-deleted")
@@ -2214,8 +2221,13 @@ EOT
             formatted_diff << span(h(line_without_new_line),
                                    :class => "diff-line")
           else
-            formatted_diff << span(h(line_without_new_line),
-                                   :class => "diff-not-changed")
+            if in_header
+              formatted_diff << span(h(line_without_new_line),
+                                     :class => "diff-header")
+            else
+              formatted_diff << span(h(line_without_new_line),
+                                     :class => "diff-not-changed")
+            end
           end
           formatted_diff << "\n"
         end

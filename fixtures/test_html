@@ -91,6 +91,8 @@ div.diff span
   display: block;
 }
 
+span.diff-header,
+span.diff-header-mark,
 span.diff-line
 {
   background-color: #eaf2f5;
@@ -134,8 +136,8 @@ span.diff-added
 
     <div class="diff-section">
       <div class="diff">
-        <pre><span class="diff-not-changed">  Added: README.rdoc (+3 -0) 100644</span>
-<span class="diff-not-changed">===================================================================</span>
+        <pre><span class="diff-header">  Added: README.rdoc (+3 -0) 100644</span>
+<span class="diff-header-mark">===================================================================</span>
 <span class="diff-deleted">--- /dev/null</span>
 <span class="diff-added">+++ README.rdoc    2010-01-13 15:15:43 +0900 (d8250e1)</span>
 <span class="diff-line">@@ -0,0 +1,3 @@</span>
