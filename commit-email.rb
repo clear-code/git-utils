@@ -2104,7 +2104,7 @@ EOT
         return "" if items.empty?
 
         formatted_files = ""
-        formatted_files << "      #{dt(h(title) + 'files')}\n"
+        formatted_files << "      #{dt(h(title) + ' files')}\n"
         formatted_files << "      #{dd_start}\n"
         formatted_files << "        <ul>\n"
         items.each do |item_name, new_item_name|
