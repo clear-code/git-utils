@@ -1672,7 +1672,7 @@ EOB
         @to_file
       end
 
-      def format_diff
+      def format
         desc = "  #{CHANGED_TYPE[@type]}: #{@to_file} "
         desc << "(+#{@added_line} -#{@deleted_line})"
         desc << "#{format_file_mode}#{format_similarity_index}\n"
@@ -2040,7 +2040,7 @@ EOT
 
       def format_diffs
         @info.diffs.collect do |diff|
-          diff.format_diff
+          diff.format
         end
       end
     end
@@ -2139,7 +2139,7 @@ EOT
       def format_diff(diff)
         formatted_diff = ""
         in_header = true
-        diff.format_diff.each_line do |line|
+        diff.format.each_line do |line|
           line_without_new_line = line.chomp
           case line
           when /^=/
