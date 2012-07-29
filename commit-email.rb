@@ -1585,7 +1585,7 @@ EOB
       while line = output.shift
         line.chomp!
         if /\Adiff --git/ =~ line
-          @diffs << DiffPerFile.new(@mailer, lines, @revision)
+          @diffs << FileDiff.new(@mailer, lines, @revision)
           lines = [line]
         else
           lines << line
@@ -1593,7 +1593,7 @@ EOB
       end
 
       #create the last diff terminated by the EOF
-      @diffs << DiffPerFile.new(@mailer, lines, @revision) if lines.length > 0
+      @diffs << FileDiff.new(@mailer, lines, @revision) if lines.length > 0
     end
 
     def parse_file_status
@@ -1644,7 +1644,7 @@ EOB
       NKF.nkf("-w", string)
     end
 
-    class DiffPerFile
+    class FileDiff
       CHANGED_TYPE = {
         :added => "Added",
         :modified => "Modified",
