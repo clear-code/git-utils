@@ -56,7 +56,7 @@ Content-Transfer-Encoding: 8bit
       <dt style="clear: both; float: left; font-weight: bold; width: 8em">Added files</dt>
       <dd style="margin-left: 8.5em">
         <ul>
-          <li>README.rdoc</li>
+          <li><a href="https://github.com/clear-code/git-utils/commit/6e27d214c168339b8f288f33e12cf44ba03b5fc4#diff-0">README.rdoc</a></li>
         </ul>
       </dd>
     </dl>

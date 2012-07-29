@@ -1470,6 +1470,7 @@ EOB
       @reference = reference
       @revision = revision
 
+      @files = []
       @added_files = []
       @copied_files = []
       @deleted_files = []
@@ -1478,8 +1479,8 @@ EOB
       @type_changed_files = []
 
       set_records
-      parse_diff
       parse_file_status
+      parse_diff
 
       @merge_status = []
     end
@@ -1530,6 +1531,10 @@ EOB
 
     def short_revision
       GitCommitMailer.short_revision(@revision)
+    end
+
+    def file_index(name)
+      @files.index(name)
     end
 
     def rss_title
@@ -1584,8 +1589,9 @@ EOB
       lines << line.chomp if line #take out the very first 'diff --git' header
       while line = output.shift
         line.chomp!
-        if /\Adiff --git/ =~ line
-          @diffs << FileDiff.new(@mailer, lines, @revision)
+        case line
+        when /\Adiff --git/
+          @diffs << create_file_diff(lines)
           lines = [line]
         else
           lines << line
@@ -1593,7 +1599,13 @@ EOB
       end
 
       #create the last diff terminated by the EOF
-      @diffs << FileDiff.new(@mailer, lines, @revision) if lines.length > 0
+      @diffs << create_file_diff(lines) if lines.length > 0
+    end
+
+    def create_file_diff(lines)
+      diff = FileDiff.new(@mailer, lines, @revision)
+      diff.index = @files.index(diff.file_path)
+      diff
     end
 
     def parse_file_status
@@ -1618,6 +1630,8 @@ EOB
           else
             raise "unsupported status type: #{line.inspect}"
           end
+
+          @files << file
         when /\A([^\t]*?)\t([^\t]*?)\t([^\t]*?)\z/
           status = $1
           from_file = CommitInfo.unescape_file_path($2)
@@ -1631,6 +1645,8 @@ EOB
           else
             raise "unsupported status type: #{line.inspect}"
           end
+
+          @files << to_file
         else
           raise "unsupported status type: #{line.inspect}"
         end
@@ -1655,8 +1671,10 @@ EOB
       }
 
       attr_reader :changes
+      attr_accessor :index
       def initialize(mailer, lines, revision)
         @mailer = mailer
+        @index = nil
         @body = ''
         @changes = []
 
@@ -1999,6 +2017,18 @@ EOB
         end
       end
 
+      def commit_file_url(file)
+        commit_url = repository_browser_url
+        return nil if commit_url.nil?
+        case @mailer.repository_browser
+        when :github
+          index = @info.file_index(file)
+          return nil if index.nil?
+          "#{commit_url}#diff-#{@info.file_index(file)}"
+        else
+          nil
+        end
+      end
     end
 
     class TextMailBodyFormatter < MailBodyFormatter
@@ -2138,10 +2168,10 @@ EOT
         formatted_files << "        <ul>\n"
         items.each do |item_name, new_item_name|
           if new_item_name.nil?
-            formatted_files << "          <li>#{h(item_name)}</li>\n"
+            formatted_files << "          <li>#{format_file(item_name)}</li>\n"
           else
             formatted_files << "          <li>\n"
-            formatted_files << "            #{h(new_item_name)}<br>\n"
+            formatted_files << "            #{format_file(new_item_name)}<br>\n"
             formatted_files << "            (from #{item_name})\n"
             formatted_files << "          </li>\n"
           end
@@ -2149,6 +2179,15 @@ EOT
         formatted_files << "        </ul>\n"
         formatted_files << "      </dd>\n"
         formatted_files
+      end
+
+      def format_file(file)
+        url = commit_file_url(file)
+        if url
+          tag("a", {"href" => url}, h(file))
+        else
+          h(file)
+        end
       end
 
       def format_diffs
