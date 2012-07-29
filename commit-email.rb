@@ -1653,9 +1653,11 @@ EOB
         :renamed => "Renamed",
       }
 
+      attr_reader :changes
       def initialize(mailer, lines, revision)
         @mailer = mailer
         @body = ''
+        @changes = []
 
         @type = :modified
         @is_binary = false
@@ -1819,12 +1821,27 @@ EOB
 
       def parse_body(lines)
         @added_line = @deleted_line = 0
+        from_offset = 0
+        to_offset = 0
         line = lines.shift
         while line != nil
-          if line =~ /\A\+/
+          case line
+          when /\A@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)?/
+            from_offset = $1.to_i
+            to_offset = $2.to_i
+            @changes << [:line, nil, line]
+          when /\A\+/
             @added_line += 1
-          elsif line =~ /\A\-/
+            @changes << [:added, to_offset, line]
+            to_offset += 1
+          when /\A\-/
             @deleted_line += 1
+            @changes << [:deleted, from_offset, line]
+            from_offset += 1
+          else
+            @changes << [:not_changed, [from_offset, to_offset], line]
+            from_offset += 1
+            to_offset += 1
           end
 
           @body << line + "\n"
@@ -2054,6 +2071,11 @@ EOT
     class HTMLMailBodyFormatter < MailBodyFormatter
       include ERB::Util
 
+      def format
+        @indent_level = 0
+        super
+      end
+
       private
       def template
         <<-EOT
@@ -2133,66 +2155,155 @@ EOT
 
         formatted_diff = ""
         formatted_diff << "    #{div_diff_section_start}\n"
+        @indent_level = 3
         @info.diffs.each do |diff|
-          formatted_diff << "      #{div_diff_start}\n"
-          formatted_diff << "        #{pre_diff(format_diff(diff))}\n"
-          formatted_diff << "      </div>\n"
+          formatted_diff << "#{format_diff(diff)}\n"
         end
         formatted_diff << "    </div>\n"
         formatted_diff
       end
 
       def format_diff(diff)
-        formatted_diff = ""
-        in_header = true
-        diff.format.each_line do |line|
-          line_without_new_line = line.chomp
-          case line
-          when /^=/
-            in_header = false
-            formatted_diff << span_diff_header_mark(h(line_without_new_line))
-          when /^@@/
-            formatted_diff << span_diff_line(h(line_without_new_line))
-          when /^-/
-            formatted_diff << span_diff_deleted(h(line_without_new_line))
-          when /^\+/
-            formatted_diff << span_diff_added(h(line_without_new_line))
-          else
-            if in_header
-              formatted_diff << span_diff_header(h(line_without_new_line))
-            else
-              formatted_diff << span_diff_not_changed(h(line_without_new_line))
+        header_column = format_header_column(diff)
+        from_line_column, to_line_column, content_column =
+          format_body_columns(diff)
+
+        table_diff do
+          head = tag("thead") do
+            tr_diff_header do
+              tag("td", {"colspan" => "3"}) do
+                pre_column(header_column)
+              end
             end
           end
-          formatted_diff << "\n"
+
+          body = tag("tbody") do
+            tag("tr") do
+              [
+                th_diff_line_number {pre_column(from_line_column)},
+                th_diff_line_number {pre_column(to_line_column)},
+                td_diff_content     {pre_column(content_column)},
+              ]
+            end
+          end
+
+          [head, body]
         end
-        formatted_diff
+      end
+
+      def format_header_column(diff)
+        header_column = ""
+        diff.format_header.each_line do |line|
+          line = line.chomp
+          case line
+          when /^=/
+            header_column << span_diff_header_mark(h(line))
+          else
+            header_column << span_diff_header(h(line))
+          end
+          header_column << "\n"
+        end
+        header_column
+      end
+
+      def format_body_columns(diff)
+        from_line_column = ""
+        to_line_column = ""
+        content_column = ""
+        diff.changes.each do |type, line_number, line|
+          case type
+          when :line
+            from_line_column << span_line_number_nothing
+            to_line_column << span_line_number_nothing
+            case line
+            when /\A(@@[\s0-9\-+,]+@@\s*)(.+)(\s*)\z/
+              hunk_info = $1
+              context = $2
+              formatted_line = h(hunk_info) + span_diff_context(h(context))
+            else
+              formatted_line = h(formatted_line)
+            end
+            content_column << span_diff_line(formatted_line)
+          when :added
+            from_line_column << span_line_number_nothing
+            to_line_column << span_line_number_added(line_number)
+            content_column << span_diff_added(h(line))
+          when :deleted
+            from_line_column << span_line_number_deleted(line_number)
+            to_line_column << span_line_number_nothing
+            content_column << span_diff_deleted(h(line))
+          when :not_changed
+            from_line_number, to_line_number = line_number
+            from_line_column << span_line_number_not_changed(from_line_number)
+            to_line_column << span_line_number_not_changed(to_line_number)
+            content_column << span_diff_not_changed(h(line))
+          end
+          from_line_column << "\n"
+          to_line_column << "\n"
+          content_column << "\n"
+        end
+        [from_line_column, to_line_column, content_column]
       end
 
       def tag_start(name, attributes)
-        sorted_attributes = attributes.sort_by do |key, value|
-          key
-        end
-        formatted_attributes = sorted_attributes.collect do |key, value|
-          if value.is_a?(Hash)
-            sorted_value = value.sort_by do |value_key, value_value|
-              value_key
-            end
-            value = sorted_value.collect do |value_key, value_value|
-              "#{value_key}: #{value_value}"
-            end
+        start_tag = "<#{name}"
+        unless attributes.empty?
+          sorted_attributes = attributes.sort_by do |key, value|
+            key
           end
-          if value.is_a?(Array)
-            value = value.sort.join("; ")
+          formatted_attributes = sorted_attributes.collect do |key, value|
+            if value.is_a?(Hash)
+              sorted_value = value.sort_by do |value_key, value_value|
+                value_key
+              end
+              value = sorted_value.collect do |value_key, value_value|
+                "#{value_key}: #{value_value}"
+              end
+            end
+            if value.is_a?(Array)
+              value = value.sort.join("; ")
+            end
+            "#{h(key)}=\"#{h(value)}\""
           end
-          "#{h(key)}=\"#{h(value)}\""
+          formatted_attributes = formatted_attributes.join(" ")
+          start_tag << " #{formatted_attributes}"
         end
-        formatted_attributes = formatted_attributes.join(" ")
-        "<#{name} #{formatted_attributes}>"
+        start_tag << ">"
+        start_tag
       end
 
-      def tag(name, content, attributes)
-        "#{tag_start(name, attributes)}#{content}</#{name}>"
+      def tag(name, attributes={}, content=nil, &block)
+        block_used = false
+        indent_level = @indent_level
+        if content.nil? and block_given?
+          @indent_level += 1
+          if block.arity == 1
+            content = []
+            yield(content)
+          else
+            content = yield
+          end
+          @indent_level -= 1
+          block_used = true
+        end
+        content ||= ""
+        if content.is_a?(Array)
+          if block_used
+            separator = "\n"
+          else
+            separator = ""
+          end
+          content = content.join(separator)
+        end
+
+        formatted_tag = ""
+        formatted_tag << "  " * @indent_level if block_used
+        formatted_tag << tag_start(name, attributes)
+        formatted_tag << "\n" if block_used
+        formatted_tag << content
+        formatted_tag << "\n" + ("  " * @indent_level) if block_used
+        formatted_tag << "</#{name}>"
+        formatted_tag
       end
 
       def dl_start
@@ -2208,13 +2319,16 @@ EOT
       end
 
       def dt(content)
-        tag("dt", content,
-            "style" => {
-              "clear"       => "both",
-              "float"       => "left",
-              "width"       => "#{dt_margin}em",
-              "font-weight" => "bold",
-            })
+        tag("dt",
+            {
+              "style" => {
+                "clear"       => "both",
+                "float"       => "left",
+                "width"       => "#{dt_margin}em",
+                "font-weight" => "bold",
+              },
+            },
+            content)
       end
 
       def dd_start
@@ -2228,6 +2342,12 @@ EOT
         "#{dd_start}#{content}</dd>"
       end
 
+      def border_styles
+        {
+          "border"      => "1px solid #aaa",
+        }
+      end
+
       def pre(content, styles={})
         font_families = [
           "Consolas", "Menlo", "\"Liberation Mono\"",
@@ -2237,9 +2357,9 @@ EOT
           "font-family" => font_families.join(", "),
           "line-height" => "1.2",
           "padding"     => "0.5em",
-          "border"      => "1px solid #aaa",
         }
-        tag("pre", content, "style" => pre_styles.merge(styles))
+        pre_styles = pre_styles.merge(border_styles)
+        tag("pre", {"style" => pre_styles.merge(styles)}, content)
       end
 
       def div_diff_section_start
@@ -2259,15 +2379,121 @@ EOT
                   })
       end
 
-      def pre_diff(diff)
-        pre(diff, "white-space" => "normal")
+      def table_diff(&block)
+        styles = {
+          "border-collapse" => "collapse",
+        }
+        tag("table",
+            {
+              "style" => border_styles.merge(styles),
+            },
+            &block)
       end
 
-      def span_diff_styles
+      def tr_diff_header(&block)
+        tag("tr",
+            {
+              "class" => "diff-header",
+              "style" => border_styles,
+            },
+            &block)
+      end
+
+      def th_diff_line_number(&block)
+        tag("th",
+            {
+              "class" => "diff-line",
+              "style" => border_styles,
+            },
+            &block)
+      end
+
+      def td_diff_content(&block)
+        tag("td",
+            {
+              "class" => "diff-content",
+              "style" => border_styles,
+            },
+            &block)
+      end
+
+      def pre_column(column)
+        pre(column,
+            "white-space" => "normal",
+            "margin" => "0",
+            "border" => "0")
+      end
+
+      def span_common_styles
         {
           "white-space" => "pre",
           "display"     => "block",
         }
+      end
+
+      def span_context_styles
+        {
+          "background-color" => "#ffffaa",
+          "color"            => "#000000",
+        }
+      end
+
+      def span_deleted_styles
+        {
+          "background-color" => "#ffaaaa",
+          "color"            => "#000000",
+        }
+      end
+
+      def span_added_styles
+        {
+          "background-color" => "#aaffaa",
+          "color"            => "#000000",
+        }
+      end
+
+      def span_line_number_styles
+        span_common_styles
+      end
+
+      def span_line_number_nothing
+        tag("span",
+            {
+              "class" => "diff-line-number-nothing",
+              "style" => span_line_number_styles,
+            },
+            "&nbsp;")
+      end
+
+      def span_line_number_deleted(line_number)
+        tag("span",
+            {
+              "class" => "diff-line-number-deleted",
+              "style" => span_line_number_styles.merge(span_deleted_styles),
+            },
+            h(line_number.to_s))
+      end
+
+      def span_line_number_added(line_number)
+        tag("span",
+            {
+              "class" => "diff-line-number-added",
+              "style" => span_line_number_styles.merge(span_added_styles),
+            },
+            h(line_number.to_s))
+      end
+
+      def span_line_number_not_changed(line_number)
+        tag("span",
+            {
+              "class" => "diff-line-number-not-changed",
+              "style" => span_line_number_styles,
+            },
+            h(line_number.to_s))
+      end
+
+      def span_diff_styles
+        span_common_styles
       end
 
       def span_diff_metadata_styles
@@ -2279,47 +2505,66 @@ EOT
       end
 
       def span_diff_header(content)
-        tag("span", content,
-            "class" => "diff-header",
-            "style" => span_diff_metadata_styles)
+        tag("span",
+            {
+              "class" => "diff-header",
+              "style" => span_diff_metadata_styles,
+            },
+            content)
       end
 
       def span_diff_header_mark(content)
-        tag("span", content,
-            "class" => "diff-header-mark",
-            "style" => span_diff_metadata_styles)
+        tag("span",
+            {
+              "class" => "diff-header-mark",
+              "style" => span_diff_metadata_styles,
+            },
+            content)
       end
 
       def span_diff_line(content)
-        tag("span", content,
-            "class" => "diff-line",
-            "style" => span_diff_metadata_styles)
+        tag("span",
+            {
+              "class" => "diff-line",
+              "style" => span_diff_metadata_styles,
+            },
+            content)
+      end
+
+      def span_diff_context(content)
+        tag("span",
+            {
+              "class" => "diff-context",
+              "style" => span_context_styles,
+            },
+            content)
       end
 
       def span_diff_deleted(content)
-        styles = {
-          "background-color" => "#ffaaaa",
-          "color"            => "#000000",
-        }
-        tag("span", content,
-            "class" => "diff-deleted",
-            "style" => span_diff_styles.merge(styles))
+        tag("span",
+            {
+              "class" => "diff-deleted",
+              "style" => span_diff_styles.merge(span_deleted_styles),
+            },
+            content)
       end
 
       def span_diff_added(content)
-        styles = {
-          "background-color" => "#aaffaa",
-          "color"            => "#000000",
-        }
-        tag("span", content,
-            "class" => "diff-added",
-            "style" => span_diff_styles.merge(styles))
+        tag("span",
+            {
+              "class" => "diff-added",
+              "style" => span_diff_styles.merge(span_added_styles),
+            },
+            content)
       end
 
       def span_diff_not_changed(content)
-        tag("span", content,
-            "class" => "diff-not-changed",
-            "style" => span_diff_styles)
+        tag("span",
+            {
+              "class" => "diff-not-changed",
+              "style" => span_diff_styles,
+            },
+            content)
       end
     end
   end
