@@ -2314,7 +2314,6 @@ EOT
 
       def tag(name, attributes={}, content=nil, &block)
         block_used = false
-        indent_level = @indent_level
         if content.nil? and block_given?
           @indent_level += 1
           if block.arity == 1
