@@ -1848,7 +1848,7 @@ EOB
           when /\A@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)?/
             from_offset = $1.to_i
             to_offset = $2.to_i
-            @changes << [:line, nil, line]
+            @changes << [:hunk_header, nil, line]
           when /\A\+/
             @added_line += 1
             @changes << [:added, to_offset, line]
@@ -2271,7 +2271,7 @@ EOT
         file_path = diff.file_path
         diff.changes.each do |type, line_number, line|
           case type
-          when :line
+          when :hunk_header
             from_line_column << span_line_number_nothing
             to_line_column << span_line_number_nothing
             case line
@@ -2282,7 +2282,7 @@ EOT
             else
               formatted_line = h(formatted_line)
             end
-            content_column << span_diff_line(formatted_line)
+            content_column << span_diff_hunk_header(formatted_line)
           when :added
             from_line_column << span_line_number_nothing
             to_line_column << span_line_number_added(file_path, line_number)
@@ -2597,10 +2597,10 @@ EOT
             content)
       end
 
-      def span_diff_line(content)
+      def span_diff_hunk_header(content)
         tag("span",
             {
-              "class" => "diff-line",
+              "class" => "diff-hunk-header",
               "style" => span_diff_metadata_styles,
             },
             content)
