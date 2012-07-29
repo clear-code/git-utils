@@ -2462,7 +2462,7 @@ EOT
       def th_diff_line_number(&block)
         tag("th",
             {
-              "class" => "diff-line",
+              "class" => "diff-line-number",
               "style" => border_styles,
             },
             &block)
