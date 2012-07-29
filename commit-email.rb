@@ -1848,7 +1848,7 @@ EOB
           when /\A@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)?/
             from_offset = $1.to_i
             to_offset = $2.to_i
-            @changes << [:hunk_header, nil, line]
+            @changes << [:hunk_header, [from_offset, to_offset], line]
           when /\A\+/
             @added_line += 1
             @changes << [:added, to_offset, line]
@@ -2272,8 +2272,11 @@ EOT
         diff.changes.each do |type, line_number, line|
           case type
           when :hunk_header
-            from_line_column << span_line_number_nothing
-            to_line_column << span_line_number_nothing
+            from_line_number, to_line_number = line_number
+            from_line_column << span_line_number_hunk_header(file_path, :from,
+                                                             from_line_number)
+            to_line_column << span_line_number_hunk_header(file_path, :to,
+                                                           to_line_number)
             case line
             when /\A(@@[\s0-9\-+,]+@@\s*)(.+)(\s*)\z/
               hunk_info = $1
@@ -2523,6 +2526,20 @@ EOT
               "style" => span_line_number_styles,
             },
             "&nbsp;")
+      end
+
+      def span_line_number_hunk_header(file_path, direction, offset)
+        content = "..."
+        url = commit_file_line_number_url(file_path, direction, offset - 1)
+        if url
+          content = tag("a", {"href" => url}, content)
+        end
+        tag("span",
+            {
+              "class" => "diff-line-number-hunk-header",
+              "style" => span_line_number_styles,
+            },
+            content)
       end
 
       def span_line_number_deleted(file_path, line_number)
