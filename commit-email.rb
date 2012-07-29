@@ -1672,19 +1672,25 @@ EOB
         @to_file
       end
 
+      def format_header
+        header = "  #{CHANGED_TYPE[@type]}: #{@to_file} "
+        header << "(+#{@added_line} -#{@deleted_line})"
+        header << "#{format_file_mode}#{format_similarity_index}\n"
+        header << "  Mode: #{@old_mode} -> #{@new_mode}\n" if @is_mode_changed
+        header << diff_separator
+        header
+      end
+
       def format
-        desc = "  #{CHANGED_TYPE[@type]}: #{@to_file} "
-        desc << "(+#{@added_line} -#{@deleted_line})"
-        desc << "#{format_file_mode}#{format_similarity_index}\n"
-        desc << "  Mode: #{@old_mode} -> #{@new_mode}\n" if @is_mode_changed
-        desc << diff_separator
+        formatted_diff = format_header
 
         if @mailer.add_diff?
-          desc << headers + @body
+          formatted_diff << headers + @body
         else
-          desc << git_command
+          formatted_diff << git_command
         end
-        desc
+
+        formatted_diff
       end
 
       private
