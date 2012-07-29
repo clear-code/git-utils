@@ -2003,7 +2003,7 @@ EOB
       end
 
       private
-      def repository_browser_url
+      def commit_url
         case @mailer.repository_browser
         when :github
           user = @mailer.github_user
@@ -2018,13 +2018,14 @@ EOB
       end
 
       def commit_file_url(file)
-        commit_url = repository_browser_url
-        return nil if commit_url.nil?
+        base_url = commit_url
+        return nil if base_url.nil?
+
         case @mailer.repository_browser
         when :github
           index = @info.file_index(file)
           return nil if index.nil?
-          "#{commit_url}#diff-#{@info.file_index(file)}"
+          "#{base_url}#diff-#{@info.file_index(file)}"
         else
           nil
         end
@@ -2043,7 +2044,7 @@ EOB
 
 
   New Revision: <%= @info.revision %>
-<%= format_repository_browser_url %>
+<%= format_commit_url %>
 
 <% unless @info.merge_status.empty? %>
 <%   @info.merge_status.each do |status| %>
@@ -2067,8 +2068,8 @@ EOB
 EOT
       end
 
-      def format_repository_browser_url
-        url = repository_browser_url
+      def format_commit_url
+        url = commit_url
         return "" if url.nil?
         "  #{url}\n"
       end
@@ -2150,7 +2151,7 @@ EOT
 
       def format_revision
         revision = @info.revision
-        url = repository_browser_url
+        url = commit_url
         if url
           formatted_revision = "<a href=\"#{h(url)}\">#{h(revision)}</a>"
         else
