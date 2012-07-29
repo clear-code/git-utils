@@ -2025,7 +2025,24 @@ EOB
         when :github
           index = @info.file_index(file)
           return nil if index.nil?
-          "#{base_url}#diff-#{@info.file_index(file)}"
+          "#{base_url}#diff-#{index}"
+        else
+          nil
+        end
+      end
+
+      def commit_file_line_number_url(file, direction, line_number)
+        base_url = commit_url
+        return nil if base_url.nil?
+
+        case @mailer.repository_browser
+        when :github
+          index = @info.file_index(file)
+          return nil if index.nil?
+          url = "#{base_url}#L#{index}"
+          url << ((direction == :from) ? "L" : "R")
+          url << line_number.to_s
+          url
         else
           nil
         end
@@ -2183,12 +2200,12 @@ EOT
       end
 
       def format_file(file)
+        content = h(file)
         url = commit_file_url(file)
         if url
-          tag("a", {"href" => url}, h(file))
-        else
-          h(file)
+          content = tag("a", {"href" => url}, content)
         end
+        content
       end
 
       def format_diffs
@@ -2251,6 +2268,7 @@ EOT
         from_line_column = ""
         to_line_column = ""
         content_column = ""
+        file_path = diff.file_path
         diff.changes.each do |type, line_number, line|
           case type
           when :line
@@ -2267,16 +2285,18 @@ EOT
             content_column << span_diff_line(formatted_line)
           when :added
             from_line_column << span_line_number_nothing
-            to_line_column << span_line_number_added(line_number)
+            to_line_column << span_line_number_added(file_path, line_number)
             content_column << span_diff_added(h(line))
           when :deleted
-            from_line_column << span_line_number_deleted(line_number)
+            from_line_column << span_line_number_deleted(file_path, line_number)
             to_line_column << span_line_number_nothing
             content_column << span_diff_deleted(h(line))
           when :not_changed
             from_line_number, to_line_number = line_number
-            from_line_column << span_line_number_not_changed(from_line_number)
-            to_line_column << span_line_number_not_changed(to_line_number)
+            from_line_column << span_line_number_not_changed(file_path, :from,
+                                                             from_line_number)
+            to_line_column << span_line_number_not_changed(file_path, :to,
+                                                           to_line_number)
             content_column << span_diff_not_changed(h(line))
           end
           from_line_column << "\n"
@@ -2505,31 +2525,46 @@ EOT
             "&nbsp;")
       end
 
-      def span_line_number_deleted(line_number)
+      def span_line_number_deleted(file_path, line_number)
+        content = h(line_number.to_s)
+        url = commit_file_line_number_url(file_path, :from, line_number)
+        if url
+          content = tag("a", {"href" => url}, content)
+        end
         tag("span",
             {
               "class" => "diff-line-number-deleted",
               "style" => span_line_number_styles.merge(span_deleted_styles),
             },
-            h(line_number.to_s))
+            content)
       end
 
-      def span_line_number_added(line_number)
+      def span_line_number_added(file_path, line_number)
+        content = h(line_number.to_s)
+        url = commit_file_line_number_url(file_path, :to, line_number)
+        if url
+          content = tag("a", {"href" => url}, content)
+        end
         tag("span",
             {
               "class" => "diff-line-number-added",
               "style" => span_line_number_styles.merge(span_added_styles),
             },
-            h(line_number.to_s))
+            content)
       end
 
-      def span_line_number_not_changed(line_number)
+      def span_line_number_not_changed(file_path, direction, line_number)
+        content = h(line_number.to_s)
+        url = commit_file_line_number_url(file_path, direction, line_number)
+        if url
+          content = tag("a", {"href" => url}, content)
+        end
         tag("span",
             {
               "class" => "diff-line-number-not-changed",
               "style" => span_line_number_styles,
             },
-            h(line_number.to_s))
+            content)
       end
 
       def span_diff_styles
