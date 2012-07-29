@@ -1601,7 +1601,8 @@ EOB
       lines.each do |line|
         line.rstrip!
         next if line.empty?
-        if line =~ /\A([^\t]*?)\t([^\t]*?)\z/
+        case line
+        when /\A([^\t]*?)\t([^\t]*?)\z/
           status = $1
           file = CommitInfo.unescape_file_path($2)
 
@@ -1617,7 +1618,7 @@ EOB
           else
             raise "unsupported status type: #{line.inspect}"
           end
-        elsif line =~ /\A([^\t]*?)\t([^\t]*?)\t([^\t]*?)\z/
+        when /\A([^\t]*?)\t([^\t]*?)\t([^\t]*?)\z/
           status = $1
           from_file = CommitInfo.unescape_file_path($2)
           to_file = CommitInfo.unescape_file_path($3)
