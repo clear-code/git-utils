@@ -2283,7 +2283,7 @@ EOT
               context = $2
               formatted_line = h(hunk_info) + span_diff_context(h(context))
             else
-              formatted_line = h(formatted_line)
+              formatted_line = h(line)
             end
             content_column << span_diff_hunk_header(formatted_line)
           when :added
