@@ -1180,9 +1180,16 @@ EOF
 
     encoding = "utf-8"
     bit = "8bit"
+
+    multipart_body_p = false
+    body_text = info.format_mail_body_text
+    body_html = nil
     if add_html?
-      body_text = truncate_body(info.format_mail_body_text, @max_size / 2)
-      body_html = truncate_body(info.format_mail_body_html, @max_size / 2)
+      body_html = info.format_mail_body_html
+      multipart_body_p = (body_text.size + body_html.size) < @max_size
+    end
+
+    if multipart_body_p
       body = <<-EOB
 --#{@boundary}
 Content-Type: text/plain; charset=#{encoding}
@@ -1197,10 +1204,10 @@ Content-Transfer-Encoding: #{bit}
 --#{@boundary}--
 EOB
     else
-      body = truncate_body(info.format_mail_body_text, @max_size)
+      body = truncate_body(body_text, @max_size)
     end
 
-    header = make_header(encoding, bit, to, info)
+    header = make_header(encoding, bit, to, info, multipart_body_p)
     if header.respond_to?(:force_encoding)
       header.force_encoding("BINARY")
       body.force_encoding("BINARY")
@@ -1224,14 +1231,14 @@ EOB
     end
   end
 
-  def make_header(body_encoding, body_encoding_bit, to, info)
+  def make_header(body_encoding, body_encoding_bit, to, info, multipart_body_p)
     subject = "#{(name + ' ') if name}" +
               mime_encoded_word("#{info.format_mail_subject}")
     headers = []
     headers += info.headers
     headers << "X-Mailer: #{self.class.x_mailer}"
     headers << "MIME-Version: 1.0"
-    if add_html?
+    if multipart_body_p
       headers << "Content-Type: multipart/alternative;"
       headers << " boundary=#{@boundary}"
     else
