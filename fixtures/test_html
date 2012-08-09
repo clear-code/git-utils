@@ -89,7 +89,7 @@ Content-Transfer-Encoding: 8bit
 </pre>
             </th>
             <td class="diff-content" style="border: 1px solid #aaa">
-<pre style="border: 0; font-family: Consolas, Menlo, &quot;Liberation Mono&quot;, Courier, monospace; line-height: 1.2; margin: 0; padding: 0.5em; white-space: normal"><span class="diff-hunk-header" style="background-color: #eaf2f5; color: #999999; display: block; white-space: pre"></span>
+<pre style="border: 0; font-family: Consolas, Menlo, &quot;Liberation Mono&quot;, Courier, monospace; line-height: 1.2; margin: 0; padding: 0.5em; white-space: normal"><span class="diff-hunk-header" style="background-color: #eaf2f5; color: #999999; display: block; white-space: pre">@@ -0,0 +1,3 @@</span>
 <span class="diff-added" style="background-color: #aaffaa; color: #000000; display: block; white-space: pre">+= README</span>
 <span class="diff-added" style="background-color: #aaffaa; color: #000000; display: block; white-space: pre">+</span>
 <span class="diff-added" style="background-color: #aaffaa; color: #000000; display: block; white-space: pre">+git-utils is ...</span>
