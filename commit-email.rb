@@ -519,9 +519,16 @@ class GitCommitMailer
   end
 
   def from(info)
-    return @from if @from
-    # return "#{info.author_name}@#{@from_domain}".sub(/@\z/, '') if @from_domain
-    "#{info.author_name} <#{info.author_email}>"
+    if @from
+      if /\A[^\s<]+@[^\s>]\z/ =~ @from
+        @from
+      else
+        "#{info.author_name} <#{@from}>"
+      end
+    else
+      # return "#{info.author_name}@#{@from_domain}".sub(/@\z/, '') if @from_domain
+      "#{info.author_name} <#{info.author_email}>"
+    end
   end
 
   def repository
