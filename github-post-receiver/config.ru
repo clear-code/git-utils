@@ -42,7 +42,7 @@ notifier_options = options.dup
 if options[:error_to]
   notifier_options[:to] = options[:error_to]
 end
-notifier_options.merge!(options[:exception_notifier] || {})
+notifier_options.merge!(options["exception_notifier"] || {})
 notifiers = [Racknga::ExceptionMailNotifier.new(notifier_options)]
 use Racknga::Middleware::ExceptionNotifier, :notifiers => notifiers
 
