@@ -508,8 +508,8 @@ class GitCommitMailer
 
   def get_records(revision, records)
     GitCommitMailer.git(git_bin_path, @repository,
-                       "log -n 1 --pretty=format:'#{records.join('%n')}%n' " +
-                       "#{revision}").lines.collect do |line|
+                        "log -n 1 --pretty=format:'#{records.join('%n')}%n' " +
+                        "#{revision}").lines.collect do |line|
       line.strip
     end
   end
