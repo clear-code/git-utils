@@ -73,9 +73,13 @@ class GitHubPostReceiver
   end
 
   def parse_payload(request, response)
-    payload = request["payload"]
+    if request.content_type == "application/json"
+      payload = request.body
+    else
+      payload = request["payload"]
+    end
     if payload.nil?
-      set_error_response(response, :bad_request, "payload parameter is missing")
+      set_error_response(response, :bad_request, "payload is missing")
       return
     end
 
