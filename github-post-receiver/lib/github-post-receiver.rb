@@ -74,7 +74,7 @@ class GitHubPostReceiver
 
   def parse_payload(request, response)
     if request.content_type == "application/json"
-      payload = request.body
+      payload = request.body.read
     else
       payload = request["payload"]
     end
