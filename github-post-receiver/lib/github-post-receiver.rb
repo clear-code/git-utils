@@ -37,6 +37,8 @@ class GitHubPostReceiver
 
   include PathResolver
 
+  GITLAB_OWNER = "$gitlab"
+
   def initialize(options={})
     @options = symbolize_options(options)
   end
@@ -123,19 +125,24 @@ class GitHubPostReceiver
       return
     end
 
-    owner = repository["owner"]
-    if owner.nil?
-      set_error_response(response, :bad_request,
-                         "repository owner is missing: <#{repository.inspect}>")
-      return
-    end
+    if gitlab_payload?(payload)
+      owner_name = GITLAB_OWNER
+    else
+      owner = repository["owner"]
+      if owner.nil?
+        set_error_response(response, :bad_request,
+                           "repository owner is missing: " +
+                           "<#{repository.inspect}>")
+        return
+      end
 
-    owner_name = owner["name"]
-    if owner_name.nil?
-      set_error_response(response, :bad_request,
-                         "repository owner name is missing: " +
-                         "<#{repository.inspect}>")
-      return
+      owner_name = owner["name"]
+      if owner_name.nil?
+        set_error_response(response, :bad_request,
+                           "repository owner name is missing: " +
+                           "<#{repository.inspect}>")
+        return
+      end
     end
 
     unless target?(owner_name, repository_name)
@@ -178,6 +185,10 @@ class GitHubPostReceiver
     response.status = status(status_keyword)
     response["Content-Type"] = "text/plain"
     response.write(message)
+  end
+
+  def gitlab_payload?(payload)
+    not payload["user_name"].nil?
   end
 
   def target?(owner_name, repository_name)
