@@ -20,7 +20,7 @@ User Name	2010-01-13 15:15:43 +0900 (Wed, 13 Jan 2010)
   New Revision: 6e27d214c168339b8f288f33e12cf44ba03b5fc4
   https://github.com/clear-code/git-utils/commit/6e27d214c168339b8f288f33e12cf44ba03b5fc4
 
-  Log:
+  Message:
     Add README
 
   Added files:
@@ -51,7 +51,7 @@ Content-Transfer-Encoding: 8bit
       <dd style="margin-left: 8.5em">2010-01-13 15:15:43 +0900 (Wed, 13 Jan 2010)</dd>
       <dt style="clear: both; float: left; font-weight: bold; width: 8em">New Revision</dt>
       <dd style="margin-left: 8.5em"><a href="https://github.com/clear-code/git-utils/commit/6e27d214c168339b8f288f33e12cf44ba03b5fc4">6e27d214c168339b8f288f33e12cf44ba03b5fc4</a></dd>
-      <dt style="clear: both; float: left; font-weight: bold; width: 8em">Log</dt>
+      <dt style="clear: both; float: left; font-weight: bold; width: 8em">Message</dt>
       <dd style="margin-left: 8.5em"><pre style="border: 1px solid #aaa; font-family: Consolas, Menlo, &quot;Liberation Mono&quot;, Courier, monospace; line-height: 1.2; padding: 0.5em">Add README</pre></dd>
       <dt style="clear: both; float: left; font-weight: bold; width: 8em">Added files</dt>
       <dd style="margin-left: 8.5em">

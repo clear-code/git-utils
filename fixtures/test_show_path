@@ -15,7 +15,7 @@ User Name	2010-01-13 15:15:44 +0900 (Wed, 13 Jan 2010)
 
   New Revision: e3f45cf65f9c5f3456575c95140bde67a7a7b7c6
 
-  Log:
+  Message:
     added malloc declaration
 
   Modified files:
