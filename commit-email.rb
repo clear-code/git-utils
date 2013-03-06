@@ -2164,7 +2164,7 @@ EOT
         </ul>
       </dd>
 <% end %>
-      <%= dt("Log") %>
+      <%= dt("Message") %>
       <%= dd(pre(h(@info.summary.strip))) %>
 <%= format_files("Added",        @info.added_files) %>
 <%= format_files("Copied",       @info.copied_files) %>
