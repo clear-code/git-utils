@@ -2434,6 +2434,7 @@ EOT
           "font-family" => font_families.join(", "),
           "line-height" => "1.2",
           "padding"     => "0.5em",
+          "width"       => "auto",
         }
         pre_styles = pre_styles.merge(border_styles)
         tag("pre", {"style" => pre_styles.merge(styles)}, content)
