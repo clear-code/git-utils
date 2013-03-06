@@ -52,7 +52,7 @@ Content-Transfer-Encoding: 8bit
       <dt style="clear: both; float: left; font-weight: bold; width: 8em">New Revision</dt>
       <dd style="margin-left: 8.5em"><a href="https://github.com/clear-code/git-utils/commit/6e27d214c168339b8f288f33e12cf44ba03b5fc4">6e27d214c168339b8f288f33e12cf44ba03b5fc4</a></dd>
       <dt style="clear: both; float: left; font-weight: bold; width: 8em">Message</dt>
-      <dd style="margin-left: 8.5em"><pre style="border: 1px solid #aaa; font-family: Consolas, Menlo, &quot;Liberation Mono&quot;, Courier, monospace; line-height: 1.2; padding: 0.5em">Add README</pre></dd>
+      <dd style="margin-left: 8.5em"><pre style="border: 1px solid #aaa; font-family: Consolas, Menlo, &quot;Liberation Mono&quot;, Courier, monospace; line-height: 1.2; padding: 0.5em; width: auto">Add README</pre></dd>
       <dt style="clear: both; float: left; font-weight: bold; width: 8em">Added files</dt>
       <dd style="margin-left: 8.5em">
         <ul>
@@ -66,7 +66,7 @@ Content-Transfer-Encoding: 8bit
         <thead>
           <tr class="diff-header" style="border: 1px solid #aaa">
             <td colspan="3">
-<pre style="border: 0; font-family: Consolas, Menlo, &quot;Liberation Mono&quot;, Courier, monospace; line-height: 1.2; margin: 0; padding: 0.5em; white-space: normal"><span class="diff-header" style="background-color: #eaf2f5; color: #999999; display: block; white-space: pre">  Added: README.rdoc (+3 -0) 100644</span>
+<pre style="border: 0; font-family: Consolas, Menlo, &quot;Liberation Mono&quot;, Courier, monospace; line-height: 1.2; margin: 0; padding: 0.5em; white-space: normal; width: auto"><span class="diff-header" style="background-color: #eaf2f5; color: #999999; display: block; white-space: pre">  Added: README.rdoc (+3 -0) 100644</span>
 <span class="diff-header-mark" style="background-color: #eaf2f5; color: #999999; display: block; white-space: pre">===================================================================</span>
 </pre>
             </td>
@@ -75,21 +75,21 @@ Content-Transfer-Encoding: 8bit
         <tbody>
           <tr>
             <th class="diff-line-number" style="border: 1px solid #aaa">
-<pre style="border: 0; font-family: Consolas, Menlo, &quot;Liberation Mono&quot;, Courier, monospace; line-height: 1.2; margin: 0; padding: 0.5em; white-space: normal"><span class="diff-line-number-hunk-header" style="display: block; white-space: pre"><a href="https://github.com/clear-code/git-utils/commit/6e27d214c168339b8f288f33e12cf44ba03b5fc4#L0L-1">...</a></span>
+<pre style="border: 0; font-family: Consolas, Menlo, &quot;Liberation Mono&quot;, Courier, monospace; line-height: 1.2; margin: 0; padding: 0.5em; white-space: normal; width: auto"><span class="diff-line-number-hunk-header" style="display: block; white-space: pre"><a href="https://github.com/clear-code/git-utils/commit/6e27d214c168339b8f288f33e12cf44ba03b5fc4#L0L-1">...</a></span>
 <span class="diff-line-number-nothing" style="display: block; white-space: pre">&nbsp;</span>
 <span class="diff-line-number-nothing" style="display: block; white-space: pre">&nbsp;</span>
 <span class="diff-line-number-nothing" style="display: block; white-space: pre">&nbsp;</span>
 </pre>
             </th>
             <th class="diff-line-number" style="border: 1px solid #aaa">
-<pre style="border: 0; font-family: Consolas, Menlo, &quot;Liberation Mono&quot;, Courier, monospace; line-height: 1.2; margin: 0; padding: 0.5em; white-space: normal"><span class="diff-line-number-hunk-header" style="display: block; white-space: pre"><a href="https://github.com/clear-code/git-utils/commit/6e27d214c168339b8f288f33e12cf44ba03b5fc4#L0R0">...</a></span>
+<pre style="border: 0; font-family: Consolas, Menlo, &quot;Liberation Mono&quot;, Courier, monospace; line-height: 1.2; margin: 0; padding: 0.5em; white-space: normal; width: auto"><span class="diff-line-number-hunk-header" style="display: block; white-space: pre"><a href="https://github.com/clear-code/git-utils/commit/6e27d214c168339b8f288f33e12cf44ba03b5fc4#L0R0">...</a></span>
 <span class="diff-line-number-added" style="background-color: #aaffaa; color: #000000; display: block; white-space: pre"><a href="https://github.com/clear-code/git-utils/commit/6e27d214c168339b8f288f33e12cf44ba03b5fc4#L0R1">1</a></span>
 <span class="diff-line-number-added" style="background-color: #aaffaa; color: #000000; display: block; white-space: pre"><a href="https://github.com/clear-code/git-utils/commit/6e27d214c168339b8f288f33e12cf44ba03b5fc4#L0R2">2</a></span>
 <span class="diff-line-number-added" style="background-color: #aaffaa; color: #000000; display: block; white-space: pre"><a href="https://github.com/clear-code/git-utils/commit/6e27d214c168339b8f288f33e12cf44ba03b5fc4#L0R3">3</a></span>
 </pre>
             </th>
             <td class="diff-content" style="border: 1px solid #aaa">
-<pre style="border: 0; font-family: Consolas, Menlo, &quot;Liberation Mono&quot;, Courier, monospace; line-height: 1.2; margin: 0; padding: 0.5em; white-space: normal"><span class="diff-hunk-header" style="background-color: #eaf2f5; color: #999999; display: block; white-space: pre">@@ -0,0 +1,3 @@</span>
+<pre style="border: 0; font-family: Consolas, Menlo, &quot;Liberation Mono&quot;, Courier, monospace; line-height: 1.2; margin: 0; padding: 0.5em; white-space: normal; width: auto"><span class="diff-hunk-header" style="background-color: #eaf2f5; color: #999999; display: block; white-space: pre">@@ -0,0 +1,3 @@</span>
 <span class="diff-added" style="background-color: #aaffaa; color: #000000; display: block; white-space: pre">+= README</span>
 <span class="diff-added" style="background-color: #aaffaa; color: #000000; display: block; white-space: pre">+</span>
 <span class="diff-added" style="background-color: #aaffaa; color: #000000; display: block; white-space: pre">+git-utils is ...</span>
