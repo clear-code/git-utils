@@ -1438,7 +1438,7 @@ EOB
       body << "\n"
       body << "New Push:\n"
       body << "\n"
-      body << "  Log:\n"
+      body << "  Message:\n"
       log.rstrip.each_line do |line|
         body << "    #{line}"
       end
@@ -2083,7 +2083,7 @@ EOB
 <%   end %>
 
 <% end %>
-  Log:
+  Message:
 <% @info.summary.rstrip.each_line do |line| %>
     <%= line.rstrip %>
 <% end %>
