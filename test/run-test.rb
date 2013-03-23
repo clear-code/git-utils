@@ -22,9 +22,7 @@ top_dir = File.expand_path(File.join(File.dirname(__FILE__), ".."))
 test_dir = File.dirname(__FILE__)
 
 require "rubygems"
-gem "test-unit"
-gem "test-unit-rr"
-require "test/unit"
+require "test-unit"
 require "test/unit/rr"
 require "tempfile"
 require "nkf"
