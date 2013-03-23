@@ -989,7 +989,7 @@ module HookModeTest
     end
 
     def read_from_fixture_directory(path)
-      content = IO.read(File.join(test_directory, "fixtures", path))
+      content = IO.read(File.join(test_directory, "fixture", path))
       content.force_encoding("ASCII-8BIT") if content.respond_to?(:force_encoding)
       content
     end
