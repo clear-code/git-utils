@@ -1406,10 +1406,12 @@ EOB
     end
 
     def headers
-      [ "X-Git-OldRev: #{old_revision}",
+      [
+        "X-Git-OldRev: #{old_revision}",
         "X-Git-NewRev: #{new_revision}",
         "X-Git-Refname: #{reference}",
-        "X-Git-Reftype: #{REFERENCE_TYPE[reference_type]}" ]
+        "X-Git-Reftype: #{REFERENCE_TYPE[reference_type]}",
+      ]
     end
 
     def branch_changed?
@@ -1516,11 +1518,13 @@ EOB
     end
 
     def headers
-      [ "X-Git-Author: #{@author_name}",
+      [
+        "X-Git-Author: #{@author_name}",
         "X-Git-Revision: #{@revision}",
         # "X-Git-Repository: #{path}",
         "X-Git-Repository: XXX",
-        "X-Git-Commit-Id: #{@revision}" ]
+        "X-Git-Commit-Id: #{@revision}",
+      ]
     end
 
     def format_mail_subject
