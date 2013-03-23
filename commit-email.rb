@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2009  Ryo Onodera <onodera@clear-code.com>
-# Copyright (C) 2012  Kouhei Sutou <kou@clear-code.com>
+# Copyright (C) 2012-2013  Kouhei Sutou <kou@clear-code.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1359,6 +1359,16 @@ EOB
   end
 
   class Info
+    class << self
+      def host_name
+        @@host_name ||= Socket.gethostbyname(Socket.gethostname).first
+      end
+
+      def host_name=(name)
+        @@host_name = name
+      end
+    end
+
     def git(command, &block)
       @mailer.git(command, &block)
     end
@@ -1405,12 +1415,17 @@ EOB
       @new_revision
     end
 
+    def message_id
+      "<#{old_revision}.#{new_revision}@#{self.class.host_name}>"
+    end
+
     def headers
       [
         "X-Git-OldRev: #{old_revision}",
         "X-Git-NewRev: #{new_revision}",
         "X-Git-Refname: #{reference}",
         "X-Git-Reftype: #{REFERENCE_TYPE[reference_type]}",
+        "Message-ID: #{message_id}",
       ]
     end
 
@@ -1517,6 +1532,10 @@ EOB
       @parent_revisions.length >= 2
     end
 
+    def message_id
+      "<#{@revision}@#{self.class.host_name}>"
+    end
+
     def headers
       [
         "X-Git-Author: #{@author_name}",
@@ -1524,6 +1543,7 @@ EOB
         # "X-Git-Repository: #{path}",
         "X-Git-Repository: XXX",
         "X-Git-Commit-Id: #{@revision}",
+        "Message-ID: #{message_id}"
       ]
     end
 

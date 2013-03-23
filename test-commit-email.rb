@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2009  Ryo Onodera <onodera@clear-code.com>
-# Copyright (C) 2011-2012  Kouhei Sutou <kou@clear-code.com>
+# Copyright (C) 2011-2013  Kouhei Sutou <kou@clear-code.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,6 +32,8 @@ require "nkf"
 require "./commit-email"
 
 ENV["TZ"] = "Asia/Tokyo"
+
+GitCommitMailer::Info.host_name = "git-utils.example.com"
 
 module Constants
   DEFAULT_FILE = 'sample_file'
