@@ -1,4 +1,3 @@
-#!/usr/bin/env ruby
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2009  Ryo Onodera <onodera@clear-code.com>
@@ -16,24 +15,6 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-$VERBOSE = true
-
-ENV["TEST_UNIT_MAX_DIFF_TARGET_STRING_SIZE"] ||= "500000"
-
-require 'rubygems'
-gem 'test-unit'
-gem 'test-unit-rr'
-require 'test/unit'
-require 'test/unit/rr'
-require 'tempfile'
-require "nkf"
-
-require "./commit-email"
-
-ENV["TZ"] = "Asia/Tokyo"
-
-GitCommitMailer::Info.host_name = "git-utils.example.com"
 
 module Constants
   DEFAULT_FILE = 'sample_file'
@@ -1003,8 +984,12 @@ module HookModeTest
       [push_mails, commit_mails]
     end
 
+    def test_directory
+      File.dirname(__FILE__)
+    end
+
     def read_from_fixture_directory(path)
-      content = IO.read(File.join("fixtures", path))
+      content = IO.read(File.join(test_directory, "fixtures", path))
       content.force_encoding("ASCII-8BIT") if content.respond_to?(:force_encoding)
       content
     end
