@@ -21,7 +21,7 @@
 # change detection:
 #   http://git.kernel.org/?p=git/git.git;a=blob;f=contrib/hooks/post-receive-email
 
-require 'English'
+require "English"
 require "optparse"
 require "ostruct"
 require "time"
