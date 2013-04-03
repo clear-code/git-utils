@@ -649,8 +649,9 @@ class GitCommitMailer
   end
 
   def make_push_message(reference_type, change_type)
-    raise "unexpected change_type" if not [:update, :create, :delete].
-                                            index(change_type)
+    unless [:update, :create, :delete].include?(change_type)
+      raise "unexpected change_type"
+    end
 
     if reference_type == :branch
       if change_type == :update
