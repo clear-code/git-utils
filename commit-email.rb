@@ -653,7 +653,8 @@ class GitCommitMailer
       raise "unexpected change_type"
     end
 
-    if reference_type == :branch
+    case reference_type
+    when :branch
       if change_type == :update
         process_update_branch
       elsif change_type == :create
@@ -661,7 +662,7 @@ class GitCommitMailer
       elsif change_type == :delete
         process_delete_branch
       end
-    elsif reference_type == :annotated_tag
+    when :annotated_tag
       if change_type == :update
         process_update_annotated_tag
       elsif change_type == :create
@@ -669,7 +670,7 @@ class GitCommitMailer
       elsif change_type == :delete
         process_delete_annotated_tag
       end
-    elsif reference_type == :unannotated_tag
+    when :unannotated_tag
       if change_type == :update
         process_update_unannotated_tag
       elsif change_type == :create
