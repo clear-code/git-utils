@@ -1959,7 +1959,9 @@ EOB
       end
 
       def headers
-        unless @is_binary
+        if @is_binary
+          "(Binary files differ)\n"
+        else
           if (@type == :renamed || @type == :copied) && @similarity_index == 100
             return ""
           end
@@ -1972,8 +1974,6 @@ EOB
           else
             from_header + to_header
           end
-        else
-          "(Binary files differ)\n"
         end
       end
 
