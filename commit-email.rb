@@ -1225,17 +1225,14 @@ EOB
   end
 
   def name
-    if @name
-      @name
-    else
-      repository = File.expand_path(@repository)
-      loop do
-        basename = File.basename(repository, ".git")
-        if basename != ".git"
-          return basename
-        else
-          repository = File.dirname(repository)
-        end
+    return @name if @name
+    repository = File.expand_path(@repository)
+    loop do
+      basename = File.basename(repository, ".git")
+      if basename != ".git"
+        return basename
+      else
+        repository = File.dirname(repository)
       end
     end
   end
