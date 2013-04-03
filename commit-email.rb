@@ -1703,11 +1703,11 @@ EOB
 
     class FileDiff
       CHANGED_TYPE = {
-        :added => "Added",
+        :added    => "Added",
         :modified => "Modified",
-        :deleted => "Deleted",
-        :copied => "Copied",
-        :renamed => "Renamed",
+        :deleted  => "Deleted",
+        :copied   => "Copied",
+        :renamed  => "Renamed",
       }
 
       attr_reader :changes
