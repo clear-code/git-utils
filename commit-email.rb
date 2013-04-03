@@ -1882,8 +1882,7 @@ EOB
         @added_line = @deleted_line = 0
         from_offset = 0
         to_offset = 0
-        line = lines.shift
-        while line != nil
+        lines.each do |line|
           case line
           when /\A@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)?/
             from_offset = $1.to_i
@@ -1904,7 +1903,6 @@ EOB
           end
 
           @body << line + "\n"
-          line = lines.shift
         end
       end
 
