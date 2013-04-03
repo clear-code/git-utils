@@ -964,7 +964,7 @@ EOF
   end
 
   def process_create_unannotated_tag
-    raise 'unexpected' unless detect_object_type(@new_revision) == "commit"
+    raise "unexpected" unless detect_object_type(@new_revision) == "commit"
 
     "Unannotated tag (#{@reference}) is created.\n" +
     "        at  #{@new_revision} (commit)\n\n" +
@@ -972,7 +972,7 @@ EOF
   end
 
   def process_update_unannotated_tag
-    raise 'unexpected' unless detect_object_type(@new_revision) == "commit"
+    raise "unexpected" unless detect_object_type(@new_revision) == "commit"
     raise "unexpected" unless detect_object_type(@old_revision) == "commit"
 
     "Unannotated tag (#{@reference}) is updated.\n" +
@@ -982,7 +982,7 @@ EOF
   end
 
   def process_delete_unannotated_tag
-    raise 'unexpected' unless detect_object_type(@old_revision) == "commit"
+    raise "unexpected" unless detect_object_type(@old_revision) == "commit"
 
     "Unannotated tag (#{@reference}) is deleted.\n" +
     "       was  #{@old_revision} (commit)\n\n" +
