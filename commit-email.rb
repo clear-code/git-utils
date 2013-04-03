@@ -563,7 +563,7 @@ class GitCommitMailer
     references = Hash.new("0" * 40)
     git("rev-parse --symbolic-full-name --tags --remotes").lines.each do |reference|
       reference.rstrip!
-      next if reference =~ /\Arefs\/remotes/ and reference !~ /\Arefs\/remotes\/origin/
+      next if reference =~ %r!\Arefs/remotes! and reference !~ %r!\Arefs/remotes/origin!
       references[reference] = git("rev-parse %s" % GitCommitMailer.shell_escape(reference)).rstrip
     end
     references
