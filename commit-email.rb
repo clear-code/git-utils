@@ -1012,13 +1012,14 @@ EOF
       descendant_revision = merge_commit.revision
 
       until base_revisions.index(revision)
-        unless commit_info = @commit_info_map[revision]
+        commit_info = @commit_info_map[revision]
+        if commit_info
+          commit_info.reference = @reference
+        else
           commit_info = create_commit_info(@reference, revision)
           i = @commit_infos.index(@commit_info_map[descendant_revision])
           @commit_infos.insert(i, commit_info)
           @commit_info_map[revision] = commit_info
-        else
-          commit_info.reference = @reference
         end
 
         merge_message = "Merged #{merge_commit.short_revision}: #{merge_commit.subject}"
