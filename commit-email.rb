@@ -972,10 +972,10 @@ EOF
   end
 
   def find_branch_name_from_its_descendant_revision(revision)
-    until name.sub(/([~^][0-9]+)*\z/, '') == name
+    begin
       name = git("name-rev --name-only --refs refs/heads/* #{revision}").strip
       revision = parent_commit(revision)
-    end
+    end until name.sub(/([~^][0-9]+)*\z/, '') == name
     name
   end
 
