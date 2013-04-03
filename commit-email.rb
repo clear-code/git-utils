@@ -1017,8 +1017,8 @@ EOF
           commit_info.reference = @reference
         else
           commit_info = create_commit_info(@reference, revision)
-          i = @commit_infos.index(@commit_info_map[descendant_revision])
-          @commit_infos.insert(i, commit_info)
+          index = @commit_infos.index(@commit_info_map[descendant_revision])
+          @commit_infos.insert(index, commit_info)
           @commit_info_map[revision] = commit_info
         end
 
