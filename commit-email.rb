@@ -655,27 +655,30 @@ class GitCommitMailer
 
     case reference_type
     when :branch
-      if change_type == :update
+      case change_type
+      when :update
         process_update_branch
-      elsif change_type == :create
+      when :create
         process_create_branch
-      elsif change_type == :delete
+      when :delete
         process_delete_branch
       end
     when :annotated_tag
-      if change_type == :update
+      case change_type
+      when :update
         process_update_annotated_tag
-      elsif change_type == :create
+      when :create
         process_create_annotated_tag
-      elsif change_type == :delete
+      when :delete
         process_delete_annotated_tag
       end
     when :unannotated_tag
-      if change_type == :update
+      case change_type
+      when :update
         process_update_unannotated_tag
-      elsif change_type == :create
+      when :create
         process_create_unannotated_tag
-      elsif change_type == :delete
+      when :delete
         process_delete_unannotated_tag
       end
     else
