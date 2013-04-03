@@ -964,7 +964,7 @@ EOF
   end
 
   def process_create_unannotated_tag
-    raise 'unexpected' if detect_object_type(@new_revision) != "commit"
+    raise 'unexpected' unless detect_object_type(@new_revision) == "commit"
 
     "Unannotated tag (#{@reference}) is created.\n" +
     "        at  #{@new_revision} (commit)\n\n" +
