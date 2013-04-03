@@ -1959,22 +1959,22 @@ EOB
       end
 
       def headers
-         unless @is_binary
-           if (@type == :renamed || @type == :copied) && @similarity_index == 100
-             return ""
-           end
+        unless @is_binary
+          if (@type == :renamed || @type == :copied) && @similarity_index == 100
+            return ""
+          end
 
-           case @type
-           when :added
-             "--- /dev/null\n" + to_header
-           when :deleted
-             from_header + "+++ /dev/null\n"
-           else
-             from_header + to_header
-           end
-         else
-           "(Binary files differ)\n"
-         end
+          case @type
+          when :added
+            "--- /dev/null\n" + to_header
+          when :deleted
+            from_header + "+++ /dev/null\n"
+          else
+            from_header + to_header
+          end
+        else
+          "(Binary files differ)\n"
+        end
       end
 
       def git_command
