@@ -656,37 +656,8 @@ class GitCommitMailer
       raise "unexpected change_type"
     end
 
-    case reference_type
-    when :branch
-      case change_type
-      when :update
-        process_update_branch
-      when :create
-        process_create_branch
-      when :delete
-        process_delete_branch
-      end
-    when :annotated_tag
-      case change_type
-      when :update
-        process_update_annotated_tag
-      when :create
-        process_create_annotated_tag
-      when :delete
-        process_delete_annotated_tag
-      end
-    when :unannotated_tag
-      case change_type
-      when :update
-        process_update_unannotated_tag
-      when :create
-        process_create_unannotated_tag
-      when :delete
-        process_delete_unannotated_tag
-      end
-    else
-      raise "unexpected reference_type"
-    end
+    method_name = "process_#{change_type}_#{reference_type}"
+    __send__(method_name)
   end
 
   def collect_push_information
