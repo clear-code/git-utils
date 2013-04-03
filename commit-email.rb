@@ -972,8 +972,8 @@ EOF
   end
 
   def process_update_unannotated_tag
-    raise 'unexpected' if detect_object_type(@new_revision) != "commit" or
-                          detect_object_type(@old_revision) != "commit"
+    raise 'unexpected' unless detect_object_type(@new_revision) == "commit"
+    raise "unexpected" unless detect_object_type(@old_revision) == "commit"
 
     "Unannotated tag (#{@reference}) is updated.\n" +
     "        to  #{@new_revision} (commit)\n" +
