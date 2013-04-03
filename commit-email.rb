@@ -63,14 +63,14 @@ class GitCommitMailer
     end
 
     def execute(command, working_directory=nil, &block)
-      if ENV['DEBUG']
-        suppress_stderr = ''
+      if ENV["DEBUG"]
+        suppress_stderr = ""
       else
-        suppress_stderr = ' 2> /dev/null'
+        suppress_stderr = " 2> /dev/null"
       end
 
       script = "#{command} #{suppress_stderr}"
-      puts script if ENV['DEBUG']
+      puts script if ENV["DEBUG"]
       result = nil
       with_working_direcotry(working_directory) do
         if block_given?
