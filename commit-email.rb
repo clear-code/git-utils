@@ -135,7 +135,7 @@ class GitCommitMailer
 
     def extract_to_addresses(mail)
       to_value = nil
-      if /^To:(.*\r?\n(?:^\s+.*)*)/n =~ mail
+      if /^To:(.*\r?\n(?:^\s+.*)*)/ni =~ mail
         to_value = $1
       else
         raise "'To:' header is not found in mail:\n#{mail}"
