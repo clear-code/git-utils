@@ -703,11 +703,11 @@ class GitCommitMailer
   end
 
   def process_create_branch
-    message = "Branch (#@reference) is created.\n"
+    message = "Branch (#{@reference}) is created.\n"
     commits = []
 
     commit_list = []
-    git("rev-list #@new_revision #{excluded_revisions}").lines.
+    git("rev-list #{@new_revision} #{excluded_revisions}").lines.
     reverse_each do |revision|
       revision.strip!
       short_revision = GitCommitMailer.short_revision(revision)
@@ -762,7 +762,7 @@ EOF
     fast_forward = false
     revision_found = false
     commits_summary = []
-    git("rev-list #@new_revision..#@old_revision").lines.each do |revision|
+    git("rev-list #{@new_revision}..#{@old_revision}").lines.each do |revision|
       revision_found ||= true
       revision.strip!
       short_revision = GitCommitMailer.short_revision(revision)
@@ -784,7 +784,7 @@ EOF
     # full detail of the change from rolling back the old revision to
     # the base revision and then forward to the new revision
     commits_summary = []
-    git("rev-list #@old_revision..#@new_revision").lines.each do |revision|
+    git("rev-list #{@old_revision}..#{@new_revision}").lines.each do |revision|
       revision.strip!
       short_revision = GitCommitMailer.short_revision(revision)
 
@@ -807,7 +807,7 @@ EOF
 
     # Find the common ancestor of the old and new revisions and
     # compare it with new_revision
-    baserev = git("merge-base #@old_revision #@new_revision").strip
+    baserev = git("merge-base #{@old_revision} #{@new_revision}").strip
     rewind_only = false
     if baserev == new_revision
       explanation = explain_rewind
@@ -820,7 +820,7 @@ EOF
 
   def collect_new_commits
     commits = []
-    git("rev-list #@old_revision..#@new_revision #{excluded_revisions}").lines.
+    git("rev-list #{@old_revision}..#{@new_revision} #{excluded_revisions}").lines.
     reverse_each do |revision|
       commits << revision.strip
     end
@@ -828,7 +828,7 @@ EOF
   end
 
   def process_update_branch
-    message = "Branch (#@reference) is updated.\n"
+    message = "Branch (#{@reference}) is updated.\n"
 
     fast_forward, backward_commits_summary = process_backward_update
     forward_commits_summary = process_forward_update
@@ -855,30 +855,30 @@ EOF
   end
 
   def process_delete_branch
-    "Branch (#@reference) is deleted.\n" +
-    "       was  #@old_revision\n\n" +
-    git("show -s --pretty=oneline #@old_revision")
+    "Branch (#{@reference}) is deleted.\n" +
+    "       was  #{@old_revision}\n\n" +
+    git("show -s --pretty=oneline #{@old_revision}")
   end
 
   def process_create_annotated_tag
-    "Annotated tag (#@reference) is created.\n" +
-    "        at  #@new_revision (tag)\n" +
+    "Annotated tag (#{@reference}) is created.\n" +
+    "        at  #{@new_revision} (tag)\n" +
     process_annotated_tag
   end
 
   def process_update_annotated_tag
-    "Annotated tag (#@reference) is updated.\n" +
-    "        to  #@new_revision (tag)\n" +
-    "      from  #@old_revision (which is now obsolete)\n" +
+    "Annotated tag (#{@reference}) is updated.\n" +
+    "        to  #{@new_revision} (tag)\n" +
+    "      from  #{@old_revision} (which is now obsolete)\n" +
     process_annotated_tag
   end
 
   def process_delete_annotated_tag
-    "Annotated tag (#@reference) is deleted.\n" +
-    "       was  #@old_revision\n\n" +
-    git("show -s --pretty=oneline #@old_revision").sub(/^Tagger.*$/, '').
-                                                   sub(/^Date.*$/, '').
-                                                   sub(/\n{2,}/, "\n\n")
+    "Annotated tag (#{@reference}) is deleted.\n" +
+    "       was  #{@old_revision}\n\n" +
+    git("show -s --pretty=oneline #{@old_revision}").sub(/^Tagger.*$/, '').
+                                                     sub(/^Date.*$/, '').
+                                                     sub(/\n{2,}/, "\n\n")
   end
 
   def short_log(revision_specifier)
@@ -893,7 +893,7 @@ EOF
   def short_log_from_previous_tag(previous_tag)
     if previous_tag
       # Show changes since the previous release
-      short_log("#{previous_tag}..#@new_revision")
+      short_log("#{previous_tag}..#{@new_revision}")
     else
       # No previous tag, show all the changes since time began
       short_log(@new_revision)
@@ -923,8 +923,8 @@ EOF
 
   def annotated_tag_content
     message = ''
-    tagger = git("for-each-ref --format='%(taggername)' #@reference").strip
-    tagged = git("for-each-ref --format='%(taggerdate:rfc2822)' #@reference").strip
+    tagger = git("for-each-ref --format='%(taggername)' #{@reference}").strip
+    tagged = git("for-each-ref --format='%(taggerdate:rfc2822)' #{@reference}").strip
     message << " tagged by  #{tagger}\n"
     message << "        on  #{format_time(Time.rfc2822(tagged))}\n\n"
 
@@ -943,8 +943,8 @@ EOF
   def process_annotated_tag
     message = ''
     # Use git for-each-ref to pull out the individual fields from the tag
-    tag_object = git("for-each-ref --format='%(*objectname)' #@reference").strip
-    tag_type = git("for-each-ref --format='%(*objecttype)' #@reference").strip
+    tag_object = git("for-each-ref --format='%(*objectname)' #{@reference}").strip
+    tag_type = git("for-each-ref --format='%(*objecttype)' #{@reference}").strip
 
     case tag_type
     when "commit"
@@ -965,8 +965,8 @@ EOF
   def process_create_unannotated_tag
     raise 'unexpected' if detect_object_type(@new_revision) != "commit"
 
-    "Unannotated tag (#@reference) is created.\n" +
-    "        at  #@new_revision (commit)\n\n" +
+    "Unannotated tag (#{@reference}) is created.\n" +
+    "        at  #{@new_revision} (commit)\n\n" +
     process_unannotated_tag(@new_revision)
   end
 
@@ -974,17 +974,17 @@ EOF
     raise 'unexpected' if detect_object_type(@new_revision) != "commit" or
                           detect_object_type(@old_revision) != "commit"
 
-    "Unannotated tag (#@reference) is updated.\n" +
-    "        to  #@new_revision (commit)\n" +
-    "      from  #@old_revision (commit)\n\n" +
+    "Unannotated tag (#{@reference}) is updated.\n" +
+    "        to  #{@new_revision} (commit)\n" +
+    "      from  #{@old_revision} (commit)\n\n" +
     process_unannotated_tag(@new_revision)
   end
 
   def process_delete_unannotated_tag
     raise 'unexpected' unless detect_object_type(@old_revision) == "commit"
 
-    "Unannotated tag (#@reference) is deleted.\n" +
-    "       was  #@old_revision (commit)\n\n" +
+    "Unannotated tag (#{@reference}) is deleted.\n" +
+    "       was  #{@old_revision} (commit)\n\n" +
     process_unannotated_tag(@old_revision)
   end
 
