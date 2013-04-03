@@ -1620,13 +1620,13 @@ EOB
       output = git("log -n 1 --pretty=format:'' -C -p #{@revision}")
       output = force_utf8(output)
       output = output.lines.to_a
-      output.shift #removes the first empty line
+      output.shift # removes the first empty line
 
       @diffs = []
       lines = []
 
       line = output.shift
-      lines << line.chomp if line #take out the very first 'diff --git' header
+      lines << line.chomp if line # take out the very first 'diff --git' header
       while line = output.shift
         line.chomp!
         case line
@@ -1638,7 +1638,7 @@ EOB
         end
       end
 
-      #create the last diff terminated by the EOF
+      # create the last diff terminated by the EOF
       @diffs << create_file_diff(lines) if lines.length > 0
     end
 
@@ -1782,7 +1782,7 @@ EOB
           @old_revision = '0' * 40
           @old_date = nil
         end
-        #@old_revision = @mailer.parent_commit(revision)
+        # @old_revision = @mailer.parent_commit(revision)
       end
 
       def parse_ordinary_change(line)
