@@ -9,7 +9,7 @@ Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: 8bit
 From: User Name <user@example.com>
 To: to@example
-Subject: sample-repo [master] changed a file mode
+Subject: sample-repo:cfadf1b [master] changed a file mode
 Date: Wed, 13 Jan 2010 15:15:44 +0900
 
 User Name	2010-01-13 15:15:44 +0900 (Wed, 13 Jan 2010)
