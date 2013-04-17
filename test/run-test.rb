@@ -16,6 +16,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+system("git config --list")
+
 $VERBOSE = true
 
 top_dir = File.expand_path(File.join(File.dirname(__FILE__), ".."))
