@@ -350,7 +350,7 @@ module GitCommitMailerTagTest
     git "tag -a -m \'sample tag\' v0.0.1"
     git "push --tags"
     git "tag -a -f -m \'sample tag\' v0.0.1"
-    git "push --tags"
+    git "push --tags --force"
 
     push_mails, commit_mails = get_mails_of_last_push
 
@@ -389,7 +389,7 @@ module GitCommitMailerTagTest
     append_line(DEFAULT_FILE, 'a line')
     git "commit -m 'new commit' -a"
     git "tag -f v0.0.1"
-    git "push --tags"
+    git "push --tags --force"
 
     push_mails, commit_mails = get_mails_of_last_push
 
