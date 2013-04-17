@@ -828,16 +828,9 @@ module HookModeTest
       git "config --add push.default current"
     end
 
-    def temporary_name
-      time = Time.now.strftime("%Y%m%d")
-      path = "git-#{time}-#{format('%05d', $$)}-" +
-             "#{10.times.collect{rand(36).to_s(36)}.join}"
-    end
-
     def make_test_directory
-      while File.exist?(@test_directory = Dir.tmpdir + "/" + temporary_name + "/")
-      end
-      FileUtils.mkdir @test_directory
+      @test_directory = File.join(File.dirname(__FILE__), "tmp") + "/"
+      FileUtils.mkdir_p(@test_directory)
     end
 
     def create_repositories
@@ -848,7 +841,7 @@ module HookModeTest
 
     def delete_repositories
       return if ENV['DEBUG'] == 'yes'
-      FileUtils.rm_r @test_directory
+      FileUtils.rm_rf(@test_directory)
     end
 
     def save_environment_variables(names)
@@ -1035,12 +1028,10 @@ module HookModeTest
       expected = expected_rss(expected_rss_file_path)
       actual = IO.read(actual_rss_file_path) + "\n"
 
-      channel_regexp = '<channel rdf:about="file:///tmp/git-[0-9]{8}-[0-9]{5}-' +
-                       '[0-9a-z]{10}/origin/">'
       [expected, actual].each do |rss|
         rss.sub!(/<rdf:RDF(([ \n]|xmlns[^ \n]*)*)>/, '<rdf:RDF>')
         rss.sub!(/<dc:date>.*?<\/dc:date>/, '<dc:date/>')
-        rss.sub!(/#{channel_regexp}/,
+        rss.sub!(/<channel rdf:about="file:.+\/origin\/">/,
                  '<channel rdf:about="file:///tmp/.../origin/">')
       end
       assert_equal(expected, actual)
