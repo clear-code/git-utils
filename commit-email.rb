@@ -1216,8 +1216,9 @@ EOB
   end
 
   def make_header(body_encoding, body_encoding_bit, to, info, multipart_body_p)
-    subject = "#{(name + ' ') if name}" +
-              mime_encoded_word("#{info.format_mail_subject}")
+    subject = ""
+    subject << "#{name} " if name
+    subject << mime_encoded_word("#{info.format_mail_subject}")
     headers = []
     headers += info.headers
     headers << "X-Mailer: #{self.class.x_mailer}"
