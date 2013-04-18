@@ -1217,7 +1217,7 @@ EOB
 
   def make_header(body_encoding, body_encoding_bit, to, info, multipart_body_p)
     subject = ""
-    subject << "#{name}:" if name
+    subject << "#{name}@" if name
     subject << "#{info.short_revision} "
     subject << mime_encoded_word("#{info.format_mail_subject}")
     headers = []

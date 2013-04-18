@@ -9,7 +9,7 @@ Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: 8bit
 From: User Name <user@example.com>
 To: to@example
-Subject: sample-repo:cf105ee (push) branch (master) is created.
+Subject: sample-repo@cf105ee (push) branch (master) is created.
 Date: Wed, 13 Jan 2010 15:15:42 +0900
 Sender: sender@example.com
 

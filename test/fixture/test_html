@@ -9,7 +9,7 @@ Content-Type: multipart/alternative;
  boundary=9c155171616a69b0feb5eb8bfc10502dfa0444ba
 From: User Name <user@example.com>
 To: to@example
-Subject: sample-repo:6e27d21 [master] Add README
+Subject: sample-repo@6e27d21 [master] Add README
 Date: Wed, 13 Jan 2010 15:15:43 +0900
 
 --9c155171616a69b0feb5eb8bfc10502dfa0444ba
