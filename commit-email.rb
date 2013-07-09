@@ -215,6 +215,7 @@ class GitCommitMailer
       mailer.git_bin_path = options.git_bin_path
       mailer.track_remote = options.track_remote
       mailer.verbose = options.verbose
+      mailer.sleep_per_email = options.sleep_per_email
     end
 
     def parse_size(size)
@@ -261,6 +262,7 @@ class GitCommitMailer
       options.git_bin_path = "git"
       options.track_remote = false
       options.verbose = false
+      options.sleep_per_email = 0
       options
     end
 
@@ -381,6 +383,11 @@ class GitCommitMailer
                 "Use SENDER as a sender address") do |sender|
         options.sender = sender
       end
+
+      parser.on("--sleep-per-email=SECONDS", FLOAT,
+                "Sleep SECONDS seconds after each email sent") do |seconds|
+        options.send_per_email = seconds
+      end
     end
 
     def add_output_options(parser, options)
@@ -485,6 +492,7 @@ class GitCommitMailer
   attr_accessor :repository_browser
   attr_accessor :github_base_url, :github_user, :github_repository
   attr_writer :name, :verbose
+  attr_accessor :sleep_per_email
 
   def initialize(to)
     @to = to
@@ -1130,6 +1138,7 @@ EOF
     from = sender || GitCommitMailer.extract_email_address_from_mail(mail)
     to = GitCommitMailer.extract_to_addresses(mail)
     GitCommitMailer.send_mail(server, port, from, to, mail)
+    sleep(@sleep_per_email)
   end
 
   def output_rss
