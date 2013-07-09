@@ -1012,6 +1012,7 @@ EOF
         merge_message = "Merged #{merge_commit.short_revision}: #{merge_commit.subject}"
         if not is_traversing_first_parent and not commit_info.merge_status.index(merge_message)
           commit_info.merge_status << merge_message
+          commit_info.merge_revisions << merge_commit.revision
         end
 
         if commit_info.merge?
@@ -1489,6 +1490,7 @@ EOB
     attr_reader :subject, :author_name, :author_email, :date, :summary
     attr_accessor :merge_status
     attr_writer :reference
+    attr_reader :merge_revisions
     def initialize(mailer, reference, revision)
       @mailer = mailer
       @reference = reference
@@ -1507,6 +1509,7 @@ EOB
       parse_diff
 
       @merge_status = []
+      @merge_revisions = []
     end
 
     def first_parent
@@ -1536,8 +1539,19 @@ EOB
         # "X-Git-Repository: #{path}",
         "X-Git-Repository: XXX",
         "X-Git-Commit-Id: #{@revision}",
-        "Message-ID: #{message_id}"
+        "Message-ID: #{message_id}",
+        *related_mail_headers,
       ]
+    end
+
+    def related_mail_headers
+      headers = []
+      @merge_revisions.each do |merge_revision|
+        merge_message_id = "<#{merge_revision}@#{self.class.host_name}>"
+        headers << "References: #{merge_message_id}"
+        headers << "In-Reply-To: #{merge_message_id}"
+      end
+      headers
     end
 
     def format_mail_subject
