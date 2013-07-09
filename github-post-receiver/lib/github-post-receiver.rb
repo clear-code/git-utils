@@ -265,6 +265,7 @@ class GitHubPostReceiver
       add_option(options, "--from", from)
       add_option(options, "--from-domain", from_domain)
       add_option(options, "--sender", sender)
+      add_option(options, "--sleep-per-mail", sleep_per_mail)
       options << "--send-per-to" if send_per_to?
       options << "--add-html" if add_html?
       error_to.each do |_error_to|
@@ -335,6 +336,10 @@ class GitHubPostReceiver
 
     def sender
       @sender ||= @options[:sender]
+    end
+
+    def sleep_per_mail
+      @sleep_per_mail ||= @options[:sleep_per_mail]
     end
 
     def error_to
