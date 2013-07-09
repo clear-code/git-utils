@@ -370,6 +370,7 @@ class GitHubPostReceiver
 
     def add_option(options, name, value)
       return if value.nil?
+      value = value.to_s
       return if value.empty?
       options.concat([name, value])
     end
