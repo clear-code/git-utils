@@ -3,4 +3,4 @@ rvm:
   - 2.0.0
 notifications:
   recipients:
-    - travis@clear-code.com
+    - commit@clear-code.com
