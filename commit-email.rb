@@ -254,6 +254,7 @@ class GitCommitMailer
       options.rss_path = nil
       options.rss_uri = nil
       options.show_path = false
+
       options.send_push_mail = false
       options.name = nil
       options.server = "localhost"
@@ -384,7 +385,7 @@ class GitCommitMailer
         options.sender = sender
       end
 
-      parser.on("--sleep-per-mail=SECONDS", FLOAT,
+      parser.on("--sleep-per-mail=SECONDS", Float,
                 "Sleep SECONDS seconds after each email sent") do |seconds|
         options.send_per_mail = seconds
       end
