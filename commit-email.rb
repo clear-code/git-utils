@@ -1540,7 +1540,7 @@ EOB
         "X-Git-Repository: XXX",
         "X-Git-Commit-Id: #{@revision}",
         "Message-ID: #{message_id}",
-        *related_mail_headers,
+        *related_mail_headers
       ]
     end
 
