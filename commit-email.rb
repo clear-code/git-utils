@@ -1995,14 +1995,18 @@ EOB
           args = [short_old_revision, short_new_revision, "--", @to_file]
         when :renamed
           command = "diff"
-          args = ["-C", "--diff-filter=R",
-                  short_old_revision, short_new_revision, "--",
-                  @from_file, @to_file]
+          args = [
+            "-C", "--diff-filter=R",
+            short_old_revision, short_new_revision, "--",
+            @from_file, @to_file,
+          ]
         when :copied
           command = "diff"
-          args = ["-C", "--diff-filter=C",
-                  short_old_revision, short_new_revision, "--",
-                  @from_file, @to_file]
+          args = [
+            "-C", "--diff-filter=C",
+            short_old_revision, short_new_revision, "--",
+            @from_file, @to_file,
+          ]
         else
           raise "unknown diff type: #{@type}"
         end
