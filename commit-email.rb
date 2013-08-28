@@ -1622,7 +1622,7 @@ EOB
     end
 
     def parse_diff
-      output = git("log -n 1 --pretty=format:'' -C -p #{@revision}")
+      output = git("log -n 1 --pretty=format:'' -C -p --histogram #{@revision}")
       output = force_utf8(output)
       output = output.lines.to_a
       output.shift # removes the first empty line
