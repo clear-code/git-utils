@@ -196,6 +196,7 @@ class GitCommitMailer
       mailer.github_base_url = options.github_base_url
       mailer.github_user = options.github_user
       mailer.github_repository = options.github_repository
+      mailer.gitlab_project_uri = options.gitlab_project_uri
       mailer.send_per_to = options.send_per_to
       mailer.from = options.from
       mailer.from_domain = options.from_domain
@@ -204,7 +205,6 @@ class GitCommitMailer
       mailer.add_html = options.add_html
       mailer.max_size = options.max_size
       mailer.repository_uri = options.repository_uri
-      mailer.homepage = options.homepage
       mailer.rss_path = options.rss_path
       mailer.rss_uri = options.rss_uri
       mailer.show_path = options.show_path
@@ -242,6 +242,7 @@ class GitCommitMailer
       options.github_base_url = "https://github.com"
       options.github_user = nil
       options.github_repository = nil
+      options.gitlab_project_uri = nil
       options.to = []
       options.send_per_to = false
       options.error_to = []
@@ -252,7 +253,6 @@ class GitCommitMailer
       options.add_html = false
       options.max_size = parse_size(DEFAULT_MAX_SIZE)
       options.repository_uri = nil
-      options.homepage = nil
       options.rss_path = nil
       options.rss_uri = nil
       options.show_path = false
@@ -311,10 +311,6 @@ class GitCommitMailer
         options.repository_browser = software
       end
 
-      parser.on("--homepage=URI", "Project home URI. (NONE)") do |uri|
-        options.homepage = uri
-      end
-
       add_github_options(parser, options)
     end
 
@@ -336,6 +332,16 @@ class GitCommitMailer
       parser.on("--github-repository=REPOSITORY",
                 "Use REPOSITORY as the GitHub repository") do |repository|
         options.github_repository = repository
+      end
+    end
+
+    def add_gitlab_options(parser, options)
+      parser.separator ""
+      parser.separator "GitLab related options:"
+
+      parser.on("--gitlab-project-uri=URI",
+                "Use URI as GitLab project URI") do |uri|
+        options.gitlab_project_uri = uri
       end
     end
 
@@ -496,8 +502,9 @@ class GitCommitMailer
   attr_writer :repository, :date, :git_bin_path, :track_remote
   attr_accessor :from_domain, :sender, :max_size, :repository_uri
   attr_accessor :rss_path, :rss_uri, :server, :port
-  attr_accessor :repository_browser, :homepage
+  attr_accessor :repository_browser
   attr_accessor :github_base_url, :github_user, :github_repository
+  attr_accessor :gitlab_project_uri
   attr_writer :name, :verbose
   attr_accessor :sleep_per_mail
 
@@ -2066,9 +2073,9 @@ EOB
           revision = @info.revision
           "#{base_url}/#{user}/#{repository}/commit/#{revision}"
         when :gitlab
-          return nil if @mailer.homepage.nil?
+          return nil if @mailer.gitlab_project_uri.nil?
           revision = @info.revision
-          "#{@mailer.homepage}/commit/#{revision}"
+          "#{@mailer.gitlab_project_uri}/commit/#{revision}"
         else
           nil
         end
