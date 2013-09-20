@@ -2065,6 +2065,10 @@ EOB
           base_url = @mailer.github_base_url
           revision = @info.revision
           "#{base_url}/#{user}/#{repository}/commit/#{revision}"
+        when :gitlab
+          return nil if @mailer.homepage.nil?
+          revision = @info.revision
+          "#{@mailer.homepage}/commit/#{revision}"
         else
           nil
         end
