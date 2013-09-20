@@ -39,7 +39,7 @@ class ReceiverTest < Test::Unit::TestCase
   def test_post_without_parameters
     visit "/", :post
     assert_response("Bad Request")
-    assert_equal("payload parameter is missing", response_body)
+    assert_equal("payload is missing", response_body)
   end
 
   def test_post_with_empty_payload
