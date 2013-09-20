@@ -365,7 +365,11 @@ class GitHubPostReceiver
     end
 
     def repository_uri
-      "#{@payload['repository']['url']}.git"
+      if gitlab_payload?
+        @payload['repository']['url']
+      else
+        "#{@payload['repository']['url']}.git"
+      end
     end
 
     def add_option(options, name, value)
@@ -373,6 +377,10 @@ class GitHubPostReceiver
       value = value.to_s
       return if value.empty?
       options.concat([name, value])
+    end
+
+    def gitlab_payload?
+      not @payload["user_name"].nil?
     end
   end
 end
