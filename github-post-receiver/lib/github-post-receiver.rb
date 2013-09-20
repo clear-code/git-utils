@@ -256,12 +256,22 @@ class GitHubPostReceiver
     end
 
     def send_commit_email(before, after, reference)
+      if gitlab_payload?
+        options = [
+          "--repository-browser", "gitlab",
+          "--repository", mirror_path,
+          "--max-size", "1M"
+        ]
+        homepage = @payload["repository"]["homepage"]
+        add_option(options, "--homepage", homepage)
+      else
       options = ["--repository-browser", "github",
                  "--github-user", @owner_name,
                  "--github-repository", @name,
                  "--repository", mirror_path,
                  "--name", "#{@owner_name}/#{@name}",
                  "--max-size", "1M"]
+      end
       add_option(options, "--from", from)
       add_option(options, "--from-domain", from_domain)
       add_option(options, "--sender", sender)
