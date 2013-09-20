@@ -204,6 +204,7 @@ class GitCommitMailer
       mailer.add_html = options.add_html
       mailer.max_size = options.max_size
       mailer.repository_uri = options.repository_uri
+      mailer.homepage = options.homepage
       mailer.rss_path = options.rss_path
       mailer.rss_uri = options.rss_uri
       mailer.show_path = options.show_path
@@ -251,6 +252,7 @@ class GitCommitMailer
       options.add_html = false
       options.max_size = parse_size(DEFAULT_MAX_SIZE)
       options.repository_uri = nil
+      options.homepage = nil
       options.rss_path = nil
       options.rss_uri = nil
       options.show_path = false
@@ -307,6 +309,10 @@ class GitCommitMailer
                 "(available repository browsers: " +
                   available_softwares.join(", ")) do |software|
         options.repository_browser = software
+      end
+
+      parser.on("--homepage=URI", "Project home URI. (NONE)") do |uri|
+        options.homepage = uri
       end
 
       add_github_options(parser, options)
@@ -490,7 +496,7 @@ class GitCommitMailer
   attr_writer :repository, :date, :git_bin_path, :track_remote
   attr_accessor :from_domain, :sender, :max_size, :repository_uri
   attr_accessor :rss_path, :rss_uri, :server, :port
-  attr_accessor :repository_browser
+  attr_accessor :repository_browser, :homepage
   attr_accessor :github_base_url, :github_user, :github_repository
   attr_writer :name, :verbose
   attr_accessor :sleep_per_mail
