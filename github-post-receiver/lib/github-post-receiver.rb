@@ -262,8 +262,8 @@ class GitHubPostReceiver
       ]
       if gitlab_payload?
         add_option(options, "--repository-browser", "gitlab")
-        homepage = @payload["repository"]["homepage"]
-        add_option(options, "--homepage", homepage)
+        gitlab_project_uri = @payload["repository"]["homepage"]
+        add_option(options, "--gitlab-project-uri", gitlab_project_uri)
       else
         add_option(options, "--repository-browser", "github")
         add_option(options, "--github-user", @owner_name)
