@@ -300,7 +300,7 @@ class GitCommitMailer
         options.reference = reference
       end
 
-      available_softwares = [:github]
+      available_softwares = [:github, :gitlab]
       parser.on("--repository-browser=SOFTWARE",
                 available_softwares,
                 "Use SOFTWARE as the repository browser",
