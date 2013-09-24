@@ -1,0 +1,77 @@
+to: global-to@example.com
+error_to: error@example.com
+exception_notifier:
+  subject_label: "[git-utils]"
+sender: sender@example.com
+add_html: false
+github:
+  base_uri: https://github.com/
+  add_html: true
+  owners:
+    clear-code:
+      to: commit@clear-code.com
+    ranguba:
+      to:
+        - groonga-commit@rubyforge.org
+      repositories:
+        examples:
+          to: null@example.com
+    groonga:
+      to: groonga-commit@lists.sourceforge.jp
+gitlab1:
+  base_uri: https://gitlab.example.net/
+  owners:
+    clear-code:
+      add_html: true
+      to:
+        - commit@example.net
+    support:
+      to: support@example.net
+      from: support+null@example.net
+gitlab2:
+  base_uri: https://gitlab.example.org/
+  owners:
+    clear-code:
+      to:
+        - commit@example.org
+      from: null@example.org
+      repositories:
+        test-project1:
+          add_html: true
+          to: commit+test-project1@example.org
+        test-project2:
+          add_html: false
+          to: commit+test-project2@example.org
+    support:
+      to: support@example.org
+      from: null@example.org
+ghe1:
+  base_uri: https://ghe.example.com/
+  owners:
+    clear-code:
+      to:
+        - commit@example.com
+      from: null@example.com
+      repositories:
+        test-project1:
+          to: commit+test-project1@example.com
+        test-project2:
+          to: commit+test-project2@example.com
+    support:
+      to: support@example.com
+      from: null@example.com
+ghe2:
+  base_uri: https://ghe.example.co.jp/
+  owners:
+    clear-code:
+      to:
+        - commit@example.co.jp
+      from: null@example.co.jp
+      repositories:
+        test-project1:
+          to: commit+test-project1@example.co.jp
+        test-project2:
+          to: commit+test-project2@example.co.jp
+    support:
+      to: support@example.co.jp
+      from: null@example.co.jp
