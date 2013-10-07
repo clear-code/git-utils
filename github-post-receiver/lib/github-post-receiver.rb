@@ -118,6 +118,18 @@ class GitHubPostReceiver
       return
     end
 
+    repository_uri = repository["url"]
+    case repository_uri
+    when /\Agit@/
+      domain = repository_uri[/@(.+):/, 1]
+    when /\Ahttps:\/\//
+      domain = URI.parse(repository_uri).hostname
+    else
+      set_error_response(response, :bad_request,
+                         "invalid repository URI: <#{repository.inspect}>")
+      return
+    end
+
     repository_name = repository["name"]
     if repository_name.nil?
       set_error_response(response, :bad_request,
