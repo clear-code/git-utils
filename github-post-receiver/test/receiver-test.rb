@@ -60,6 +60,7 @@ class ReceiverTest < Test::Unit::TestCase
     repository_name = "evil-repository"
     post_payload(:repository => {
                    :name => repository_name,
+                   :url => "https://github.com/super-devil/evil-repository",
                    :owner => {
                      :name => owner_name,
                    },
