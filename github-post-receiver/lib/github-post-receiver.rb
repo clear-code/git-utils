@@ -164,7 +164,7 @@ class GitHubPostReceiver
       return
     end
 
-    options = repository_options(owner_name, repository_name)
+    options = repository_options(domain, owner_name, repository_name)
     repository_class.new(domain, owner_name, repository_name, payload, options)
   end
 
@@ -226,12 +226,27 @@ class GitHubPostReceiver
     @options[:repository_class] || Repository
   end
 
-  def repository_options(owner_name, repository_name)
+  def repository_options(domain, owner_name, repository_name)
+    domain_options = (@options[:domains] || {})[domain] || {}
+    domain_options = symbolize_options(domain_options)
+    domain_owner_options = (domain_options[:owners] || {})[owner_name] || {}
+    domain_owner_options = symbolize_options(domain_owner_options)
+    domain_repository_options = (domain_owner_options[:repositories] || {})[repository_name] || {}
+    domain_repository_options = symbolize_options(domain_repository_options)
+
     owner_options = (@options[:owners] || {})[owner_name] || {}
     owner_options = symbolize_options(owner_options)
-    _repository_options = (owner_options[:repositories] || {})[repository_name]
+    _repository_options = (owner_options[:repositories] || {})[repository_name] || {}
+    _repository_options = symbolize_options(_repository_options)
+
     options = @options.merge(owner_options)
-    options.merge(symbolize_options(_repository_options || {}))
+    options = options.merge(owner_options)
+    options = options.merge(_repository_options)
+
+    options = options.merge(domain_options)
+    options = options.merge(domain_owner_options)
+    options = options.merge(domain_repository_options)
+    options
   end
 
   class Repository
