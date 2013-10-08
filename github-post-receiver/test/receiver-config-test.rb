@@ -26,7 +26,7 @@ class ReceiverConfigTest < Test::Unit::TestCase
     @receiver = GitHubPostReceiver.new(options)
   end
 
-  def test_repository_options(data)
+  def test_repository_options
     options = @receiver.__send__(:repository_options, "github.com", "clear-code", "git-utils")
     assert_equal("commit@clear-code.com", options[:to])
     assert_equal(true, options[:add_html])
