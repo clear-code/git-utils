@@ -165,7 +165,7 @@ class GitHubPostReceiver
     end
 
     options = repository_options(owner_name, repository_name)
-    repository_class.new(owner_name, repository_name, payload, options)
+    repository_class.new(domain, owner_name, repository_name, payload, options)
   end
 
   def process_push_parameters(request, response, payload)
@@ -240,7 +240,8 @@ class GitHubPostReceiver
     class Error < StandardError
     end
 
-    def initialize(owner_name, name, payload, options)
+    def initialize(domain, owner_name, name, payload, options)
+      @domain = domain
       @owner_name = owner_name
       @name = name
       @payload = payload
