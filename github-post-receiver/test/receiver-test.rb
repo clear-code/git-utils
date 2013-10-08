@@ -72,7 +72,7 @@ class ReceiverTest < Test::Unit::TestCase
 
   def test_post_without_owner
     repository = {
-      "url" => "http://github.com/ranguba/rroonga",
+      "url" => "https://github.com/ranguba/rroonga",
       "name" => "rroonga",
     }
     payload = {
@@ -86,7 +86,7 @@ class ReceiverTest < Test::Unit::TestCase
 
   def test_post_without_owner_name
     repository = {
-      "url" => "http://github.com/ranguba/rroonga",
+      "url" => "https://github.com/ranguba/rroonga",
       "name" => "rroonga",
       "owner" => {},
     }
@@ -102,7 +102,7 @@ class ReceiverTest < Test::Unit::TestCase
   def test_post_without_before
     payload = {
       "repository" => {
-        "url" => "http://github.com/ranguba/rroonga",
+        "url" => "https://github.com/ranguba/rroonga",
         "name" => "rroonga",
         "owner" => {
           "name" => "ranguba",
@@ -119,7 +119,7 @@ class ReceiverTest < Test::Unit::TestCase
     payload = {
       "before" => "0f2be32a3671360a323f1dee64c757bc9fc44998",
       "repository" => {
-        "url" => "http://github.com/ranguba/rroonga",
+        "url" => "https://github.com/ranguba/rroonga",
         "name" => "rroonga",
         "owner" => {
           "name" => "ranguba",
@@ -137,7 +137,7 @@ class ReceiverTest < Test::Unit::TestCase
       "before" => "0f2be32a3671360a323f1dee64c757bc9fc44998",
       "after" => "c7bf92799225d67788be7c42ea4f504a47708390",
       "repository" => {
-        "url" => "http://github.com/ranguba/rroonga",
+        "url" => "https://github.com/ranguba/rroonga",
         "name" => "rroonga",
         "owner" => {
           "name" => "ranguba",
@@ -157,7 +157,7 @@ class ReceiverTest < Test::Unit::TestCase
     after = "c7bf92799225d67788be7c42ea4f504a47708390"
     reference = "refs/heads/master"
     post_payload(:repository => {
-                   :url => "http://github.com/ranguba/rroonga",
+                   :url => "https://github.com/ranguba/rroonga",
                    :name => "rroonga",
                    :owner => {
                      :name => "ranguba",
@@ -193,7 +193,7 @@ class ReceiverTest < Test::Unit::TestCase
     after = "c7bf92799225d67788be7c42ea4f504a47708390"
     reference = "refs/heads/master"
     post_payload(:repository => {
-                   :url => "http://github.com/ranguba/rroonga",
+                   :url => "https://github.com/ranguba/rroonga",
                    :name => "rroonga",
                    :owner => {
                      :name => "ranguba",
@@ -238,7 +238,7 @@ class ReceiverTest < Test::Unit::TestCase
     after = "c7bf92799225d67788be7c42ea4f504a47708390"
     reference = "refs/heads/master"
     post_payload(:repository => {
-                   :url => "http://github.com/ranguba/rroonga",
+                   :url => "https://github.com/ranguba/rroonga",
                    :name => "rroonga",
                    :owner => {
                      :name => "ranguba",
