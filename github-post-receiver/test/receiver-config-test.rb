@@ -31,5 +31,4 @@ class ReceiverConfigTest < Test::Unit::TestCase
     assert_equal("commit@clear-code.com", options[:to])
     assert_equal(true, options[:add_html])
   end
-
 end
