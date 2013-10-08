@@ -20,23 +20,12 @@ $VERBOSE = true
 $KCODE = "u" if RUBY_VERSION < "1.9"
 
 base_dir = File.expand_path(File.join(File.dirname(__FILE__), ".."))
-test_unit_dir = File.join(base_dir, "test-unit")
-test_unit_lib_dir = File.join(test_unit_dir, "lib")
 lib_dir = File.join(base_dir, "lib")
 test_dir = File.join(base_dir, "test")
 
-unless File.exist?(test_unit_dir)
-  test_unit_repository = "http://test-unit.rubyforge.org/svn/trunk/"
-  system("svn co #{test_unit_repository} #{test_unit_dir}") or exit(false)
-end
-
-$LOAD_PATH.unshift(test_unit_lib_dir)
-
-require 'test/unit'
+require 'test-unit'
 
 ARGV.unshift("--priority-mode")
-ARGV.unshift(File.join(test_dir, "test-unit.yml"))
-ARGV.unshift("--config")
 
 $LOAD_PATH.unshift(lib_dir)
 
