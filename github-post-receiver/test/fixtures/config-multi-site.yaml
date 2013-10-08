@@ -5,8 +5,7 @@ exception_notifier:
 sender: sender@example.com
 add_html: false
 domains:
-  github:
-    domain: github.com
+  github.com:
     add_html: true
     owners:
       clear-code:
@@ -19,8 +18,7 @@ domains:
             to: null@example.com
       groonga:
         to: groonga-commit@lists.sourceforge.jp
-  gitlab1:
-    domain: gitlab.example.net
+  gitlab.example.net:
     owners:
       clear-code:
         add_html: true
@@ -29,8 +27,7 @@ domains:
       support:
         to: support@example.net
         from: support+null@example.net
-  gitlab2:
-    domain: gitlab.example.org
+  gitlab.example.org:
     owners:
       clear-code:
         to:
@@ -46,8 +43,7 @@ domains:
       support:
         to: support@example.org
         from: null@example.org
-  ghe1:
-    domain: ghe.example.com
+  ghe.example.com:
     owners:
       clear-code:
         to:
@@ -61,8 +57,7 @@ domains:
       support:
         to: support@example.com
         from: null@example.com
-  ghe2:
-    domain: ghe.example.co.jp
+  ghe.example.co.jp:
     owners:
       clear-code:
         to:
