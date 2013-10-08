@@ -17,4 +17,5 @@ task :default => :test
 
 task :test do
   ruby("test/run-test.rb")
+  ruby("github-post-receiver/test/run-test.rb")
 end
