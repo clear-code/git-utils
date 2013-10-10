@@ -16,6 +16,20 @@
 class ReceiverTest < Test::Unit::TestCase
   include GitHubPostReceiverTestUtils
 
+  class << self
+    def startup
+      test_dir = File.dirname(__FILE__)
+      fixtures_dir = File.join(test_dir, "fixtures")
+      @rroonga_git_dir = File.join(fixtures_dir, "rroonga.git")
+      system("git", "clone", "--mirror", "-q",
+             "https://github.com/ranguba/rroonga.git", @rroonga_git_dir)
+    end
+
+    def shutdown
+      FileUtils.rm_rf(@rroonga_git_dir)
+    end
+  end
+
   def setup
     test_dir = File.dirname(__FILE__)
     @fixtures_dir = File.join(test_dir, "fixtures")
