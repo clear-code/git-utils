@@ -186,8 +186,11 @@ class ReceiverTest < Test::Unit::TestCase
     result = YAML.load_file(File.join(@tmp_dir, "commit-email-result.yaml"))
     assert_equal([{
                     "argv" => ["--repository", repository_mirror_path,
-                               "--name", "ranguba/rroonga",
                                "--max-size", "1M",
+                               "--repository-browser", "github",
+                               "--github-user", "ranguba",
+                               "--github-repository", "rroonga",
+                               "--name", "ranguba/rroonga",
                                "null@example.com"],
                     "lines" => ["#{before} #{after} #{reference}\n"],
                   }],
@@ -222,8 +225,11 @@ class ReceiverTest < Test::Unit::TestCase
     result = YAML.load_file(File.join(@tmp_dir, "commit-email-result.yaml"))
     assert_equal([{
                     "argv" => ["--repository", repository_mirror_path,
-                               "--name", "ranguba/rroonga",
                                "--max-size", "1M",
+                               "--repository-browser", "github",
+                               "--github-user", "ranguba",
+                               "--github-repository", "rroonga",
+                               "--name", "ranguba/rroonga",
                                "--from", "ranguba+commit@example.org",
                                "--sender", "null@example.org",
                                "ranguba-commit@example.org"],
@@ -267,8 +273,11 @@ class ReceiverTest < Test::Unit::TestCase
     result = YAML.load_file(File.join(@tmp_dir, "commit-email-result.yaml"))
     assert_equal([{
                     "argv" => ["--repository", repository_mirror_path,
-                               "--name", "ranguba/rroonga",
                                "--max-size", "1M",
+                               "--repository-browser", "github",
+                               "--github-user", "ranguba",
+                               "--github-repository", "rroonga",
+                               "--name", "ranguba/rroonga",
                                "--from", "ranguba+commit@example.net",
                                "--sender", "null@example.net",
                                "ranguba-commit@example.net"],
