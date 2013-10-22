@@ -27,9 +27,214 @@ class ReceiverConfigTest < Test::Unit::TestCase
     @receiver = GitHubPostReceiver.new(options)
   end
 
-  def test_repository_options
-    options = @receiver.__send__(:repository_options, "github.com", "clear-code", "git-utils")
-    assert_equal("commit@clear-code.com", options[:to])
-    assert_equal(true, options[:add_html])
+  data("github.com/clear-code/git-utils" => {
+         :expected => {
+           :to       => "commit@clear-code.com",
+           :add_html => true,
+           :from     => nil,
+         },
+         :params => {
+           :domain     => "github.com",
+           :owner      => "clear-code",
+           :repository => "git-utils",
+         }
+       },
+       "github.com/ranguba/examples" => {
+         :expected => {
+           :to       => "null@example.com",
+           :add_html => true,
+           :from     => nil,
+         },
+         :params => {
+           :domain     => "github.com",
+           :owner      => "ranguba",
+           :repository => "examples",
+         }
+       },
+       "github.com/ranguba/ranguba" => {
+         :expected => {
+           :to       => ["groonga-commit@rubyforge.org"],
+           :add_html => true,
+           :from     => nil,
+         },
+         :params => {
+           :domain     => "github.com",
+           :owner      => "ranguba",
+           :repository => "ranguba",
+         }
+       },
+       "gitlab.example.net/support/firefox" => {
+         :expected => {
+           :to       => "support@example.net",
+           :add_html => false,
+           :from     => "support+null@example.net",
+         },
+         :params => {
+           :domain     => "gitlab.example.net",
+           :owner      => "support",
+           :repository => "firefox",
+         }
+       },
+       "gitlab.example.org/clear-code/other" => {
+         :expected => {
+           :to       => ["commit@example.org"],
+           :add_html => false,
+           :from     => "null@example.org",
+         },
+         :params => {
+           :domain     => "gitlab.example.org",
+           :owner      => "clear-code",
+           :repository => "other",
+         }
+       },
+       "gitlab.example.org/clear-code/test-project1" => {
+         :expected => {
+           :to       => "commit+test-project1@example.org",
+           :add_html => true,
+           :from     => "null@example.org",
+         },
+         :params => {
+           :domain     => "gitlab.example.org",
+           :owner      => "clear-code",
+           :repository => "test-project1",
+         }
+       },
+       "gitlab.example.org/clear-code/test-project2" => {
+         :expected => {
+           :to       => "commit+test-project2@example.org",
+           :add_html => false,
+           :from     => "null@example.org",
+         },
+         :params => {
+           :domain     => "gitlab.example.org",
+           :owner      => "clear-code",
+           :repository => "test-project2",
+         }
+       },
+       "gitlab.example.org/support/thunderbird" => {
+         :expected => {
+           :to       => "support@example.org",
+           :add_html => false,
+           :from     => "null+support@example.org",
+         },
+         :params => {
+           :domain     => "gitlab.example.org",
+           :owner      => "support",
+           :repository => "thunderbird",
+         }
+       },
+       "ghe.example.com/clear-code/other" => {
+         :expected => {
+           :to       => ["commit@example.com"],
+           :add_html => false,
+           :from     => "null@example.com",
+         },
+         :params => {
+           :domain     => "ghe.example.com",
+           :owner      => "clear-code",
+           :repository => "other",
+         }
+       },
+       "ghe.example.com/clear-code/test-project1" => {
+         :expected => {
+           :to       => "commit+test-project1@example.com",
+           :add_html => false,
+           :from     => "null@example.com",
+         },
+         :params => {
+           :domain     => "ghe.example.com",
+           :owner      => "clear-code",
+           :repository => "test-project1",
+         }
+       },
+       "ghe.example.com/clear-code/test-project2" => {
+         :expected => {
+           :to       => "commit+test-project2@example.com",
+           :add_html => false,
+           :from     => "null@example.com",
+         },
+         :params => {
+           :domain     => "ghe.example.com",
+           :owner      => "clear-code",
+           :repository => "test-project2",
+         }
+       },
+       "ghe.example.com/support/thunderbird" => {
+         :expected => {
+           :to       => "support@example.com",
+           :add_html => false,
+           :from     => "null+support@example.com",
+         },
+         :params => {
+           :domain     => "ghe.example.com",
+           :owner      => "support",
+           :repository => "thunderbird",
+         }
+       },
+       "ghe.example.co.jp/clear-code/other" => {
+         :expected => {
+           :to       => ["commit@example.co.jp"],
+           :add_html => true,
+           :from     => "null@example.co.jp",
+         },
+         :params => {
+           :domain     => "ghe.example.co.jp",
+           :owner      => "clear-code",
+           :repository => "other",
+         }
+       },
+       "ghe.example.co.jp/clear-code/test-project1" => {
+         :expected => {
+           :to       => "commit+test-project1@example.co.jp",
+           :add_html => true,
+           :from     => "null@example.co.jp",
+         },
+         :params => {
+           :domain     => "ghe.example.co.jp",
+           :owner      => "clear-code",
+           :repository => "test-project1",
+         }
+       },
+       "ghe.example.co.jp/clear-code/test-project2" => {
+         :expected => {
+           :to       => "commit+test-project2@example.co.jp",
+           :add_html => true,
+           :from     => "null@example.co.jp",
+         },
+         :params => {
+           :domain     => "ghe.example.co.jp",
+           :owner      => "clear-code",
+           :repository => "test-project2",
+         }
+       },
+       "ghe.example.co.jp/support/thunderbird" => {
+         :expected => {
+           :to       => "support@example.co.jp",
+           :add_html => true,
+           :from     => "null+support@example.co.jp",
+         },
+         :params => {
+           :domain     => "ghe.example.co.jp",
+           :owner      => "support",
+           :repository => "thunderbird",
+         }
+       })
+  def test_repository_options(data)
+    params = data[:params]
+    domain = params[:domain]
+    owner = params[:owner]
+    repository = params[:repository]
+    options = @receiver.__send__(:repository_options, domain, owner, repository)
+    assert_options(data[:expected], options)
+  end
+
+  private
+  def assert_options(expected, options)
+    actual = {
+      :to       => options[:to],
+      :add_html => options[:add_html],
+      :from     => options[:from],
+    }
+    assert_equal(expected, actual)
   end
 end
