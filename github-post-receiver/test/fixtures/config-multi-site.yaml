@@ -42,7 +42,7 @@ domains:
             to: commit+test-project2@example.org
       support:
         to: support@example.org
-        from: null@example.org
+        from: null+support@example.org
   ghe.example.com:
     owners:
       clear-code:
@@ -56,8 +56,9 @@ domains:
             to: commit+test-project2@example.com
       support:
         to: support@example.com
-        from: null@example.com
+        from: null+support@example.com
   ghe.example.co.jp:
+    add_html: true
     owners:
       clear-code:
         to:
@@ -70,4 +71,4 @@ domains:
             to: commit+test-project2@example.co.jp
       support:
         to: support@example.co.jp
-        from: null@example.co.jp
+        from: null+support@example.co.jp
