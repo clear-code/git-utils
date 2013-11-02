@@ -69,6 +69,7 @@ class ReceiverTest < Test::Unit::TestCase
                  response_body)
   end
 
+  class GitHubTest < self
   def test_post_with_non_target_repository
     owner_name = "devil"
     repository_name = "evil-repository"
@@ -284,6 +285,7 @@ class ReceiverTest < Test::Unit::TestCase
                     "lines" => ["#{before} #{after} #{reference}\n"],
                   }],
                  result)
+  end
   end
 
   private
