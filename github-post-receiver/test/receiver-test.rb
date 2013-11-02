@@ -96,7 +96,7 @@ class ReceiverTest < Test::Unit::TestCase
       }
       post_payload(payload)
       assert_response("Bad Request")
-      assert_equal("repository owner is missing: <#{repository.inspect}>",
+      assert_equal("repository owner or owner name is missing: <#{repository.inspect}>",
                    response_body)
     end
 
@@ -111,7 +111,7 @@ class ReceiverTest < Test::Unit::TestCase
       }
       post_payload(payload)
       assert_response("Bad Request")
-      assert_equal("repository owner name is missing: <#{repository.inspect}>",
+      assert_equal("repository owner or owner name is missing: <#{repository.inspect}>",
                    response_body)
     end
 
