@@ -119,16 +119,8 @@ class GitHubPostReceiver
     end
 
     repository_uri = repository["url"]
-    case repository_uri
-    when /\Agit@/
-      domain = repository_uri[/@(.+):/, 1]
-    when /\Ahttps:\/\//
-      domain = URI.parse(repository_uri).hostname
-    else
-      set_error_response(response, :bad_request,
-                         "invalid repository URI: <#{repository.inspect}>")
-      return
-    end
+    domain = extract_domain(repository_uri)
+    return if domain.nil?
 
     repository_name = repository["name"]
     if repository_name.nil?
@@ -166,6 +158,20 @@ class GitHubPostReceiver
 
     options = repository_options(domain, owner_name, repository_name)
     repository_class.new(domain, owner_name, repository_name, payload, options)
+  end
+
+  def extract_domain(repository_uri)
+    domain = nil
+    case repository_uri
+    when /\Agit@/
+      domain = repository_uri[/@(.+):/, 1]
+    when /\Ahttps:\/\//
+      domain = URI.parse(repository_uri).hostname
+    else
+      set_error_response(response, :bad_request,
+                         "invalid repository URI: <#{repository.inspect}>")
+    end
+    domain
   end
 
   def process_push_parameters(request, response, payload)
