@@ -133,24 +133,12 @@ class GitHubPostReceiver
       return
     end
 
-    if gitlab_payload?(payload)
-      owner_name = GITLAB_OWNER
-    else
-      owner = repository["owner"]
-      if owner.nil?
-        set_error_response(response, :bad_request,
-                           "repository owner is missing: " +
-                           "<#{repository.inspect}>")
-        return
-      end
-
-      owner_name = owner["name"]
-      if owner_name.nil?
-        set_error_response(response, :bad_request,
-                           "repository owner name is missing: " +
-                           "<#{repository.inspect}>")
-        return
-      end
+    owner_name = extract_owner_name(repository_uri, payload)
+    if owner_name.nil?
+      set_error_response(response, :bad_request,
+                         "repository owner or owner name is missing: " +
+                         "<#{repository.inspect}>")
+      return
     end
 
     unless target?(owner_name, repository_name)
@@ -175,6 +163,21 @@ class GitHubPostReceiver
       return
     end
     domain
+  end
+
+  def extract_owner_name(repository_uri, payload)
+    owner_name = nil
+    repository = payload["repository"]
+    if gitlab_payload?(payload)
+      owner_name = GITLAB_OWNER
+    else
+      owner = repository["owner"]
+      return if owner.nil?
+
+      owner_name = owner["name"]
+      return if owner_name.nil?
+    end
+    owner_name
   end
 
   def process_push_parameters(request, response, payload)
