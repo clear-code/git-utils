@@ -169,7 +169,14 @@ class GitHubPostReceiver
     owner_name = nil
     repository = payload["repository"]
     if gitlab_payload?(payload)
-      owner_name = GITLAB_OWNER
+      case repository_uri
+      when /\Agit@/
+        owner_name = repository_uri[%r!git@.+:(.+)/.+(?:.git)?!, 1]
+      when /\Ahttps:\/\//
+        owner_name = URI.parse(repository_uri).path.sub(/\A\//, "")
+      else
+        return
+      end
     else
       owner = repository["owner"]
       return if owner.nil?
