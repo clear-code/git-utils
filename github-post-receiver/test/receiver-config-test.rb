@@ -53,7 +53,7 @@ class ReceiverConfigTest < Test::Unit::TestCase
        },
        "github.com/ranguba/ranguba" => {
          :expected => {
-           :to       => ["groonga-commit@rubyforge.org"],
+           :to       => ["groonga-commit@rubyforge.org", "commit@clear-code.com"],
            :add_html => true,
            :from     => nil,
          },
