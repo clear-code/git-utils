@@ -37,8 +37,6 @@ class GitHubPostReceiver
 
   include PathResolver
 
-  GITLAB_OWNER = "$gitlab"
-
   def initialize(options={})
     @options = symbolize_options(options)
   end
