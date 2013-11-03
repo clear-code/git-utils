@@ -18,20 +18,6 @@ require "yaml"
 class MultiSiteReceiverTest < Test::Unit::TestCase
   include GitHubPostReceiverTestUtils
 
-  class << self
-    def startup
-      test_dir = File.dirname(__FILE__)
-      fixtures_dir = File.join(test_dir, "fixtures")
-      @rroonga_git_dir = File.join(fixtures_dir, "rroonga.git")
-      system("git", "clone", "--mirror", "-q",
-             "https://github.com/ranguba/rroonga.git", @rroonga_git_dir)
-    end
-
-    def shutdown
-      FileUtils.rm_rf(@rroonga_git_dir)
-    end
-  end
-
   def setup
     test_dir = File.dirname(__FILE__)
     @fixtures_dir = File.join(test_dir, "fixtures")
@@ -46,9 +32,9 @@ class MultiSiteReceiverTest < Test::Unit::TestCase
   def app
     options = YAML.load_file(File.join(@fixtures_dir, "config-multi-site.yaml"))
     options[:base_dir] = @tmp_dir
-    options[:repository_class] = LocalRepository
     options[:fixtures_dir] = @fixtures_dir
     options[:commit_email] = File.join(@fixtures_dir, "mock-commit-email.rb")
+    options[:git] = File.join(@fixtures_dir, "stub-git.rb")
     GitHubPostReceiver.new(options)
   end
 
