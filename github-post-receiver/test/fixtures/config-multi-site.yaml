@@ -13,6 +13,7 @@ domains:
       ranguba:
         to:
           - groonga-commit@rubyforge.org
+          - commit@clear-code.com
         repositories:
           examples:
             to: null@example.com
