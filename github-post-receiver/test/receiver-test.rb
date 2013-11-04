@@ -167,7 +167,7 @@ class ReceiverTest < Test::Unit::TestCase
     end
 
     def test_post
-      repository_mirror_path = mirror_path("ranguba", "rroonga")
+      repository_mirror_path = mirror_path("github.com", "ranguba", "rroonga")
       assert_false(File.exist?(repository_mirror_path))
       before = "0f2be32a3671360a323f1dee64c757bc9fc44998"
       after = "c7bf92799225d67788be7c42ea4f504a47708390"
@@ -199,7 +199,7 @@ class ReceiverTest < Test::Unit::TestCase
     end
 
     def test_per_owner_configuration
-      repository_mirror_path = mirror_path("ranguba", "rroonga")
+      repository_mirror_path = mirror_path("github.com", "ranguba", "rroonga")
       assert_false(File.exist?(repository_mirror_path))
       options[:owners] = {
         "ranguba" => {
@@ -240,7 +240,7 @@ class ReceiverTest < Test::Unit::TestCase
     end
 
     def test_per_repository_configuration
-      repository_mirror_path = mirror_path("ranguba", "rroonga")
+      repository_mirror_path = mirror_path("github.com", "ranguba", "rroonga")
       assert_false(File.exist?(repository_mirror_path))
       options[:owners] = {
         "ranguba" => {

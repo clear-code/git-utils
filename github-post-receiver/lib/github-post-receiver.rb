@@ -362,7 +362,7 @@ class GitHubPostReceiver
     end
 
     def mirror_path
-      @mirror_path ||= File.join(mirrors_directory, @owner_name, @name)
+      @mirror_path ||= File.join(mirrors_directory, @domain, @owner_name, @name)
     end
 
     def ruby

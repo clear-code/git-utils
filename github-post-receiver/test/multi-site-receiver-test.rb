@@ -172,7 +172,7 @@ class MultiSiteReceiverTest < Test::Unit::TestCase
       repository_name = data[:params][:repository_name]
       gitlab_project_uri = "https://#{domain}/#{owner_name}/#{repository_name}"
       repository_uri = "git@#{domain}:#{owner_name}/#{repository_name}.git"
-      repository_mirror_path = mirror_path(owner_name, repository_name)
+      repository_mirror_path = mirror_path(domain, owner_name, repository_name)
       add_html = data[:expected][:add_html]
       from = data[:expected][:from]
       sender = data[:expected][:sender]
@@ -291,7 +291,7 @@ class MultiSiteReceiverTest < Test::Unit::TestCase
       repository_name = data[:params][:repository_name]
       gitlab_project_uri = "https://#{domain}/#{owner_name}/#{repository_name}"
       repository_uri = "git@#{domain}:#{owner_name}/#{repository_name}.git"
-      repository_mirror_path = mirror_path(owner_name, repository_name)
+      repository_mirror_path = mirror_path(domain, owner_name, repository_name)
       add_html = data[:expected][:add_html]
       from = data[:expected][:from]
       sender = data[:expected][:sender]
