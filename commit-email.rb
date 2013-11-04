@@ -312,6 +312,7 @@ class GitCommitMailer
       end
 
       add_github_options(parser, options)
+      add_gitlab_options(parser, options)
     end
 
     def add_github_options(parser, options)
