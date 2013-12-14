@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2010-2012  Kouhei Sutou <kou@clear-code.com>
+# Copyright (C) 2010-2013  Kouhei Sutou <kou@clear-code.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,12 +15,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-require 'fileutils'
-require 'webrick/httpstatus'
-require 'shellwords'
+require "fileutils"
+require "webrick/httpstatus"
+require "shellwords"
 
-require 'rubygems'
-require 'json'
+require "rubygems"
+require "json"
 
 class GitHubPostReceiver
   module PathResolver
@@ -228,7 +228,7 @@ class GitHubPostReceiver
 
   KEYWORD_TO_HTTP_STATUS_CODE = {}
   WEBrick::HTTPStatus::StatusMessage.each do |code, message|
-    KEYWORD_TO_HTTP_STATUS_CODE[message.downcase.gsub(/ +/, '_').intern] = code
+    KEYWORD_TO_HTTP_STATUS_CODE[message.downcase.gsub(/ +/, "_").intern] = code
   end
 
   def status(keyword)

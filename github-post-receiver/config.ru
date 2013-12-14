@@ -1,6 +1,6 @@
 # -*- mode: ruby; coding: utf-8 -*-
 #
-# Copyright (C) 2010  Kouhei Sutou <kou@clear-code.com>
+# Copyright (C) 2010-2013  Kouhei Sutou <kou@clear-code.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,9 +15,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-require 'yaml'
+require "yaml"
 
-require 'pathname'
+require "pathname"
 
 base_dir = Pathname(__FILE__).dirname
 lib_dir = base_dir + "lib"
@@ -28,9 +28,9 @@ racknga_lib_dir = racknga_base_dir + "lib"
 $LOAD_PATH.unshift(racknga_lib_dir.to_s)
 $LOAD_PATH.unshift(lib_dir.to_s)
 
-require 'github-post-receiver'
+require "github-post-receiver"
 
-require 'racknga/middleware/exception_notifier'
+require "racknga/middleware/exception_notifier"
 
 use Rack::CommonLogger
 use Rack::Runtime
