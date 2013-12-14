@@ -18,6 +18,7 @@
 require "fileutils"
 require "webrick/httpstatus"
 require "shellwords"
+require "uri"
 
 require "rubygems"
 require "json"
