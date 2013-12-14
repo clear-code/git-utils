@@ -367,11 +367,7 @@ class GitHubPostReceiver
     end
 
     def ruby
-      @ruby ||= @options[:ruby] || current_ruby
-    end
-
-    def current_ruby
-      File.join(Config::CONFIG["bindir"], Config::CONFIG["RUBY_INSTALL_NAME"])
+      @ruby ||= @options[:ruby] || RbConfig.ruby
     end
 
     def commit_email
