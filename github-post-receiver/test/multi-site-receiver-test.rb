@@ -23,6 +23,7 @@ class MultiSiteReceiverTest < Test::Unit::TestCase
     @fixtures_dir = File.join(test_dir, "fixtures")
     @tmp_dir = File.join(test_dir, "tmp")
     FileUtils.mkdir_p(@tmp_dir)
+    Capybara.app = app
   end
 
   def teardown
@@ -335,7 +336,7 @@ class MultiSiteReceiverTest < Test::Unit::TestCase
   private
 
   def post_payload(payload)
-    visit "/", :post, :payload => JSON.generate(payload)
+    page.driver.post("/", :payload => JSON.generate(payload))
   end
 
   def mirror_path(*components)

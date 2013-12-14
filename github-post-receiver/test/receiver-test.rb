@@ -35,6 +35,7 @@ class ReceiverTest < Test::Unit::TestCase
     @fixtures_dir = File.join(test_dir, "fixtures")
     @tmp_dir = File.join(test_dir, "tmp")
     FileUtils.mkdir_p(@tmp_dir)
+    Capybara.app = app
   end
 
   def teardown
@@ -51,13 +52,13 @@ class ReceiverTest < Test::Unit::TestCase
   end
 
   def test_post_without_parameters
-    visit "/", :post
+    page.driver.post("/")
     assert_response("Bad Request")
-    assert_equal("payload is missing", response_body)
+    assert_equal("payload is missing", body)
   end
 
   def test_post_with_empty_payload
-    visit "/", :post, :payload => ""
+    page.driver.post("/", :payload => "")
     assert_response("Bad Request")
     error_message = nil
     begin
@@ -66,7 +67,7 @@ class ReceiverTest < Test::Unit::TestCase
       error_message = $!.message
     end
     assert_equal("invalid JSON format: <#{error_message}>",
-                 response_body)
+                 body)
   end
 
   class GitHubTest < self
@@ -83,7 +84,7 @@ class ReceiverTest < Test::Unit::TestCase
       assert_response("Forbidden")
       assert_equal("unacceptable repository: " +
                    "<#{owner_name.inspect}>:<#{repository_name.inspect}>",
-                   response_body)
+                   body)
     end
 
     def test_post_without_owner
@@ -97,7 +98,7 @@ class ReceiverTest < Test::Unit::TestCase
       post_payload(payload)
       assert_response("Bad Request")
       assert_equal("repository owner or owner name is missing: <#{repository.inspect}>",
-                   response_body)
+                   body)
     end
 
     def test_post_without_owner_name
@@ -112,7 +113,7 @@ class ReceiverTest < Test::Unit::TestCase
       post_payload(payload)
       assert_response("Bad Request")
       assert_equal("repository owner or owner name is missing: <#{repository.inspect}>",
-                   response_body)
+                   body)
     end
 
     def test_post_without_before
@@ -128,7 +129,7 @@ class ReceiverTest < Test::Unit::TestCase
       post_payload(payload)
       assert_response("Bad Request")
       assert_equal("before commit ID is missing: <#{payload.inspect}>",
-                   response_body)
+                   body)
     end
 
     def test_post_without_after
@@ -145,7 +146,7 @@ class ReceiverTest < Test::Unit::TestCase
       post_payload(payload)
       assert_response("Bad Request")
       assert_equal("after commit ID is missing: <#{payload.inspect}>",
-                   response_body)
+                   body)
     end
 
     def test_post_without_reference
@@ -163,7 +164,7 @@ class ReceiverTest < Test::Unit::TestCase
       post_payload(payload)
       assert_response("Bad Request")
       assert_equal("reference is missing: <#{payload.inspect}>",
-                   response_body)
+                   body)
     end
 
     def test_post
@@ -208,6 +209,7 @@ class ReceiverTest < Test::Unit::TestCase
           :sender => "null@example.org",
         }
       }
+      Capybara.app = app # TODO: extract option change tess to a sub test case
       before = "0f2be32a3671360a323f1dee64c757bc9fc44998"
       after = "c7bf92799225d67788be7c42ea4f504a47708390"
       reference = "refs/heads/master"
@@ -256,6 +258,7 @@ class ReceiverTest < Test::Unit::TestCase
           }
         }
       }
+      Capybara.app = app # TODO: extract option change tess to a sub test case
       before = "0f2be32a3671360a323f1dee64c757bc9fc44998"
       after = "c7bf92799225d67788be7c42ea4f504a47708390"
       reference = "refs/heads/master"
@@ -290,7 +293,7 @@ class ReceiverTest < Test::Unit::TestCase
 
   private
   def post_payload(payload)
-    visit "/", :post, :payload => JSON.generate(payload)
+    page.driver.post("/", :payload => JSON.generate(payload))
   end
 
   def options
