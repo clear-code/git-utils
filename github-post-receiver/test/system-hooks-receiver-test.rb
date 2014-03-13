@@ -72,7 +72,7 @@ class SystemHooksReceiverTest < Test::Unit::TestCase
   def options
     @options ||= {
       :private_token => "VERYSECRETTOKEN",
-      :gitlab_api_uri => "https://gitlab.example.com/api/v3",
+      :gitlab_api_end_point_uri => "https://gitlab.example.com/api/v3",
       :hook_uri => "https://hook.example.com/post-receiver"
     }
   end

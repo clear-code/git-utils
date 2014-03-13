@@ -50,14 +50,14 @@ class GitLabSystemHooksReceiver < WebHookReceiverBase
   # POST #{GitLabURI}/projects/:id/hooks
   #
   def add_project_hook(project_id, hook_uri)
-    gitlab_api_uri = URI.parse(@options[:gitlab_api_uri])
-    path = File.join(gitlab_api_uri.path, "projects", project_id.to_s, "hooks")
+    gitlab_api_end_point_uri = URI.parse(@options[:gitlab_api_end_point])
+    path = File.join(gitlab_api_end_point_uri.path, "projects", project_id.to_s, "hooks")
     post_request = Net::HTTP::Post.new(path)
     # push_events is enabled by default
     post_request.set_form_data("url" => hook_uri,
                                "private_token" => @options[:private_token])
-    http = Net::HTTP.new(gitlab_api_uri.host, gitlab_api_uri.port)
-    if gitlab_api_uri.scheme == "https"
+    http = Net::HTTP.new(gitlab_api_end_point_uri.host, gitlab_api_end_point_uri.port)
+    if gitlab_api_end_point_uri.scheme == "https"
       http.use_ssl = true
       http.ca_path = "/etc/ssl/certs"
       http.verify_mode = OpenSSL::SSL::VERIFY_PEER
