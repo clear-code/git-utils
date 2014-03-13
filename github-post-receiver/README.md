@@ -108,6 +108,9 @@ Run the application.
 $ sudo -u git-utils -H ~git-utils/bin/github-post-receiver start
 ```
 
+You need to edit config.yaml to configure this web application.
+See test code for details.
+
 ## Set up (Apache + Passenger)
 
 TODO
