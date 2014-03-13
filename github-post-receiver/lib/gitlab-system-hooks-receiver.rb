@@ -20,81 +20,11 @@ require "net/https"
 require "webrick/httpstatus"
 require "json"
 
-class GitLabSystemHooksReceiver
-  def initialize(options={})
-    @options = symbolize_options(options)
-  end
+require "web-hook-receiver-base"
 
-  def call(env)
-    request = Rack::Request.new(env)
-    response = Rack::Response.new
-    process(request, response)
-    response.to_a
-  end
+class GitLabSystemHooksReceiver < WebHookReceiverBase
 
   private
-
-  def production?
-    ENV["RACK_ENV"] == "production"
-  end
-
-  def symbolize_options(options)
-    symbolized_options = {}
-    options.each do |key, value|
-      symbolized_options[key.to_sym] = value
-    end
-    symbolized_options
-  end
-
-  KEYWORD_TO_HTTP_STATUS_CODE = {}
-  WEBrick::HTTPStatus::StatusMessage.each do |code, message|
-    KEYWORD_TO_HTTP_STATUS_CODE[message.downcase.gsub(/ +/, '_').intern] = code
-  end
-
-  def status(keyword)
-    code = KEYWORD_TO_HTTP_STATUS_CODE[keyword]
-    if code.nil?
-      raise ArgumentError, "invalid status keyword: #{keyword.inspect}"
-    end
-    code
-  end
-
-  def set_error_response(response, status_keyword, message)
-    response.status = status(status_keyword)
-    response["Content-Type"] = "text/plain"
-    response.write(message)
-  end
-
-  def process(request, response)
-    unless request.post?
-      set_error_response(response, :method_not_allowed, "must POST")
-      return
-    end
-
-    payload = parse_payload(request, response)
-    return if payload.nil?
-    process_payload(request, response, payload)
-  end
-
-  def parse_payload(request, response)
-    if request.content_type == "application/json"
-      payload = request.body.read
-    else
-      payload = request["payload"]
-    end
-    if payload.nil?
-      set_error_response(response, :bad_request, "payload is missing")
-      return
-    end
-
-    begin
-      JSON.parse(payload)
-    rescue JSON::ParserError
-      set_error_response(response, :bad_request,
-                         "invalid JSON format: <#{$!.message}>")
-      nil
-    end
-  end
 
   def process_payload(request, response, payload)
     event_name = payload["event_name"]

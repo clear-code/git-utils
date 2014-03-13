@@ -23,7 +23,9 @@ require "uri"
 require "rubygems"
 require "json"
 
-class GitHubPostReceiver
+require "web-hook-receiver-base"
+
+class GitHubPostReceiver < WebHookReceiverBase
   module PathResolver
     def base_dir
       @base_dir ||=
@@ -38,60 +40,7 @@ class GitHubPostReceiver
 
   include PathResolver
 
-  def initialize(options={})
-    @options = symbolize_options(options)
-  end
-
-  def call(env)
-    request = Rack::Request.new(env)
-    response = Rack::Response.new
-    process(request, response)
-    response.to_a
-  end
-
   private
-  def production?
-    ENV["RACK_ENV"] == "production"
-  end
-
-  def symbolize_options(options)
-    symbolized_options = {}
-    options.each do |key, value|
-      symbolized_options[key.to_sym] = value
-    end
-    symbolized_options
-  end
-
-  def process(request, response)
-    unless request.post?
-      set_error_response(response, :method_not_allowed, "must POST")
-      return
-    end
-
-    payload = parse_payload(request, response)
-    return if payload.nil?
-    process_payload(request, response, payload)
-  end
-
-  def parse_payload(request, response)
-    if request.content_type == "application/json"
-      payload = request.body.read
-    else
-      payload = request["payload"]
-    end
-    if payload.nil?
-      set_error_response(response, :bad_request, "payload is missing")
-      return
-    end
-
-    begin
-      JSON.parse(payload)
-    rescue JSON::ParserError
-      set_error_response(response, :bad_request,
-                         "invalid JSON format: <#{$!.message}>")
-      nil
-    end
-  end
 
   def process_payload(request, response, payload)
     repository = process_payload_repository(request, response, payload)
@@ -225,19 +174,6 @@ class GitHubPostReceiver
     (@options[:targets] || [/\A[a-z\d_.\-]+\z/i]).any? do |target|
       target === repository_name
     end
-  end
-
-  KEYWORD_TO_HTTP_STATUS_CODE = {}
-  WEBrick::HTTPStatus::StatusMessage.each do |code, message|
-    KEYWORD_TO_HTTP_STATUS_CODE[message.downcase.gsub(/ +/, "_").intern] = code
-  end
-
-  def status(keyword)
-    code = KEYWORD_TO_HTTP_STATUS_CODE[keyword]
-    if code.nil?
-      raise ArgumentError, "invalid status keyword: #{keyword.inspect}"
-    end
-    code
   end
 
   def repository_class
