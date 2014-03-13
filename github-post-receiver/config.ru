@@ -29,6 +29,7 @@ $LOAD_PATH.unshift(racknga_lib_dir.to_s)
 $LOAD_PATH.unshift(lib_dir.to_s)
 
 require "github-post-receiver"
+require "gitlab-system-hooks-receiver"
 
 require "racknga/middleware/exception_notifier"
 
@@ -48,4 +49,8 @@ use Racknga::Middleware::ExceptionNotifier, :notifiers => notifiers
 
 map "/post-receiver/" do
   run GitHubPostReceiver.new(options)
+end
+
+map "/system-hooks-receiver/" do
+  run GitLabSystemHooksReceiver.new(options)
 end
