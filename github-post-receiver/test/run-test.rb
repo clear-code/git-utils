@@ -23,6 +23,7 @@ test_dir = File.join(base_dir, "test")
 
 require "test-unit"
 require "test/unit/capybara"
+require "test/unit/rr"
 
 ARGV.unshift("--priority-mode")
 
