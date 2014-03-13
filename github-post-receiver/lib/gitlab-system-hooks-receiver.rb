@@ -34,8 +34,9 @@ class GitLabSystemHooksReceiver < WebHookReceiverBase
   def process_project_create_event(request, response, payload)
     owner_email = payload["owner_email"]
     project_id = payload["project_id"]
-    hook_uri = @options[:hook_uri]
-    add_project_hook(project_id, hook_uri)
+    @options[:web_hooks].each do |web_hook|
+      add_project_hook(project_id, web_hook)
+    end
   end
 
   def method_missing(name, *args)

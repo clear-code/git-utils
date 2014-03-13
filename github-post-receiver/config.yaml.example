@@ -1,3 +1,9 @@
+private_token: VERYSECRETTOKEN
+gitlab_api_end_point: https://gitlab.example.com/api/v3
+web_hooks:
+  - http://gh.example.com/post-receiver1
+  - http://gh.example.com/post-receiver2
+  - http://gh.example.com/post-receiver3
 to: receiver@example.com
 error_to: admin@example.com
 exception_notifier:

@@ -48,7 +48,9 @@ class SystemHooksReceiverTest < Test::Unit::TestCase
   end
 
   def test_create_project
-    mock(Capybara.app).add_project_hook(42, options[:hook_uri])
+    @options[:web_hooks].each do |web_hook|
+      mock(Capybara.app).add_project_hook(42, web_hook)
+    end
     payload = {
       created_at: "2014-03-13T07:30:54Z",
       event_name: "project_create",
@@ -73,7 +75,11 @@ class SystemHooksReceiverTest < Test::Unit::TestCase
     @options ||= {
       :private_token => "VERYSECRETTOKEN",
       :gitlab_api_end_point_uri => "https://gitlab.example.com/api/v3",
-      :hook_uri => "https://hook.example.com/post-receiver"
+      :web_hooks => [
+        "https://hook.example.com/post-receiver1",
+        "https://hook.example.com/post-receiver2",
+        "https://hook.example.com/post-receiver3"
+      ]
     }
   end
 end
