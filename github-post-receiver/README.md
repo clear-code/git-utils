@@ -2,6 +2,9 @@
 
 This is a Rack based web application that can process POST request from GitHub/GitLab.
 
+* github-post-receiver.rb: Process GitHub/GitLab web hooks to send commit mails.
+* gitlab-system-hooks-receiver.rb: Process GitLab system hook "project_create" event.
+
 ## Set up (Nginx + Unicorn)
 
 Clone repository.
@@ -108,11 +111,17 @@ Run the application.
 $ sudo -u git-utils -H ~git-utils/bin/github-post-receiver start
 ```
 
-You need to edit config.yaml to configure this web application.
-See test code for details.
-
 ## Set up (Apache + Passenger)
 
 TODO
 
+
+## Configuration
+
+You need to edit config.yaml to configure this web application.
+See config.yaml.example and test codes.
+
+## Add system hook
+
+See "Admin area" -> "Hooks".
 
