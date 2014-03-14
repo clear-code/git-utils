@@ -1,6 +1,6 @@
 # Web hook receiver
 
-This is a Rack based web application that can process POST request from GitHub/GitLab.
+This is a Rack based web application that can process POST request from GitHub, GitLab and GHE.
 
 * github-post-receiver.rb: Process GitHub/GitLab web hooks to send commit mails.
 * gitlab-system-hooks-receiver.rb: Process GitLab system hook "project_create" event.
