@@ -51,6 +51,3 @@ map "/post-receiver/" do
   run GitHubPostReceiver.new(options)
 end
 
-map "/system-hooks-receiver/" do
-  run GitLabSystemHooksReceiver.new(options)
-end
