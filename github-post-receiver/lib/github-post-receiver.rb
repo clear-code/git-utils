@@ -43,12 +43,16 @@ class GitHubPostReceiver < WebHookReceiverBase
   private
 
   def process_payload(request, response, payload)
-    return if github_event(request) == "ping"
+    return if ping_request?(request)
     repository = process_payload_repository(request, response, payload)
     return if repository.nil?
     before, after, reference =
       process_push_parameters(request, response, payload)
     repository.process(before, after, reference)
+  end
+
+  def ping_request?(request)
+    github_event(request) == "ping"
   end
 
   def github_event(request)
