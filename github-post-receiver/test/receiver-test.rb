@@ -1,4 +1,4 @@
-# Copyright (C) 2010  Kouhei Sutou <kou@clear-code.com>
+# Copyright (C) 2010-2014  Kouhei Sutou <kou@clear-code.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -49,6 +49,19 @@ class ReceiverTest < Test::Unit::TestCase
   def test_get
     visit "/"
     assert_response("Method Not Allowed")
+  end
+
+  def test_post_ping
+    payload = {
+      "zen" => "Speak like a human.",
+      "hook_id" => 2043443,
+    }
+    env = {
+      "HTTP_X_GITHUB_EVENT" => "ping",
+    }
+    post_payload(payload, env)
+    assert_response("OK")
+    assert_equal("", body)
   end
 
   def test_post_without_parameters
@@ -292,8 +305,8 @@ class ReceiverTest < Test::Unit::TestCase
   end
 
   private
-  def post_payload(payload)
-    page.driver.post("/", :payload => JSON.generate(payload))
+  def post_payload(payload, env={})
+    page.driver.post("/", {:payload => JSON.generate(payload)}, env)
   end
 
   def options
