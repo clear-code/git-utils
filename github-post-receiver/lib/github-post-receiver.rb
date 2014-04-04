@@ -77,8 +77,7 @@ class GitHubPostReceiver < WebHookReceiverBase
     repository = payload["repository"]
     if repository.nil?
       set_error_response(response, :bad_request,
-                         "repository information is missing: " +
-                         "<#{payload.inspect}>")
+                         "repository information is missing")
       return
     end
 
@@ -162,21 +161,21 @@ class GitHubPostReceiver < WebHookReceiverBase
     before = payload["before"]
     if before.nil?
       set_error_response(response, :bad_request,
-                         "before commit ID is missing: <#{payload.inspect}>")
+                         "before commit ID is missing")
       return
     end
 
     after = payload["after"]
     if after.nil?
       set_error_response(response, :bad_request,
-                         "after commit ID is missing: <#{payload.inspect}>")
+                         "after commit ID is missing")
       return
     end
 
     reference = payload["ref"]
     if reference.nil?
       set_error_response(response, :bad_request,
-                         "reference is missing: <#{payload.inspect}>")
+                         "reference is missing")
       return
     end
 
