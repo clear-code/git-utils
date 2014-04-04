@@ -42,9 +42,12 @@ class GitHubPostReceiver < WebHookReceiverBase
 
   private
 
-  def process_payload(request, response, payload)
-    event_name = github_event(request)
-    case event_name
+  def process_payload(request, response, raw_payload)
+    metadata = {
+      "x-github-event" => github_event(request),
+    }
+    payload = Payload.new(raw_payload, metadata)
+    case payload.event_name
     when "ping"
       # Do nothing
     when "push", nil # nil is for GitLab
@@ -136,7 +139,7 @@ class GitHubPostReceiver < WebHookReceiverBase
   def extract_owner_name(repository_uri, payload)
     owner_name = nil
     repository = payload["repository"]
-    if gitlab_payload?(payload)
+    if payload.gitlab?
       case repository_uri
       when /\Agit@/
         owner_name = repository_uri[%r!git@.+:(.+)/.+(?:.git)?!, 1]
@@ -184,10 +187,6 @@ class GitHubPostReceiver < WebHookReceiverBase
     response.status = status(status_keyword)
     response["Content-Type"] = "text/plain"
     response.write(message)
-  end
-
-  def gitlab_payload?(payload)
-    not payload["user_name"].nil?
   end
 
   def target?(owner_name, repository_name)
@@ -247,7 +246,9 @@ class GitHubPostReceiver < WebHookReceiverBase
         if File.exist?(mirror_path)
           git("--git-dir", mirror_path, "fetch", "--quiet")
         else
-          git("clone", "--quiet", "--mirror", repository_uri, mirror_path)
+          git("clone", "--quiet",
+              "--mirror", @payload.repository_url,
+              mirror_path)
         end
       rescue Error
         n_retries += 1
@@ -262,7 +263,7 @@ class GitHubPostReceiver < WebHookReceiverBase
         "--repository", mirror_path,
         "--max-size", "1M"
       ]
-      if gitlab_payload?
+      if @payload.gitlab?
         add_option(options, "--repository-browser", "gitlab")
         gitlab_project_uri = @payload["repository"]["homepage"]
         add_option(options, "--gitlab-project-uri", gitlab_project_uri)
@@ -370,23 +371,42 @@ class GitHubPostReceiver < WebHookReceiverBase
       end
     end
 
-    def repository_uri
-      if gitlab_payload?
-        @payload['repository']['url']
-      else
-        "#{@payload['repository']['url']}.git"
-      end
-    end
-
     def add_option(options, name, value)
       return if value.nil?
       value = value.to_s
       return if value.empty?
       options.concat([name, value])
     end
+  end
 
-    def gitlab_payload?
-      not @payload["user_name"].nil?
+  class Payload
+    def initialize(data, metadata={})
+      @data = data
+      @metadata = metadata
+    end
+
+    def [](key)
+      @data[key]
+    end
+
+    def repository_url
+      if gitlab?
+        self["repository"]["url"]
+      else
+        "#{self['repository']['url']}.git"
+      end
+    end
+
+    def gitlab?
+      not self["user_name"].nil?
+    end
+
+    def github_gollumn?
+      event_name == "gollum"
+    end
+
+    def event_name
+      @metadata["x-github-event"]
     end
   end
 end
