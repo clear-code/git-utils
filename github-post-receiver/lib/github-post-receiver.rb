@@ -386,14 +386,20 @@ class GitHubPostReceiver < WebHookReceiverBase
     end
 
     def [](key)
-      @data[key]
+      key.split(".").inject(@data) do |current_data, current_key|
+        if current_data
+          current_data[current_key]
+        else
+          nil
+        end
+      end
     end
 
     def repository_url
       if gitlab?
-        self["repository"]["url"]
+        self["repository.url"]
       else
-        "#{self['repository']['url']}.git"
+        "#{self['repository.url']}.git"
       end
     end
 
