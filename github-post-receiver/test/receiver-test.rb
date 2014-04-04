@@ -302,6 +302,51 @@ class ReceiverTest < Test::Unit::TestCase
                      }],
                    result)
     end
+
+    def test_gollum
+      repository_mirror_path =
+        mirror_path("github.com", "ranguba", "rroonga.wiki")
+      assert_false(File.exist?(repository_mirror_path))
+      before = "83841cd1576e28d85aa5ec312fd3804d1352e5ab^"
+      after = "83841cd1576e28d85aa5ec312fd3804d1352e5ab"
+      reference = "refs/heads/master"
+      payload = {
+        "repository" => {
+          "url" => "https://github.com/ranguba/rroonga",
+          "clone_url" => "https://github.com/ranguba/rroonga.git",
+          "name" => "rroonga",
+          "owner" => {
+            "login" => "ranguba",
+          },
+        },
+        "pages" => [
+          {
+            "sha" => "83841cd1576e28d85aa5ec312fd3804d1352e5ab",
+          },
+        ],
+      }
+      env = {
+        "HTTP_X_GITHUB_EVENT" => "gollum",
+      }
+      post_payload(payload, env)
+      assert_response("OK")
+      assert_true(File.exist?(repository_mirror_path))
+      result = YAML.load_file(File.join(@tmp_dir, "commit-email-result.yaml"))
+      assert_equal([
+                     {
+                       "argv" => [
+                         "--repository", repository_mirror_path,
+                         "--max-size", "1M",
+                         "--repository-browser", "github",
+                         "--github-user", "ranguba",
+                         "--github-repository", "rroonga",
+                         "--name", "ranguba/rroonga",
+                         "null@example.com"],
+                       "lines" => ["#{before} #{after} #{reference}\n"],
+                     },
+                   ],
+                   result)
+    end
   end
 
   private

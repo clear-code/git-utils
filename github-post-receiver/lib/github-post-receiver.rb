@@ -53,7 +53,7 @@ class GitHubPostReceiver < WebHookReceiverBase
     when "push", nil # nil is for GitLab
       process_push_payload(request, response, payload)
     when "gollum"
-      # TODO: implement me.
+      process_gollum_payload(request, response, payload)
     else
       set_error_response(response,
                          :bad_request,
@@ -70,6 +70,14 @@ class GitHubPostReceiver < WebHookReceiverBase
     return if repository.nil?
     before, after, reference =
       process_push_parameters(request, response, payload)
+    repository.process(before, after, reference)
+  end
+
+  def process_gollum_payload(request, response, payload)
+    repository = process_payload_repository(request, response, payload)
+    return if repository.nil?
+    before, after, reference =
+      process_gollum_parameters(request, response, payload)
     repository.process(before, after, reference)
   end
 
@@ -151,7 +159,7 @@ class GitHubPostReceiver < WebHookReceiverBase
       owner = repository["owner"]
       return if owner.nil?
 
-      owner_name = owner["name"]
+      owner_name = owner["name"] || owner["login"]
       return if owner_name.nil?
     end
     owner_name
@@ -179,6 +187,34 @@ class GitHubPostReceiver < WebHookReceiverBase
       return
     end
 
+    [before, after, reference]
+  end
+
+  def process_gollum_parameters(request, response, payload)
+    pages = payload["pages"]
+    if pages.nil?
+      set_error_response(response, :bad_request,
+                         "pages are missing")
+      return
+    end
+    if pages.empty?
+      set_error_response(response, :bad_request,
+                         "no pages")
+    end
+
+    revisions = pages.collect do |page|
+      page["sha"]
+    end
+
+    if revisions.size == 1
+      after = revisions.first
+      before = "#{after}^"
+    else
+      before = revisions.first
+      after = revisions.last
+    end
+
+    reference = "refs/heads/master"
     [before, after, reference]
   end
 
@@ -319,7 +355,13 @@ class GitHubPostReceiver < WebHookReceiverBase
     end
 
     def mirror_path
-      @mirror_path ||= File.join(mirrors_directory, @domain, @owner_name, @name)
+      components = [mirrors_directory, @domain, @owner_name]
+      if @payload.github_gollum?
+        components << "#{@name}.wiki"
+      else
+        components << @name
+      end
+      File.join(*components)
     end
 
     def ruby
@@ -397,8 +439,10 @@ class GitHubPostReceiver < WebHookReceiverBase
     def repository_url
       if gitlab?
         self["repository.url"]
+      elsif github_gollum?
+        self["repository.clone_url"].gsub(/(\.git)\z/, ".wiki\\1")
       else
-        "#{self['repository.url']}.git"
+        self["repository.clone_url"] || "#{self['repository.url']}.git"
       end
     end
 
@@ -406,7 +450,7 @@ class GitHubPostReceiver < WebHookReceiverBase
       not self["user_name"].nil?
     end
 
-    def github_gollumn?
+    def github_gollum?
       event_name == "gollum"
     end
 
