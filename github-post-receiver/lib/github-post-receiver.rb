@@ -57,7 +57,7 @@ class GitHubPostReceiver < WebHookReceiverBase
     else
       set_error_response(response,
                          :bad_request,
-                         "Unsupported event: <#{event_name}>")
+                         "Unsupported event: <#{payload.event_name}>")
     end
   end
 
