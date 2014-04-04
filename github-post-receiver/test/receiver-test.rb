@@ -306,7 +306,14 @@ class ReceiverTest < Test::Unit::TestCase
 
   private
   def post_payload(payload, env={})
+    env = default_env.merge(env)
     page.driver.post("/", {:payload => JSON.generate(payload)}, env)
+  end
+
+  def default_env
+    {
+      "HTTP_X_GITHUB_EVENT" => "push",
+    }
   end
 
   def options
