@@ -43,20 +43,31 @@ class GitHubPostReceiver < WebHookReceiverBase
   private
 
   def process_payload(request, response, payload)
-    return if ping_request?(request)
+    event_name = github_event(request)
+    case event_name
+    when "ping"
+      # Do nothing
+    when "push", nil # nil is for GitLab
+      process_push_payload(request, response, payload)
+    when "gollum"
+      # TODO: implement me.
+    else
+      set_error_response(response,
+                         :bad_request,
+                         "Unsupported event: <#{event_name}>")
+    end
+  end
+
+  def github_event(request)
+    request.env["HTTP_X_GITHUB_EVENT"]
+  end
+
+  def process_push_payload(request, response, payload)
     repository = process_payload_repository(request, response, payload)
     return if repository.nil?
     before, after, reference =
       process_push_parameters(request, response, payload)
     repository.process(before, after, reference)
-  end
-
-  def ping_request?(request)
-    github_event(request) == "ping"
-  end
-
-  def github_event(request)
-    request.env["HTTP_X_GITHUB_EVENT"]
   end
 
   def process_payload_repository(request, response, payload)
