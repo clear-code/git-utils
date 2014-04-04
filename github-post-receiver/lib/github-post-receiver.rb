@@ -306,7 +306,9 @@ class GitHubPostReceiver < WebHookReceiverBase
         add_option(options, "--repository-browser", "github")
         add_option(options, "--github-user", @owner_name)
         add_option(options, "--github-repository", @name)
-        add_option(options, "--name", "#{@owner_name}/#{@name}")
+        name = "#{@owner_name}/#{@name}"
+        name << ".wiki" if @payload.github_gollum?
+        add_option(options, "--name", name)
       end
       add_option(options, "--from", from)
       add_option(options, "--from-domain", from_domain)

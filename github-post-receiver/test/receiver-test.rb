@@ -340,7 +340,7 @@ class ReceiverTest < Test::Unit::TestCase
                          "--repository-browser", "github",
                          "--github-user", "ranguba",
                          "--github-repository", "rroonga",
-                         "--name", "ranguba/rroonga",
+                         "--name", "ranguba/rroonga.wiki",
                          "null@example.com"],
                        "lines" => ["#{before} #{after} #{reference}\n"],
                      },
