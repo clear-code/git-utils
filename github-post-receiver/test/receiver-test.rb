@@ -141,7 +141,7 @@ class ReceiverTest < Test::Unit::TestCase
       }
       post_payload(payload)
       assert_response("Bad Request")
-      assert_equal("before commit ID is missing: <#{payload.inspect}>",
+      assert_equal("before commit ID is missing: <#{inspect_payload(payload)}>",
                    body)
     end
 
@@ -158,7 +158,7 @@ class ReceiverTest < Test::Unit::TestCase
       }
       post_payload(payload)
       assert_response("Bad Request")
-      assert_equal("after commit ID is missing: <#{payload.inspect}>",
+      assert_equal("after commit ID is missing: <#{inspect_payload(payload)}>",
                    body)
     end
 
@@ -176,7 +176,7 @@ class ReceiverTest < Test::Unit::TestCase
       }
       post_payload(payload)
       assert_response("Bad Request")
-      assert_equal("reference is missing: <#{payload.inspect}>",
+      assert_equal("reference is missing: <#{inspect_payload(payload)}>",
                    body)
     end
 
@@ -308,6 +308,15 @@ class ReceiverTest < Test::Unit::TestCase
   def post_payload(payload, env={})
     env = default_env.merge(env)
     page.driver.post("/", {:payload => JSON.generate(payload)}, env)
+  end
+
+  def inspect_payload(raw_payload, env={})
+    env = default_env.merge(env)
+    metadata = {
+      "x-github-event" => env["HTTP_X_GITHUB_EVENT"],
+    }
+    payload = GitHubPostReceiver::Payload.new(raw_payload, metadata)
+    payload.inspect
   end
 
   def default_env
