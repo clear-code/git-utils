@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2009  Ryo Onodera <onodera@clear-code.com>
-# Copyright (C) 2011-2013  Kouhei Sutou <kou@clear-code.com>
+# Copyright (C) 2011-2014  Kouhei Sutou <kou@clear-code.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -692,6 +692,20 @@ module GitCommitMailerOptionTest
 
     _, commit_mails = get_mails_of_last_push
     assert_mail('test_github', commit_mails.first)
+  end
+
+  def test_github_wiki
+    set_additional_default_mailer_option("--repository-browser=github-wiki",
+                                         "--github-user=clear-code",
+                                         "--github-repository=git-utils")
+    create_default_mailer
+
+    create_file("README.md", "# README")
+    git "commit -m %s" % shell_escape("Add README")
+    git "push"
+
+    _, commit_mails = get_mails_of_last_push
+    assert_mail('test_github_wiki', commit_mails.first)
   end
 
   def test_html

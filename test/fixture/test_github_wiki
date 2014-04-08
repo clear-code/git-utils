@@ -1,0 +1,31 @@
+X-Git-Author: User Name
+X-Git-Revision: 2392e31917f73590151ce784e8f186c0019d8b01
+X-Git-Repository: XXX
+X-Git-Commit-Id: 2392e31917f73590151ce784e8f186c0019d8b01
+Message-ID: <2392e31917f73590151ce784e8f186c0019d8b01@git-utils.example.com>
+X-Mailer: GitCommitMailer 1.0.0; https://github.com/clear-code/git-utils
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+From: User Name <user@example.com>
+To: to@example
+Subject: sample-repo@2392e31 [master] Add README
+Date: Wed, 13 Jan 2010 15:15:43 +0900
+
+User Name	2010-01-13 15:15:43 +0900 (Wed, 13 Jan 2010)
+
+  New Revision: 2392e31917f73590151ce784e8f186c0019d8b01
+  https://github.com/clear-code/git-utils/wiki/README/2392e31917f73590151ce784e8f186c0019d8b01
+
+  Message:
+    Add README
+
+  Added files:
+    README.md
+
+  Added: README.md (+1 -0) 100644
+===================================================================
+--- /dev/null
++++ README.md    2010-01-13 15:15:43 +0900 (7e59600)
+@@ -0,0 +1 @@
++# README

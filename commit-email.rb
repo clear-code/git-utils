@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2009  Ryo Onodera <onodera@clear-code.com>
-# Copyright (C) 2012-2013  Kouhei Sutou <kou@clear-code.com>
+# Copyright (C) 2012-2014  Kouhei Sutou <kou@clear-code.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -302,7 +302,7 @@ class GitCommitMailer
         options.reference = reference
       end
 
-      available_softwares = ["github", "gitlab"]
+      available_softwares = ["github", "github-wiki", "gitlab"]
       label = available_softwares.join(", ")
       parser.on("--repository-browser=SOFTWARE",
                 available_softwares,
@@ -2073,6 +2073,9 @@ EOB
           base_url = @mailer.github_base_url
           revision = @info.revision
           "#{base_url}/#{user}/#{repository}/commit/#{revision}"
+        when "github-wiki"
+          file = (@info.updated_files + @info.added_files).first
+          commit_file_url_github_wiki(file)
         when "gitlab"
           return nil if @mailer.gitlab_project_uri.nil?
           revision = @info.revision
@@ -2083,17 +2086,31 @@ EOB
       end
 
       def commit_file_url(file)
-        base_url = commit_url
-        return nil if base_url.nil?
-
         case @mailer.repository_browser
         when "github"
+          base_url = commit_url
+          return nil if base_url.nil?
           index = @info.file_index(file)
           return nil if index.nil?
           "#{base_url}#diff-#{index}"
+        when "github-wiki"
+          commit_file_url_github_wiki(file)
         else
           nil
         end
+      end
+
+      def commit_file_url_github_wiki(file)
+        return nil if file.nil?
+
+        user = @mailer.github_user
+        repository = @mailer.github_repository
+        return nil if user.nil? or repository.nil?
+        base_url = @mailer.github_base_url
+        page_name = file.gsub(/\.[^.]+\z/, "")
+        page_name_in_url = ERB::Util.u(page_name)
+        revision = @info.revision
+        "#{base_url}/#{user}/#{repository}/wiki/#{page_name_in_url}/#{revision}"
       end
 
       def commit_file_line_number_url(file, direction, line_number)
