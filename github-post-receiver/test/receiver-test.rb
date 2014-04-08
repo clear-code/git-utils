@@ -337,7 +337,7 @@ class ReceiverTest < Test::Unit::TestCase
                        "argv" => [
                          "--repository", repository_mirror_path,
                          "--max-size", "1M",
-                         "--repository-browser", "github",
+                         "--repository-browser", "github-wiki",
                          "--github-user", "ranguba",
                          "--github-repository", "rroonga",
                          "--name", "ranguba/rroonga.wiki",

@@ -303,7 +303,11 @@ class GitHubPostReceiver < WebHookReceiverBase
         gitlab_project_uri = @payload["repository"]["homepage"]
         add_option(options, "--gitlab-project-uri", gitlab_project_uri)
       else
-        add_option(options, "--repository-browser", "github")
+        if @payload.github_gollum?
+          add_option(options, "--repository-browser", "github-wiki")
+        else
+          add_option(options, "--repository-browser", "github")
+        end
         add_option(options, "--github-user", @owner_name)
         add_option(options, "--github-repository", @name)
         name = "#{@owner_name}/#{@name}"
