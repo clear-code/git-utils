@@ -302,7 +302,7 @@ class GitCommitMailer
         options.reference = reference
       end
 
-      available_softwares = [:github, :gitlab]
+      available_softwares = ["github", "gitlab"]
       label = available_softwares.join(", ")
       parser.on("--repository-browser=SOFTWARE",
                 available_softwares,
@@ -2066,14 +2066,14 @@ EOB
       private
       def commit_url
         case @mailer.repository_browser
-        when :github
+        when "github"
           user = @mailer.github_user
           repository = @mailer.github_repository
           return nil if user.nil? or repository.nil?
           base_url = @mailer.github_base_url
           revision = @info.revision
           "#{base_url}/#{user}/#{repository}/commit/#{revision}"
-        when :gitlab
+        when "gitlab"
           return nil if @mailer.gitlab_project_uri.nil?
           revision = @info.revision
           "#{@mailer.gitlab_project_uri}/commit/#{revision}"
@@ -2087,7 +2087,7 @@ EOB
         return nil if base_url.nil?
 
         case @mailer.repository_browser
-        when :github
+        when "github"
           index = @info.file_index(file)
           return nil if index.nil?
           "#{base_url}#diff-#{index}"
@@ -2101,7 +2101,7 @@ EOB
         return nil if base_url.nil?
 
         case @mailer.repository_browser
-        when :github
+        when "github"
           index = @info.file_index(file)
           return nil if index.nil?
           url = "#{base_url}#L#{index}"
