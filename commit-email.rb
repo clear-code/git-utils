@@ -302,10 +302,10 @@ class GitCommitMailer
         options.reference = reference
       end
 
-      available_softwares = ["github", "github-wiki", "gitlab"]
-      label = available_softwares.join(", ")
+      available_software = ["github", "github-wiki", "gitlab"]
+      label = available_software.join(", ")
       parser.on("--repository-browser=SOFTWARE",
-                available_softwares,
+                available_software,
                 "Use SOFTWARE as the repository browser",
                 "(available repository browsers: #{label})") do |software|
         options.repository_browser = software
