@@ -144,7 +144,7 @@ module GitHubEventWatcher
       end
 
       def remove_pid_file
-        return unless @pid_file.eixst?
+        return unless @pid_file.exist?
         FileUtils.rm_f(@pid_file.to_s)
       end
     end
