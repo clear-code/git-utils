@@ -20,10 +20,14 @@ require "github-event-watcher/event"
 
 module GitHubEventWatcher
   class Watcher
+    NOTIFY_MESSAGE = "X"
+
     def initialize(state, logger)
       @repositories = []
       @state = state
       @logger = logger
+      @running = true
+      @notify_pipe = IO.pipe
     end
 
     def add_repository(name)
@@ -33,7 +37,7 @@ module GitHubEventWatcher
 
     def watch
       i = 0
-      loop do
+      while @running
         name = @repositories[i]
         events = fetch_events(name)
         processed_event_id = @state.processed_event_id(name)
@@ -51,9 +55,15 @@ module GitHubEventWatcher
                        "<#{latest_event.id}>")
           @state.update_processed_event_id(name, latest_event.id)
         end
-        sleep(60)
+        readables, = IO.select([@notify_pipe[0]], nil, nil, 60)
+        readables[0].read(NOTIFY_MESSAGE.size) if readables
         i = (i + 1) % @repositories.size
       end
+    end
+
+    def stop
+      @running = false
+      @notify_pipe[1].write(NOTIFY_MESSAGE)
     end
 
     private

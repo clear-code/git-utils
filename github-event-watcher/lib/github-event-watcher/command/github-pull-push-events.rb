@@ -90,12 +90,17 @@ module GitHubEventWatcher
         webhook_end_point = URI.parse(config["webhook-end-point"])
         webhook_sender = WebhookSender.new(webhook_end_point, logger)
 
+        setup_signals(watcher)
+
         Process.daemon if @daemonize
         create_pid_file
+
         watcher.watch do |event|
           next if event.type != "PushEvent"
           webhook_sender.send_push_event(event)
         end
+
+        logger.close
       end
 
       def create_state
@@ -116,6 +121,15 @@ module GitHubEventWatcher
 
       def load_config
         YAML.load(@config_file.read)
+      end
+
+      def setup_signals(watcher)
+        trap(:INT) do
+          watcher.stop
+        end
+        trap(:TERM) do
+          watcher.stop
+        end
       end
 
       def create_pid_file
