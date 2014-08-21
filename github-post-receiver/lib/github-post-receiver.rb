@@ -119,15 +119,17 @@ class GitHubPostReceiver < WebHookReceiverBase
       return
     end
 
-    unless target?(owner_name, repository_name)
+    options = repository_options(domain, owner_name, repository_name)
+    repository = repository_class.new(domain, owner_name, repository_name,
+                                      payload, options)
+    unless repository.target?
       set_error_response(response, :forbidden,
                          "unacceptable repository: " +
                          "<#{owner_name.inspect}>:<#{repository_name.inspect}>")
       return
     end
 
-    options = repository_options(domain, owner_name, repository_name)
-    repository_class.new(domain, owner_name, repository_name, payload, options)
+    respository
   end
 
   def extract_domain(repository_uri)
@@ -224,12 +226,6 @@ class GitHubPostReceiver < WebHookReceiverBase
     response.write(message)
   end
 
-  def target?(owner_name, repository_name)
-    (@options[:targets] || [/\A[a-z\d_.\-]+\z/i]).any? do |target|
-      target === repository_name
-    end
-  end
-
   def repository_class
     @options[:repository_class] || Repository
   end
@@ -272,6 +268,12 @@ class GitHubPostReceiver < WebHookReceiverBase
       @to = @options[:to]
       @max_n_retries = (@options[:n_retries] || 3).to_i
       raise Error.new("mail receive address is missing: <#{@name}>") if @to.nil?
+    end
+
+    def target?
+      (@options[:targets] || [/\A[a-z\d_.\-]+\z/i]).any? do |target|
+        target === repository_name
+      end
     end
 
     def process(before, after, reference)
