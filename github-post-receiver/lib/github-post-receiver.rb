@@ -272,7 +272,7 @@ class GitHubPostReceiver < WebHookReceiverBase
 
     def target?
       (@options[:targets] || [/\A[a-z\d_.\-]+\z/i]).any? do |target|
-        target === repository_name
+        target === @name
       end
     end
 
