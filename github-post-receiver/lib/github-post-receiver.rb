@@ -129,7 +129,7 @@ class GitHubPostReceiver < WebHookReceiverBase
       return
     end
 
-    respository
+    repository
   end
 
   def extract_domain(repository_uri)
