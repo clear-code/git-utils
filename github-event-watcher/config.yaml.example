@@ -1,0 +1,4 @@
+repositories:
+  - clear-code/git-utils
+  - ruby/ruby
+webhook-end-point: http://git-utils.example.com/post-receiver/
