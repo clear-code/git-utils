@@ -22,6 +22,7 @@ You can implement commit mail by using with
     % git clone https://github.com/clear-code/git-utils.git
     % cd github-event-watcher
     % cp config.yaml{.example,}
+    % editor config.yaml
     % ruby -I lib bin/github-pull-push-events --daemon
 
 `config.yaml` uses the following format:
