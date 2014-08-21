@@ -31,7 +31,8 @@ module GitHubEventWatcher
         :use_ssl => (@end_point.scheme == "https"),
       }
       Net::HTTP.start(@end_point.host, @end_point.port, options) do |http|
-        request = Net::HTTP::Post.new(@end_point)
+        request = Net::HTTP::Post.new(@end_point.request_uri)
+        require["Host"] = @end_point.hostname
         request["X-GitHub-Event"] = "push"
         request["Content-Type"] = "application/json"
         request["User-Agent"] = "GitHub Event Watcher/1.0"
