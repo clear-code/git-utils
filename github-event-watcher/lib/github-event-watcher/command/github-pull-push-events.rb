@@ -95,9 +95,13 @@ module GitHubEventWatcher
         Process.daemon if @daemonize
         create_pid_file
 
-        watcher.watch do |event|
-          next if event.type != "PushEvent"
-          webhook_sender.send_push_event(event)
+        begin
+          watcher.watch do |event|
+            next if event.type != "PushEvent"
+            webhook_sender.send_push_event(event)
+          end
+        ensure
+          remove_pid_file
         end
 
         logger.close
@@ -137,6 +141,11 @@ module GitHubEventWatcher
         @pid_file.open("w") do |pid_file|
           pid_file.print(Process.pid)
         end
+      end
+
+      def remove_pid_file
+        return unless @pid_file.eixst?
+        FileUtils.rm_f(@pid_file.to_s)
       end
     end
   end
