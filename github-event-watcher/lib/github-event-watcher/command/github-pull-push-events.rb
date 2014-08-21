@@ -29,10 +29,13 @@ module GitHubEventWatcher
         @state_dir = Pathname.new("var/lib")
         @log_dir = Pathname.new("var/log")
         @config_file = Pathname.new("config.yaml")
+        @pid_file = Pathname.new("var/run/github-pull-push-events.pid")
+        @daemonize = false
       end
 
       def run(argv=ARGV)
         parse_command_line!(argv)
+        expand_paths
         start_watcher
       end
 
@@ -55,7 +58,24 @@ module GitHubEventWatcher
                   "(#{@config_file})") do |file|
           @config_file = Pathname.new(file)
         end
+        parser.on("--pid-file=FILE",
+                  "The PID file",
+                  "(#{@pid_file})") do |file|
+          @pid_file = Pathname.new(file)
+        end
+        parser.on("--[no-]daemonize",
+                  "Run as a daemon",
+                  "(#{@daemonize})") do |boolean|
+          @daemonize = boolean
+        end
         parser.parse!(argv)
+      end
+
+      def expand_paths
+        @state_dir   = @state_dir.expand_path
+        @log_dir     = @log_dir.expand_path
+        @config_file = @config_file.expand_path
+        @pid_file    = @pid_file.expand_path
       end
 
       def start_watcher
@@ -68,6 +88,9 @@ module GitHubEventWatcher
         end
         webhook_end_point = URI.parse(config["webhook-end-point"])
         webhook_sender = WebhookSender.new(webhook_end_point, logger)
+
+        Process.daemon if @daemonize
+        create_pid_file
         watcher.watch do |event|
           next if event.type != "PushEvent"
           webhook_sender.send_push_event(event)
@@ -92,6 +115,13 @@ module GitHubEventWatcher
 
       def load_config
         YAML.load(@config_file.read)
+      end
+
+      def create_pid_file
+        FileUtils.mkdir_p(@pid_file.dirname.to_s)
+        @pid_file.open("w") do |pid_file|
+          pid_file.print(Process.pid)
+        end
       end
     end
   end
