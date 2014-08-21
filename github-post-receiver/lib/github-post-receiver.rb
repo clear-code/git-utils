@@ -68,17 +68,17 @@ class GitHubPostReceiver < WebHookReceiverBase
   def process_push_payload(request, response, payload)
     repository = process_payload_repository(request, response, payload)
     return if repository.nil?
-    before, after, reference =
-      process_push_parameters(request, response, payload)
-    repository.process(before, after, reference)
+    change = process_push_parameters(request, response, payload)
+    return if change.nil?
+    repository.process(*change)
   end
 
   def process_gollum_payload(request, response, payload)
     repository = process_payload_repository(request, response, payload)
     return if repository.nil?
-    before, after, reference =
-      process_gollum_parameters(request, response, payload)
-    repository.process(before, after, reference)
+    change = process_gollum_parameters(request, response, payload)
+    return if change.nil?
+    repository.process(*change)
   end
 
   def process_payload_repository(request, response, payload)
