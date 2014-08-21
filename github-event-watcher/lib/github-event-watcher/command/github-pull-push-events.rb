@@ -37,6 +37,7 @@ module GitHubEventWatcher
         parse_command_line!(argv)
         expand_paths
         start_watcher
+        true
       end
 
       private
