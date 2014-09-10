@@ -1743,7 +1743,8 @@ EOB
 
         @old_blob = @new_blob = nil
 
-        parse_header(lines, revision)
+        parse_header(lines)
+        detect_metadata(revision)
         parse_extended_headers(lines)
         parse_body(lines)
       end
@@ -1783,7 +1784,7 @@ EOB
         end
       end
 
-      def parse_header(lines, revision)
+      def parse_header(lines)
         line = lines.shift
         if line =~ /\Adiff --git (.*) (.*)/
           @from_file = extract_file_path($1)
@@ -1791,6 +1792,9 @@ EOB
         else
           raise "Unexpected diff header format: #{line}"
         end
+      end
+
+      def detect_metadata(revision)
         @new_revision = revision
         @new_date = Time.at(@mailer.get_record(@new_revision, "%at").to_i)
 
