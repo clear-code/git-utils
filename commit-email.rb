@@ -1785,8 +1785,8 @@ EOB
       end
 
       def parse_header(lines)
-        line = lines.shift
-        if line =~ /\Adiff --git (.*) (.*)/
+        line = lines.shift.strip
+        if line =~ /\Adiff --git ("?a\/.*) ("?b\/.*)/
           @from_file = extract_file_path($1)
           @to_file = extract_file_path($2)
         else
