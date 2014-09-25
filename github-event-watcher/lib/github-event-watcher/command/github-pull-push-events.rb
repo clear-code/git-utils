@@ -92,7 +92,15 @@ module GitHubEventWatcher
 
         setup_signals(watcher)
 
-        Process.daemon if @daemonize
+        if @daemonize
+          Process.daemon
+          $stdout = create_io_logger("stdout")
+          $stderr = create_io_logger("stderr")
+          at_exit do
+            $stdout.flush
+            $stderr.flush
+          end
+        end
         create_pid_file
 
         begin
@@ -112,13 +120,27 @@ module GitHubEventWatcher
         PersistentState.new(@state_dir + "state.yaml")
       end
 
-      def create_logger
+      def create_logger(type=nil)
         FileUtils.mkdir_p(@log_dir.to_s)
-        log_file = @log_dir + "github-pull-push-events.log"
+        components = ["github-pull-push-events", type, "log"].compact
+        log_file = @log_dir + components.join(".")
         logger = Logger.new(log_file.to_s, 10, 1024 ** 2)
         logger.level = Logger::INFO
         logger.formatter = lambda do |severity, timestamp, program_name, message|
           "#{timestamp.iso8601}[#{severity.downcase}] #{message}\n"
+        end
+        logger
+      end
+
+      def create_io_logger(type)
+        logger = create_logger(type)
+        logger.level = Logger::DEBUG
+        class << logger
+          def write(message)
+            message = message.strip
+            return if message.empty?
+            debug(message)
+          end
         end
         logger
       end
