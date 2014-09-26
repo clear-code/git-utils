@@ -141,6 +141,11 @@ module GitHubEventWatcher
             return if message.empty?
             debug(message)
           end
+
+          def flush
+            return if @logdev.nil?
+            @logdev.dev.flush
+          end
         end
         logger
       end
