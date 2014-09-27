@@ -73,6 +73,10 @@ module GitHubEventWatcher
           Event.new(event)
         end
       end
+    rescue Errno::ETIMEDOUT
+      tag = "[watcher][watch][#{name}][fetch]"
+      @logger.error("#{tag} Failed to fetch: #{$!.class}: #{$!.message}")
+      []
     end
 
     def remove_processed_events(events, processed_event_id)
