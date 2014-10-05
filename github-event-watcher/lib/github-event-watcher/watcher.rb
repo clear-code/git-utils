@@ -73,7 +73,7 @@ module GitHubEventWatcher
           Event.new(event)
         end
       end
-    rescue Errno::ETIMEDOUT
+    rescue SystemCallError
       tag = "[watcher][watch][#{name}][fetch]"
       @logger.error("#{tag} Failed to fetch: #{$!.class}: #{$!.message}")
       []
