@@ -46,7 +46,7 @@ module GitHubEventWatcher
         sorted_events = events.sort_by do |event|
           event.id
         end
-        sorted_events.reverse_each do |event|
+        sorted_events.each do |event|
           yield(event)
         end
         latest_event = sorted_events.last
