@@ -30,6 +30,7 @@ module GitHubEventWatcher
       options = {
         :use_ssl => (@end_point.scheme == "https"),
       }
+      begin
       Net::HTTP.start(@end_point.host, @end_point.port, options) do |http|
         request = Net::HTTP::Post.new(@end_point.request_uri)
         request["Host"] = @end_point.hostname
@@ -44,6 +45,11 @@ module GitHubEventWatcher
         else
           @logger.error("[webhook-sender][sent][push][error] <#{response.code}>")
         end
+      end
+      rescue SystemCallError, Timeout::Error
+        tag = "[webhook-sender][send][push][error]"
+        message = "#{tag} Failed to send push event: #{$!.class}: #{$!.message}"
+        @logger.error(message)
       end
     end
 
