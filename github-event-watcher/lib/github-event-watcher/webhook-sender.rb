@@ -39,11 +39,12 @@ module GitHubEventWatcher
           request["User-Agent"] = "GitHub Event Watcher/1.0"
           request.body = JSON.generate(convert_to_push_event_payload(event))
           response = http.request(request)
+          log_tag = "[webhook-sender][sent][push]"
           case response
           when Net::HTTPSuccess
-            @logger.info("[webhook-sender][sent][push][success]")
+            @logger.info("#{log_tag}[success]")
           else
-            @logger.error("[webhook-sender][sent][push][error] <#{response.code}>")
+            @logger.error("#{log_tag}[error] <#{response.code}>")
           end
         end
       rescue SystemCallError, Timeout::Error
