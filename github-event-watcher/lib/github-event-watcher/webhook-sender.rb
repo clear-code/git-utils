@@ -31,21 +31,21 @@ module GitHubEventWatcher
         :use_ssl => (@end_point.scheme == "https"),
       }
       begin
-      Net::HTTP.start(@end_point.host, @end_point.port, options) do |http|
-        request = Net::HTTP::Post.new(@end_point.request_uri)
-        request["Host"] = @end_point.hostname
-        request["X-GitHub-Event"] = "push"
-        request["Content-Type"] = "application/json"
-        request["User-Agent"] = "GitHub Event Watcher/1.0"
-        request.body = JSON.generate(convert_to_push_event_payload(event))
-        response = http.request(request)
-        case response
-        when Net::HTTPSuccess
-          @logger.info("[webhook-sender][sent][push][success]")
-        else
-          @logger.error("[webhook-sender][sent][push][error] <#{response.code}>")
+        Net::HTTP.start(@end_point.host, @end_point.port, options) do |http|
+          request = Net::HTTP::Post.new(@end_point.request_uri)
+          request["Host"] = @end_point.hostname
+          request["X-GitHub-Event"] = "push"
+          request["Content-Type"] = "application/json"
+          request["User-Agent"] = "GitHub Event Watcher/1.0"
+          request.body = JSON.generate(convert_to_push_event_payload(event))
+          response = http.request(request)
+          case response
+          when Net::HTTPSuccess
+            @logger.info("[webhook-sender][sent][push][success]")
+          else
+            @logger.error("[webhook-sender][sent][push][error] <#{response.code}>")
+          end
         end
-      end
       rescue SystemCallError, Timeout::Error
         tag = "[webhook-sender][send][push][error]"
         message = "#{tag} Failed to send push event: #{$!.class}: #{$!.message}"
