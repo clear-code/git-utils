@@ -1639,7 +1639,7 @@ EOB
       output = git("log -n 1 --pretty=format:'' -C -p #{@revision}")
       output = force_utf8(output)
       output = output.lines.to_a
-      output.shift # removes the first empty line
+      output.shift if output.first.strip.empty?
 
       @diffs = []
       lines = []
