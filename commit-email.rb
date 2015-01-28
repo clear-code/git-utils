@@ -1636,12 +1636,15 @@ EOB
     end
 
     def parse_diff
+      @diffs = []
+
       output = git("log -n 1 --pretty=format:'' -C -p #{@revision}")
       output = force_utf8(output)
       output = output.lines.to_a
+      return if output.empty?
+
       output.shift if output.first.strip.empty?
 
-      @diffs = []
       lines = []
 
       line = output.shift
