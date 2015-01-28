@@ -84,6 +84,14 @@ class ReceiverTest < Test::Unit::TestCase
   end
 
   class GitHubTest < self
+    class << self
+      def startup
+      end
+
+      def shutdown
+      end
+    end
+
     def test_post_with_non_target_repository
       owner_name = "devil"
       repository_name = "evil-repository"
