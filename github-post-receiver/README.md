@@ -113,8 +113,74 @@ $ sudo -u git-utils -H ~git-utils/bin/github-post-receiver start
 
 ## Set up (Apache + Passenger)
 
-TODO
+On Debian GNU/Linux wheezy.
 
+See also [Phusion Passenger users guide, Apache version](https://www.phusionpassenger.com/documentation/Users%20guide%20Apache.html).
+
+Clone repository.
+
+```
+$ cd ~git-utils
+$ sudo -u git-utils -H git clone https://github.com/clear-code/git-utils.git
+```
+
+Install Passenger.
+Following command can display configurations for your environment.
+
+```
+$ sudo gem install passenger
+```
+
+Prepare following files.
+
+/etc/apache2/mods-available.conf:
+```
+PassengerRoot /path/to/passenger-x.x.x
+PassengerRuby /path/to/ruby
+
+PassengerMaxRequests 100
+```
+
+/etc/apache2/mods-available.load:
+```
+LoadModule passenger_module /path/to/mod_passenger.so
+```
+
+/etc/apache2/sites-available/git-utils:
+```
+<VirtualHost *:80>
+  ServerName git-utils.example.com
+  DocumentRoot /home/git-utils/git-utils/github-post-receiver/public
+  <Directory /home/git-utils/git-utils/github-post-receiver/public>
+     AllowOverride all
+     Options -MultiViews
+  </Directory>
+
+  ErrorLog ${APACHE_LOG_DIR}/git-utils_error.log
+  CustomLog ${APACHE_LOG_DIR}/git-utils_access.log combined
+
+  AllowEncodedSlashes On
+  AcceptPathInfo On
+</VirtualHost>
+```
+
+Enable the module.
+
+```
+$ sudo a2enmod passenger
+```
+
+Enable the virtual host.
+
+```
+$ sudo a2ensite git-utils
+```
+
+Restart web server.
+
+```
+$ sudo service apache2 restart
+```
 
 ## Configuration
 
