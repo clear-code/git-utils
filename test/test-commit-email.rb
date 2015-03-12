@@ -667,6 +667,18 @@ module GitCommitMailerOptionTest
     assert_mail('test_max_size.push_mail', push_mails[0])
   end
 
+  def test_max_diff_size
+    set_additional_default_mailer_option("--max-diff-size=200B")
+    create_default_mailer
+
+    git_commit_new_file(DEFAULT_FILE, DEFAULT_FILE_CONTENT, "an initial commit")
+    git 'push'
+
+    _, commit_mails = get_mails_of_last_push
+
+    assert_mail('test_max_diff_size.commit_mail', commit_mails[0])
+  end
+
   def test_sender
     set_additional_default_mailer_option("--sender=sender@example.com")
     create_default_mailer
