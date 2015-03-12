@@ -204,6 +204,7 @@ class GitCommitMailer
       mailer.add_diff = options.add_diff
       mailer.add_html = options.add_html
       mailer.max_size = options.max_size
+      mailer.max_diff_size = options.max_diff_size
       mailer.repository_uri = options.repository_uri
       mailer.rss_path = options.rss_path
       mailer.rss_uri = options.rss_uri
@@ -252,6 +253,7 @@ class GitCommitMailer
       options.add_diff = true
       options.add_html = false
       options.max_size = parse_size(DEFAULT_MAX_SIZE)
+      options.max_diff_size = parse_size(DEFAULT_MAX_SIZE)
       options.repository_uri = nil
       options.rss_path = nil
       options.rss_uri = nil
@@ -453,6 +455,17 @@ class GitCommitMailer
         options.max_size = nil
       end
 
+      parser.on("--max-diff-size=SIZE",
+                "Limit diff size to SIZE",
+                "G/GB/M/MB/K/KB/B units are available",
+                "(#{format_size(options.max_diff_size)})") do |max_size|
+        begin
+          options.max_diff_size = parse_size(max_size)
+        rescue ArgumentError
+          raise OptionParser::InvalidArgument, max_size
+        end
+      end
+
       parser.on("--date=DATE",
                 "Use DATE as date of push mails (Time.parse is used)") do |date|
         options.date = Time.parse(date)
@@ -501,7 +514,7 @@ class GitCommitMailer
   attr_writer :send_per_to
   attr_writer :from, :add_diff, :add_html, :show_path, :send_push_mail
   attr_writer :repository, :date, :git_bin_path, :track_remote
-  attr_accessor :from_domain, :sender, :max_size, :repository_uri
+  attr_accessor :from_domain, :sender, :max_size, :max_diff_size, :repository_uri
   attr_accessor :rss_path, :rss_uri, :server, :port
   attr_accessor :repository_browser
   attr_accessor :github_base_url, :github_user, :github_repository
