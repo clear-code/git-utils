@@ -1637,8 +1637,12 @@ EOB
 
     def parse_diff
       @diffs = []
-
-      output = git("log -n 1 --pretty=format:'' -C -p #{@revision}")
+      output = ""
+      git("log -n 1 --pretty=format:'' -C -p #{@revision}") do |io|
+        io.each_line do |line|
+          output << line
+        end
+      end
       output = force_utf8(output)
       output = output.lines.to_a
       return if output.empty?
