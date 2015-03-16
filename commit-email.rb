@@ -1744,7 +1744,11 @@ EOB
       ]
       guess_encodings.each do |guess_encoding|
         string.force_encoding(guess_encoding)
-        return string.encode("UTF-8") if string.valid_encoding?
+        next unless string.valid_encoding?
+        begin
+          return string.encode("UTF-8")
+        rescue EncodingError
+        end
       end
 
       nil
