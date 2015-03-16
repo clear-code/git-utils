@@ -136,6 +136,20 @@ EOF
 
     assert_mail("test_diffs_with_8digits_object_id", commit_mails[0])
   end
+
+  def test_binary_data
+    create_default_mailer
+
+    create_file("binary.bin", "a\xFF\xFFb".force_encoding("ASCII-8BIT"))
+    git "add binary.bin"
+    git "commit -a -m 'added a binary file'"
+    git "push"
+
+    push_mails, commit_mails = get_mails_of_last_push
+    _ = push_mails
+
+    assert_mail("test_diffs_with_binary_file", commit_mails[0])
+  end
 end
 
 module GitCommitMailerFileManipulationTest
@@ -924,7 +938,7 @@ module HookModeTest
     end
 
     def create_file(file_name, content)
-      File.open(expand_path(file_name), 'w') do |file|
+      File.open(expand_path(file_name), 'wb') do |file|
         file.puts(content)
       end
       git "add %s" % shell_escape(file_name)

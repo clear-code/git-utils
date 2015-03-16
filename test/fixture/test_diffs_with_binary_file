@@ -1,0 +1,30 @@
+X-Git-Author: User Name
+X-Git-Revision: 1aea67ac8faa2a46f8487af21814577de9cedc47
+X-Git-Repository: XXX
+X-Git-Commit-Id: 1aea67ac8faa2a46f8487af21814577de9cedc47
+Message-ID: <1aea67ac8faa2a46f8487af21814577de9cedc47@git-utils.example.com>
+X-Mailer: GitCommitMailer 1.0.0; https://github.com/clear-code/git-utils
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+From: User Name <user@example.com>
+To: to@example
+Subject: sample-repo@1aea67a [master] added a binary file
+Date: Wed, 13 Jan 2010 15:15:43 +0900
+
+User Name	2010-01-13 15:15:43 +0900 (Wed, 13 Jan 2010)
+
+  New Revision: 1aea67ac8faa2a46f8487af21814577de9cedc47
+
+  Message:
+    added a binary file
+
+  Added files:
+    binary.bin
+
+  Added: binary.bin (+0 -0) 100644
+===================================================================
+--- /dev/null
++++ binary.bin    2010-01-13 15:15:43 +0900 (0833450)
+@@ -0,0 +1 @@
+(binary line)

@@ -1656,7 +1656,8 @@ EOB
         io.each_line do |line|
           n_bytes += line.bytesize
           break if n_bytes > mailer.max_diff_size
-          output << force_utf8(line)
+          utf8_line = force_utf8(line) || "(binary line)\n"
+          output << utf8_line
         end
       end
       return if output.empty?
@@ -1734,11 +1735,19 @@ EOB
     end
 
     def force_utf8(string)
-      if string.respond_to?(:valid_encoding?)
-        string.force_encoding("UTF-8")
-        return string if string.valid_encoding?
+      string.force_encoding("UTF-8")
+      return string if string.valid_encoding?
+
+      guess_encodings = [
+        "Windows-31J",
+        "EUC-JP",
+      ]
+      guess_encodings.each do |guess_encoding|
+        string.force_encoding(guess_encoding)
+        return string.encode("UTF-8") if string.valid_encoding?
       end
-      NKF.nkf("-w", string)
+
+      nil
     end
 
     class FileDiff
