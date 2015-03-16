@@ -1650,17 +1650,15 @@ EOB
 
     def parse_diff
       @diffs = []
-      output = ""
+      output = []
       n_bytes = 0
       git("log -n 1 --pretty=format:'' -C -p #{@revision}") do |io|
         io.each_line do |line|
           n_bytes += line.bytesize
           break if n_bytes > mailer.max_diff_size
-          output << line
+          output << force_utf8(line)
         end
       end
-      output = force_utf8(output)
-      output = output.lines.to_a
       return if output.empty?
 
       output.shift if output.first.strip.empty?
