@@ -96,7 +96,6 @@ EOF
     2.times do |i|
       file_name = "file_#{i.to_s}"
       file_content = "text in #{file_name}"
-      commit_log = "added #{file_name}"
       create_file(file_name, file_content)
       git "add #{file_name}"
     end
