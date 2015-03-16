@@ -56,6 +56,7 @@ EOF
     git 'push'
 
     push_mails, commit_mails = get_mails_of_last_push
+    _ = push_mails
 
     assert_mail('test_diffs_with_trailing_spaces', commit_mails[0])
   end
@@ -86,6 +87,7 @@ EOF
     git 'push'
 
     push_mails, commit_mails = get_mails_of_last_push
+    _ = push_mails
 
     assert_mail('test_diffs_with_multiple_hunks', commit_mails[0])
   end
@@ -103,6 +105,7 @@ EOF
     git 'push'
 
     push_mails, commit_mails = get_mails_of_last_push
+    _ = push_mails
 
     assert_mail('test_diffs_with_multiple_files', commit_mails[0])
   end
@@ -132,6 +135,7 @@ EOF
     git("push")
 
     push_mails, commit_mails = get_mails_of_last_push
+    _ = push_mails
 
     assert_mail("test_diffs_with_8digits_object_id", commit_mails[0])
   end
@@ -353,6 +357,7 @@ module GitCommitMailerTagTest
     git "push --tags"
 
     push_mails, commit_mails = get_mails_of_last_push
+    _ = commit_mails
 
     assert_mail('test_create_annotated_tag.push_mail', push_mails[0])
   end
@@ -366,6 +371,7 @@ module GitCommitMailerTagTest
     git "push --tags --force"
 
     push_mails, commit_mails = get_mails_of_last_push
+    _ = commit_mails
 
     assert_mail('test_update_annotated_tag.push_mail', push_mails[0])
   end
@@ -379,6 +385,7 @@ module GitCommitMailerTagTest
     git "push --tags origin :refs/tags/v0.0.1"
 
     push_mails, commit_mails = get_mails_of_last_push
+    _ = commit_mails
 
     assert_mail('test_delete_annotated_tag.push_mail', push_mails[0])
   end
@@ -390,6 +397,7 @@ module GitCommitMailerTagTest
     git "push --tags"
 
     push_mails, commit_mails = get_mails_of_last_push
+    _ = commit_mails
 
     assert_mail('test_create_unannotated_tag.push_mail', push_mails[0])
   end
@@ -405,6 +413,7 @@ module GitCommitMailerTagTest
     git "push --tags --force"
 
     push_mails, commit_mails = get_mails_of_last_push
+    _ = commit_mails
 
     assert_mail('test_update_unannotated_tag.push_mail', push_mails[0])
   end
@@ -418,6 +427,7 @@ module GitCommitMailerTagTest
     git "push --tags origin :refs/tags/v0.0.1"
 
     push_mails, commit_mails = get_mails_of_last_push
+    _ = commit_mails
 
     assert_mail('test_delete_unannotated_tag.push_mail', push_mails[0])
   end
@@ -439,6 +449,7 @@ module GitCommitMailerTagTest
     git "push --tags"
 
     push_mails, commit_mails = get_mails_of_last_push
+    _ = commit_mails
 
     assert_mail('test_short_log.push_mail', push_mails[0])
   end
@@ -568,6 +579,7 @@ module GitCommitMailerNonAsciiTest
     git "push"
 
     push_mails, commit_mails = get_mails_of_last_push
+    _ = push_mails
 
     assert_mail('test_non_ascii_file_name', commit_mails[0])
   end
@@ -578,6 +590,7 @@ module GitCommitMailerNonAsciiTest
     git "push"
 
     push_mails, commit_mails = get_mails_of_last_push
+    _ = push_mails
 
     assert_mail('test_non_ascii_commit_subject', commit_mails[0])
   end
@@ -591,6 +604,7 @@ module GitCommitMailerNonAsciiTest
     git "push"
 
     push_mails, commit_mails = get_mails_of_last_push
+    _ = push_mails
 
     assert_mail('test_move_non_ascii_file', commit_mails[0])
   end
@@ -602,6 +616,7 @@ module GitCommitMailerNonAsciiTest
     git 'push'
 
     push_mails, commit_mails = get_mails_of_last_push
+    _ = push_mails
 
     assert_mail('test_long_word_in_commit_subject', commit_mails[0])
   end
@@ -614,6 +629,7 @@ module GitCommitMailerNonAsciiTest
     git("push")
 
     push_mails, commit_mails = get_mails_of_last_push
+    _ = push_mails
 
     assert_mail("test_non_utf8_content", commit_mails[0])
   end
