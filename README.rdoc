@@ -1,6 +1,6 @@
 = README
 
-This repository will split to following repositories:
+This repository have splitted to following repositories:
 
 * https://github.com/clear-code/git-commit-mailer
 * https://github.com/clear-code/github-web-hooks-receiver
